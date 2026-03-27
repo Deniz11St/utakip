@@ -1169,6 +1169,35 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         }
     });
 
+    document.getElementById('btnUpdateApp').addEventListener('click', async () => {
+        const btn = document.getElementById('btnUpdateApp');
+        const originalText = btn.textContent;
+        btn.textContent = "🔄 Kontrol Ediliyor...";
+        btn.disabled = true;
+
+        if ('serviceWorker' in navigator) {
+            try {
+                const registration = await navigator.serviceWorker.getRegistration();
+                if (registration) {
+                    await registration.update();
+                    console.log("Service Worker updated.");
+                }
+                
+                // Hard reload to bypass cache
+                setTimeout(() => {
+                    window.location.reload(true);
+                }, 1000);
+            } catch (e) {
+                console.error("SW Update Error:", e);
+                alert("Güncelleme kontrolü sırasında bir hata oluştu. Lütfen sayfayı manuel yenileyin.");
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        } else {
+            window.location.reload(true);
+        }
+    });
+
     document.getElementById('btnSaveCurrentData').addEventListener('click', () => {
         const cs = document.getElementById('currentSize').value;
         const ct = document.getElementById('currentTension').value;

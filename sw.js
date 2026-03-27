@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v2';
+const CACHE_NAME = 'utakip-v3';
 const ASSETS = [
     './',
     './index.html',
@@ -12,6 +12,21 @@ self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
             return cache.addAll(ASSETS);
+        })
+    );
+    self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+    event.waitUntil(
+        caches.keys().then((cacheNames) => {
+            return Promise.all(
+                cacheNames.filter((cacheName) => {
+                    return cacheName !== CACHE_NAME;
+                }).map((cacheName) => {
+                    return caches.delete(cacheName);
+                })
+            );
         })
     );
 });
