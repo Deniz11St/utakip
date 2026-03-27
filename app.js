@@ -1,0 +1,1327 @@
+// Panel Switcher — Koç & Ansiklopedi (mutual exclusive tam ekran)
+function switchPanel(target) {
+    const coachPane = document.getElementById('paneCoach');
+    const encPane   = document.getElementById('paneEncyclopedia');
+    if (!coachPane || !encPane) return;
+
+    const coachHint = coachPane.querySelector('.panel-tab-hint');
+    const encHint   = encPane.querySelector('.panel-tab-hint');
+
+    if (target === 'encyclopedia') {
+        coachPane.classList.add('collapsed');
+        encPane.classList.remove('collapsed');
+        if (coachHint) coachHint.textContent = 'Aç ▼';
+        if (encHint)   encHint.textContent   = 'Aktif';
+    } else {
+        encPane.classList.add('collapsed');
+        coachPane.classList.remove('collapsed');
+        if (coachHint) coachHint.textContent = 'Aktif';
+    }
+}
+
+// Başarı bildirimi (Achievement Pop-up)
+function showSuccessAchievement(title, message, icon = '🏆') {
+    const el = document.createElement('div');
+    el.className = 'success-achievement';
+    el.innerHTML = `<span class="icon">${icon}</span> <span><strong>${title}</strong>: ${message}</span>`;
+    document.body.appendChild(el);
+    
+    // Animasyonu tetikle
+    setTimeout(() => el.classList.add('show'), 100);
+    
+    // 4 saniye sonra kaldır
+    setTimeout(() => {
+        el.classList.remove('show');
+        setTimeout(() => el.remove(), 600);
+    }, 4000);
+}
+
+
+// Core Data Management (localStorage)
+class TrackerData {
+    constructor() {
+        this.sessionAchievements = { daily: false, target: false };
+        this.load();
+    }
+
+    load() {
+        const defaultData = {
+            name: '',
+            age: 0,
+            startDate: '',
+            startSize: 0, // In cm
+            currentSize: 0, // In cm
+            targetSize: 0, // In cm
+            targetMonthlyGrowth: 2, // In mm
+            sessions: {}, // Format: "YYYY-MM-DD": [{mins: 120, diff: 'normal'}, {mins: 60, diff: 'zor'}]
+            monthlyTension: {}, // Format: "YYYY-MM": 10.5 (cm)
+            notes: {}, // Format: "YYYY-MM-DD": "Bugün seans çok verimliydi."
+            coachChat: [], // Format: [{role: 'user', text: '...'}, {role: 'coach', text: '...'}]
+            geminiApiKey: '',
+            geminiModelName: 'gemini-3-flash-preview',
+            dailyGoalHours: 6 // Varsayılan 6 saat
+        };
+        const raw = localStorage.getItem('uTakipData');
+        this.data = raw ? JSON.parse(raw) : defaultData;
+        if (!this.data.monthlyTension) this.data.monthlyTension = {};
+        if (!this.data.monthlySize) this.data.monthlySize = {};
+        if (!this.data.notes) this.data.notes = {};
+        if (!this.data.coachChat) this.data.coachChat = [];
+        if (!this.data.geminiApiKey) this.data.geminiApiKey = '';
+        if (!this.data.geminiModelName) this.data.geminiModelName = 'gemini-3-flash-preview';
+        if (this.data.targetMonthlyGrowth === undefined) this.data.targetMonthlyGrowth = 2;
+        if (this.data.dailyGoalHours === undefined) this.data.dailyGoalHours = 6;
+        if (this.data.timerStartTime === undefined) this.data.timerStartTime = 0;
+        
+        // MIGRATION: Eskiden sadece dakika tutulan arrayleri (number array), objeye {mins: X, diff: 'normal'} dönüştürür.
+        if (this.data.sessions) {
+            Object.keys(this.data.sessions).forEach(k => {
+                this.data.sessions[k] = this.data.sessions[k].map(item => {
+                    return typeof item === 'number' ? { mins: item, diff: 'normal' } : item;
+                });
+            });
+        }
+    }
+
+    save() {
+        localStorage.setItem('uTakipData', JSON.stringify(this.data));
+    }
+
+    // Setters
+    setBaseSettings(name, age, date, size, target, growthRate, apiKey = '', modelName = 'gemini-3-flash-preview', dailyGoal = 6) {
+        this.data.name = name;
+        this.data.age = parseInt(age) || 0;
+        this.data.startDate = date;
+        
+        const parsedSize = parseFloat(size);
+        const oldStartSize = this.data.startSize;
+        this.data.startSize = isNaN(parsedSize) ? 0 : parsedSize;
+        
+        // Eğer currentSize hiç yoksa veya eski startSize ile aynıysa (yeni başlamışsa) güncelle
+        if (!this.data.currentSize || this.data.currentSize === oldStartSize) {
+            this.data.currentSize = this.data.startSize;
+        }
+
+        this.data.geminiApiKey = apiKey.trim();
+        this.data.geminiModelName = modelName.trim() || 'gemini-3-flash-preview';
+        this.data.dailyGoalHours = parseFloat(dailyGoal) || 6;
+        
+        if(target && !isNaN(parseFloat(target))) {
+            this.data.targetSize = parseFloat(target);
+        }
+        if(growthRate && !isNaN(parseFloat(growthRate))) {
+            this.data.targetMonthlyGrowth = parseFloat(growthRate);
+        }
+        this.save();
+    }
+
+    setCurrentData(size, tension) {
+        const today = new Date();
+        const currentYYYYMM = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+        
+        if(size) {
+            this.data.currentSize = parseFloat(size);
+            if (!this.data.monthlySize) this.data.monthlySize = {};
+            this.data.monthlySize[currentYYYYMM] = parseFloat(size);
+        }
+        if(tension) {
+            this.data.monthlyTension[currentYYYYMM] = parseFloat(tension);
+        }
+        this.save();
+    }
+
+    addSession(dateStr, minutes, diff = 'normal', note = '') {
+        if (!this.data.sessions[dateStr]) {
+            this.data.sessions[dateStr] = [];
+        }
+        // Max 5 sessions per day limit handling
+        if (this.data.sessions[dateStr].length >= 5) {
+            alert('Günlük maksimum 5 seans girebilirsiniz.');
+            return false;
+        }
+        this.data.sessions[dateStr].push({ mins: parseInt(minutes), diff: diff });
+        if (note) {
+            if (!this.data.notes[dateStr]) this.data.notes[dateStr] = [];
+            this.data.notes[dateStr].push(note);
+        }
+        this.save();
+        return true;
+    }
+    
+    // Getters
+    getMonthlyGrowth(yearMonth) {
+        if (!this.data.monthlySize || !this.data.monthlySize[yearMonth]) return 0;
+        
+        const sizes = { "0000-00": this.data.startSize }; 
+        Object.keys(this.data.monthlySize).forEach(k => sizes[k] = this.data.monthlySize[k]);
+        
+        const sortedKeys = Object.keys(sizes).sort();
+        const currentIndex = sortedKeys.indexOf(yearMonth);
+        if (currentIndex <= 0) return 0;
+        
+        const prevKey = sortedKeys[currentIndex - 1];
+        return (sizes[yearMonth] - sizes[prevKey]) * 10;
+    }
+
+    getTodayMinutes() {
+        const today = new Date();
+        const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+        const sessions = this.data.sessions[dateStr] || [];
+        return sessions.reduce((acc, s) => acc + s.mins, 0);
+    }
+
+    getTotalGrowth() {
+        const start = parseFloat(this.data.startSize);
+        const current = parseFloat(this.data.currentSize);
+        if (isNaN(start) || isNaN(current) || start === 0) return 0;
+        return (current - start) * 10;
+    }
+    
+    getStage() {
+        let growth = this.getTotalGrowth();
+        growth = parseFloat(growth.toFixed(1)); // Floating point fix
+        if (growth < 0) return 1;
+        return Math.floor(growth / 10) + 1;
+    }
+
+    getStageProgress() {
+        let growth = this.getTotalGrowth();
+        growth = parseFloat(growth.toFixed(1)); // Floating point fix
+        if (growth < 0) return 0;
+        return growth % 10;
+    }
+
+    getTotalMinutes() {
+        let total = 0;
+        if (!this.data.sessions) return 0;
+        Object.values(this.data.sessions).forEach(daySessions => {
+            daySessions.forEach(s => {
+                total += (s.mins || 0);
+            });
+        });
+        return total;
+    }
+}
+
+// App Initialization and DOM interactions
+document.addEventListener('DOMContentLoaded', () => {
+    const dataManager = new TrackerData();
+
+    // Tab Navigation Switcher
+    const navBtns = document.querySelectorAll('.nav-btn');
+    const views = document.querySelectorAll('.view');
+
+    navBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const target = btn.getAttribute('data-target');
+            
+            navBtns.forEach(b => b.classList.remove('active'));
+            views.forEach(v => v.classList.remove('active'));
+
+            btn.classList.add('active');
+            document.getElementById(target).classList.add('active');
+            
+            // Refresh data when switching to specific tabs
+            if(target === 'home') updateHomeView();
+            if(target === 'calendar') updateCalendarView();
+            if(target === 'journal') updateJournalView();
+            if(target === 'coach') updateCoachSectionView();
+        });
+    });
+
+    // --- SETUP: UI Generics ---
+    
+    function renderRulerScale(startCm = 0) {
+        const topScale = document.getElementById('topScale');
+        const bottomScale = document.getElementById('bottomScale');
+        topScale.innerHTML = '';
+        bottomScale.innerHTML = '';
+        
+        // 10 mm lines
+        for(let i=0; i<=10; i++) {
+            const isMajor = (i % 5 === 0);
+            
+            const tTick = document.createElement('div');
+            tTick.className = `tick top ${isMajor ? 'major' : ''}`;
+            if(isMajor) {
+                let val = startCm + (i / 10);
+                let displayVal = val % 1 === 0 ? val : val.toFixed(1);
+                tTick.setAttribute('data-val', displayVal);
+            }
+            topScale.appendChild(tTick);
+            
+            const bTick = document.createElement('div');
+            bTick.className = `tick bottom ${isMajor ? 'major' : ''}`;
+            bottomScale.appendChild(bTick);
+        }
+    }
+
+    // --- LOGIC: Views ---
+
+
+    function updateHomeView() {
+        // Display Start Date
+        const displayDate = document.getElementById('displayStartDate');
+        if (dataManager.data.startDate) {
+            const d = new Date(dataManager.data.startDate);
+            displayDate.textContent = d.toLocaleDateString('tr-TR');
+        } else {
+            displayDate.textContent = 'Ayarlanmadı';
+        }
+
+        // Update Target Estimate
+        const displayTargetInfo = document.getElementById('displayTargetInfo');
+        if (dataManager.data.targetSize && dataManager.data.targetSize > 0) {
+            displayTargetInfo.style.display = 'block';
+            document.getElementById('displayTargetSize').textContent = dataManager.data.targetSize.toFixed(1);
+            
+            let rate = dataManager.data.targetMonthlyGrowth > 0 ? dataManager.data.targetMonthlyGrowth : 2;
+            
+            let baseSize = dataManager.data.currentSize > 0 ? dataManager.data.currentSize : dataManager.data.startSize;
+            let remainingCm = dataManager.data.targetSize - baseSize;
+            
+            const estEl = document.getElementById('displayEstimate');
+            if (remainingCm <= 0) {
+                estEl.textContent = 'Hedefe Ulaşıldı!';
+            } else {
+                let monthsNeeded = Math.ceil((remainingCm * 10) / rate); 
+                const estDate = new Date();
+                estDate.setMonth(estDate.getMonth() + monthsNeeded);
+                estEl.textContent = new Intl.DateTimeFormat('tr-TR', { month: 'long', year: 'numeric' }).format(estDate);
+            }
+        } else {
+            if(displayTargetInfo) displayTargetInfo.style.display = 'none';
+        }
+
+        // Update Coach
+        const coachMsgEl = document.getElementById('coachMessage');
+        coachMsgEl.innerHTML = generateCoachAdvice();
+        
+        // Coach card click to go to library
+        const coachCard = document.querySelector('.coach-card');
+
+        // Update Thermometer
+        const progress = dataManager.getStageProgress();
+        const stage = dataManager.getStage();
+        
+        // Dinamik cetvel ölçek hesabı (cm olarak)
+        const startCm = dataManager.data.startSize + (stage - 1);
+        renderRulerScale(startCm);
+        
+        const stageName = stage === 1 ? 'İlk Hedef' : `${stage}. Hedef`;
+        document.getElementById('stageDisplay').textContent = stageName;
+
+        // Tarih Tahminleri Hesaplama
+        const estMidEl = document.getElementById('estMid');
+        const estEndEl = document.getElementById('estEnd');
+        
+        if (dataManager.data.startDate && dataManager.data.targetMonthlyGrowth > 0) {
+            const startDate = new Date(dataManager.data.startDate);
+            const rate = dataManager.data.targetMonthlyGrowth;
+            
+            // Mevcut hedefin (stage) milimetre sınırları
+            const midTotalMm = (stage - 1) * 10 + 5;
+            const endTotalMm = stage * 10;
+            
+            // Başlangıçtan itibaren kaç gün sürer? (1 ay ~ 30.44 gün)
+            const daysToMid = (midTotalMm / rate) * 30.4375;
+            const daysToEnd = (endTotalMm / rate) * 30.4375;
+            
+            const midDate = new Date(startDate);
+            midDate.setDate(midDate.getDate() + daysToMid);
+            
+            const endDate = new Date(startDate);
+            endDate.setDate(endDate.getDate() + daysToEnd);
+            
+            const dateOpts = { day: '2-digit', month: 'long', year: 'numeric' };
+            estMidEl.textContent = `🎯 ${stageName} Orta Nokta (5 mm): ${midDate.toLocaleDateString('tr-TR', dateOpts)}`;
+            estEndEl.textContent = `🏆 ${stageName} Tamamlama (10 mm): ${endDate.toLocaleDateString('tr-TR', dateOpts)}`;
+        } else {
+            estMidEl.textContent = 'Tahmini Orta Nokta: -';
+            estEndEl.textContent = 'Tahmini Hedef Bitişi: -';
+        }
+
+        // Animate ruler (10mm = 100% width)
+        const widthPercent = (progress / 10) * 100;
+        setTimeout(() => {
+            const fill = document.getElementById('rulerFill');
+            if(fill) fill.style.width = `${widthPercent}%`;
+        }, 100);
+
+        // Daily Work Goal Update
+        const dailyMins = dataManager.getTodayMinutes();
+        const goalHours = dataManager.data.dailyGoalHours || 6;
+        const goalMins = goalHours * 60;
+        const dailyPercent = Math.min((dailyMins / goalMins) * 100, 100); 
+        const dailyFill = document.getElementById('dailyProgressFill');
+        const dailyText = document.getElementById('dailyTimeText');
+        const dailyGoalLabel = document.getElementById('dailyGoalLabel');
+        const dailyGoalEndLabel = document.getElementById('dailyGoalEndLabel');
+
+        if (dailyFill && dailyText) {
+            const h = Math.floor(dailyMins / 60);
+            const m = dailyMins % 60;
+            dailyText.textContent = `${h}s ${m}dk`;
+            if (dailyGoalLabel) dailyGoalLabel.textContent = goalHours;
+            if (dailyGoalEndLabel) dailyGoalEndLabel.textContent = `${goalHours}s+`;
+
+            // Color logic (Orantısal geçişler)
+            let color = '#ffffff'; // 0 - 25% hedef: Beyaz
+            if (dailyMins >= goalMins * 0.75) color = '#bb86fc';      // %75+: Mor (Excellent)
+            else if (dailyMins >= 240) color = '#2ecc71';            // 4 saat: Yeşil (Sabit uzman barajı)
+            else if (dailyMins >= 120) color = '#f39c12';            // 2 saat: Turuncu (Gelişim)
+
+            setTimeout(() => {
+                dailyFill.style.width = `${dailyPercent}%`;
+                dailyFill.style.backgroundColor = color;
+                dailyFill.style.boxShadow = `0 0 10px ${color}44`;
+            }, 100);
+
+            if (dailyMins >= goalMins && !dataManager.sessionAchievements.daily) {
+                showSuccessAchievement("Günlük Hedef", "Tebrikler, bugünkü çalışma seansını başarıyla tamamladın!", "🔥");
+                dataManager.sessionAchievements.daily = true;
+            }
+        }
+
+        // Update Chart (Anasayfaya taşındı)
+        updateChartView();
+    }
+    
+    function formatMinutes(totalMins) {
+        if (!totalMins) return '0 dk';
+        const h = Math.floor(totalMins / 60);
+        const m = totalMins % 60;
+        if (h > 0 && m > 0) return `${h} sa ${m} dk`;
+        if (h > 0) return `${h} sa`;
+        return `${m} dk`;
+    }
+
+    function updateCalendarView() {
+        const container = document.getElementById('calendarAccordionContainer');
+        if(!container) return; // safety
+        container.innerHTML = '';
+
+        const monthSet = new Set();
+        const today = new Date();
+        const currentYYYYMM = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+        monthSet.add(currentYYYYMM);
+
+        Object.keys(dataManager.data.sessions).forEach(dateStr => {
+            monthSet.add(dateStr.substring(0, 7));
+        });
+
+        const sortedMonths = Array.from(monthSet).sort((a, b) => b.localeCompare(a));
+
+        sortedMonths.forEach(yearMonth => {
+            const [yStr, mStr] = yearMonth.split('-');
+            const y = parseInt(yStr);
+            const m = parseInt(mStr) - 1;
+            
+            const accordionItem = document.createElement('div');
+            accordionItem.className = 'accordion-item';
+
+            const headerCard = document.createElement('div');
+            headerCard.className = 'card accordion-header';
+            if (yearMonth === currentYYYYMM) headerCard.classList.add('open');
+            
+            const monthName = new Intl.DateTimeFormat('tr-TR', { month: 'long', year: 'numeric' }).format(new Date(y, m));
+            const h3 = document.createElement('h3');
+            h3.textContent = `${monthName} Takvimi`;
+            headerCard.appendChild(h3);
+
+            const daysInMonth = new Date(y, m + 1, 0).getDate();
+            let monthTotalMins = 0;
+            const daysHTMLArray = [];
+
+            for (let i = 1; i <= daysInMonth; i++) {
+                const dateStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+                const sessions = dataManager.data.sessions[dateStr] || [];
+                
+                // Show empty days only for the current month. Past months show recorded days only.
+                if (sessions.length > 0 || yearMonth === currentYYYYMM) {
+                    let dailyTotalMins = 0;
+                    
+                    const dayRow = document.createElement('div');
+                    dayRow.className = 'day-row';
+                    
+                    const dateCol = document.createElement('div');
+                    dateCol.className = 'day-date';
+                    dateCol.textContent = i;
+                    dayRow.appendChild(dateCol);
+                    
+                    const sessionsCol = document.createElement('div');
+                    sessionsCol.className = 'day-sessions';
+                    
+                    for(let s=0; s<5; s++) {
+                        if (s < sessions.length) {
+                            const sessionObj = sessions[s];
+                            const mins = sessionObj.mins || 0;
+                            dailyTotalMins += mins;
+                            
+                            const box = document.createElement('div');
+                            box.className = 'session-box';
+                            const diffIcon = sessionObj.diff === 'rahat' ? '🟢' : (sessionObj.diff === 'zor' ? '🔴' : '🟡');
+                            box.innerHTML = `${mins} dk <span style="font-size:11px">${diffIcon}</span>`;
+                            sessionsCol.appendChild(box);
+                        } else {
+                            const empty = document.createElement('div');
+                            empty.className = 'session-box';
+                            empty.style.opacity = '0.3';
+                            empty.style.borderStyle = 'dashed';
+                            empty.style.background = 'transparent';
+                            empty.textContent = '-';
+                            sessionsCol.appendChild(empty);
+                        }
+                    }
+                    
+                    dayRow.appendChild(sessionsCol);
+                    
+                    const totalCol = document.createElement('div');
+                    totalCol.className = 'day-total';
+                    totalCol.textContent = dailyTotalMins > 0 ? formatMinutes(dailyTotalMins) : '0 dk';
+                    dayRow.appendChild(totalCol);
+                    
+                    daysHTMLArray.push(dayRow);
+                    monthTotalMins += dailyTotalMins;
+                }
+            }
+
+            const statsDiv = document.createElement('div');
+            statsDiv.className = 'summary-stats';
+            const tension = dataManager.data.monthlyTension[yearMonth];
+            const monthlySize = dataManager.data.monthlySize && dataManager.data.monthlySize[yearMonth];
+            const monthlyGrowth = dataManager.getMonthlyGrowth(yearMonth);
+
+            const statsHtml = `
+                <div class="stat-box">
+                    <span class="stat-label">Aylık Çalışma</span>
+                    <strong class="stat-value text-blue">${formatMinutes(monthTotalMins)}</strong>
+                </div>
+                ${tension ? `
+                <div class="stat-box">
+                    <span class="stat-label">Aylık Gerginlik</span>
+                    <strong class="stat-value" style="color: #d2a8ff;">${tension.toFixed(1)} cm</strong>
+                </div>
+                ` : ''}
+                ${monthlySize ? `
+                <div class="stat-box">
+                    <span class="stat-label">Aylık Uzama</span>
+                    <strong class="stat-value text-green">${monthlyGrowth.toFixed(1)} mm</strong>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-label">Ay Sonu Boyutu</span>
+                    <strong class="stat-value">${monthlySize.toFixed(2)} cm</strong>
+                </div>
+                ` : (yearMonth === currentYYYYMM ? `
+                <div class="stat-box">
+                    <span class="stat-label">Aylık Uzama</span>
+                    <strong class="stat-value text-green">- mm</strong>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-label">Ay Sonu Boyutu</span>
+                    <strong class="stat-value">- cm</strong>
+                </div>
+                ` : '')}
+            `;
+            statsDiv.innerHTML = statsHtml;
+            headerCard.appendChild(statsDiv);
+            
+            const bodyDiv = document.createElement('div');
+            bodyDiv.className = 'accordion-body calendar-days';
+            if (yearMonth === currentYYYYMM) bodyDiv.classList.add('open');
+            
+            daysHTMLArray.forEach(el => bodyDiv.appendChild(el));
+
+            // EĞER O AYIN NOTLARI VARSA EKLE
+            const monthNotes = [];
+            Object.keys(dataManager.data.notes).forEach(d => {
+                if (d.startsWith(yearMonth)) {
+                    monthNotes.push({ date: d, text: dataManager.data.notes[d] });
+                }
+            });
+
+            if (monthNotes.length > 0) {
+                const notesTitle = document.createElement('h4');
+                notesTitle.style = "margin: 20px 0 10px 0; color: #a5d6ff; font-size: 14px; border-bottom: 1px solid #333; padding-bottom: 5px;";
+                notesTitle.innerHTML = "📝 Ayın Notları";
+                bodyDiv.appendChild(notesTitle);
+                
+                monthNotes.forEach(n => {
+                    const noteDiv = document.createElement('div');
+                    noteDiv.style = "font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px; border-left: 2px solid #a5d6ff;";
+                    const dNum = n.date.split('-')[2];
+                    const noteMonthName = new Intl.DateTimeFormat('tr-TR', { month: 'long' }).format(new Date(y, m));
+                    noteDiv.innerHTML = `<small style="display:block; opacity:0.6; margin-bottom:2px;">${dNum} ${noteMonthName}:</small> ${n.text.join(' | ')}`;
+                    bodyDiv.appendChild(noteDiv);
+                });
+            }
+
+            headerCard.addEventListener('click', () => {
+                headerCard.classList.toggle('open');
+                bodyDiv.classList.toggle('open');
+            });
+
+            accordionItem.appendChild(headerCard);
+            accordionItem.appendChild(bodyDiv);
+            container.appendChild(accordionItem);
+        });
+    }
+
+    let growthChartInstance = null;
+    function updateChartView() {
+        const ctx = document.getElementById('growthChart').getContext('2d');
+        const summaryText = document.getElementById('chartSummaryText');
+        
+        const startSize = dataManager.data.startSize || 0;
+        const monthlyData = dataManager.data.monthlySize || {};
+        
+        let labels = ['Başlangıç'];
+        let values = [startSize];
+        
+        const sortedMonths = Object.keys(monthlyData).sort();
+        sortedMonths.forEach(m => {
+            labels.push(m);
+            values.push(monthlyData[m]);
+        });
+        
+        if (sortedMonths.length === 0) {
+            summaryText.textContent = "Henüz grafik oluşturmak için yeterli aylık veri (Ay Sonu Boyutu) bulunmuyor. Ayarlar sekmesinden 'Güncel Boyut'unuzu her ay kaydetmeyi unutmayın.";
+            return;
+        }
+
+        const firstVal = values[0];
+        const lastVal = values[values.length - 1];
+        const totalGain = (lastVal - firstVal) * 10;
+        summaryText.innerHTML = `Sürecine <strong>${firstVal} cm</strong> ile başladın. Şu anki güncel durumun <strong>${lastVal} cm</strong>. Toplamda <strong>${totalGain.toFixed(1)} mm</strong> gelişim kaydettin. ${totalGain > 0 ? 'Harika bir ivme yakalamışsın!' : 'Tutarlı kalarak grafiği yukarı taşımaya devam et.'}`;
+
+        if (growthChartInstance) growthChartInstance.destroy();
+        
+        if (typeof Chart === 'undefined') {
+            summaryText.textContent = "Grafik kütüphanesi yüklenemedi. Lütfen internet bağlantınızı kontrol edin.";
+            return;
+        }
+
+        growthChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Boyut (cm)',
+                    data: values,
+                    borderColor: '#a5d6ff',
+                    backgroundColor: 'rgba(165, 214, 255, 0.1)',
+                    borderWidth: 3,
+                    pointBackgroundColor: '#a5d6ff',
+                    pointRadius: 5,
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: { color: 'rgba(255,255,255,0.6)' }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: 'rgba(255,255,255,0.6)' }
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+
+    const coachKnowledgeBase = [
+        {
+            cat: "Kullanım Rehberi",
+            q: "Extender Cihazı Nasıl Takılır?",
+            a: "Cihazı takmadan önce penisin sünnet derisi geriye çekilmiş ve yumuşak (flaccid) durumda olduğundan emin olun. Silikon kementi veya kayışı baş (glans) kısmının hemen arkasındaki oluğa yerleştirin. İpi çok sıkıp kan akışını kesmeyin, ancak çıkmayacak kadar da sıkı olmalıdır. Yanlarda bulunan yaylı millerin eşit gergide olduğundan emin olun.",
+            keys: ["nasıl takılır", "takılış", "kullanım", "yerleştirme"]
+        },
+        {
+            cat: "Kullanım Rehberi",
+            q: "Günde Kaç Saat Takılmalıdır?",
+            a: "Büyüme için ideal süre günde toplam 4 ile 6 saattir. Ancak bu süreyi tek seferde değil, 2'şer saatlik 2 veya 3 seansa bölmek doku sağlığı için çok daha iyidir. Yeni başlıyorsanız ilk hafta günde 1-2 saat ile alışma süreci geçirin.",
+            keys: ["kaç saat", "süre", "günlük", "zaman"]
+        },
+        {
+            cat: "Bakım & Kremler",
+            q: "Epitelizan Kremler Nedir? Hangileri Alınmalı?",
+            a: "Epitelizan kremler doku yenileyici özelliğe sahiptir. Cihazı çıkardıktan sonra oluşabilecek mikroyırtıkları onarmak için 'Bepanthol' (Panthenol) veya 'Madecassol' (Centella Asiatica) gibi kremler kullanabilirsiniz. Bu kremler cildi nemlendirir, elastikiyetini artırır ve hücre bölünmesini destekler.",
+            keys: ["krem", "bepanthol", "madecassol", "merhem", "bakım"]
+        },
+        {
+            cat: "Bakım & Kremler",
+            q: "Soğuma (Cool-down) Masajı Gerekli mi?",
+            a: "Evet, seans bittikten sonra 1-2 dakika nazikçe dairesel masaj yapmak bölgedeki kan akışını tazeler. E vitamini yağı veya nemlendirici kremlerle yapılan bu masaj, bağ dokularının yeni boyutta kalıcılaşmasına yardımcı olur.",
+            keys: ["masaj", "soğuma", "cooldown", "yağ"]
+        },
+        {
+            cat: "Güvenlik & Uyarılar",
+            q: "Ne Kadar Gerginlik (Tension) Olmalı?",
+            a: "Asla acı verecek kadar çok germeyin! İdeal gerginlik, 'tatlı bir esneme' hissidir. Eğer zonklama, morarma veya uyuşma hissederseniz gerginliği hemen azaltın. Çok fazla germek büyümeyi hızlandırmaz, aksine dokuya zarar vererek süreci durdurur.",
+            keys: ["gerginlik", "çekme", "acı", "uyuşma", "vidalama"]
+        },
+        {
+            cat: "Güvenlik & Uyarılar",
+            q: "Plato Dönemi Nedir? Ne Yapılmalı?",
+            a: "Vücut bazen aylarca süren büyümeden sonra direnç gösterir ve uzama durur. Buna plato dönemi denir. Bu durumda paniğe kapılmayın; 1 hafta ara verin veya o ayı sadece 'sabitleme ayı' ilan edip gerginliği hiç artırmadan devam edin.",
+            keys: ["plato", "durma", "büyümüyor", "direnç"]
+        },
+        {
+            cat: "Gelişim Teknikleri",
+            q: "Isınma (Warm-up) Yapmalı mıyım?",
+            a: "Cihazı takmadan önce 2-3 dakika sıcak bir havlu veya sıcak su torbası ile bölgeyi ısıtmak dokuları yumuşatır. Isınmış doku %40 daha fazla esner ve yaralanma riski sıfıra iner.",
+            keys: ["ısınma", "sıcak", "havlu", "hazırlık"]
+        },
+        {
+            cat: "Gelişim Teknikleri",
+            q: "Kegel Egzersizleri Büyümeyi Etkiler mi?",
+            a: "Doğrudan boyu uzatmaz ama pelvik taban kaslarını güçlendirerek bölgeye giden kan pompasını artırır. Bu da extender seansları sonrası doku onarımının daha hızlı olmasını sağlar.",
+            keys: ["kegel", "egzersiz", "spor", "pelvik"]
+        }
+    ];
+
+    // Koç mesajlarını okunabilir HTML'e çevirmek için yardımcı fonksiyon
+    function formatCoachMessage(text) {
+        if (!text) return '';
+
+        // ** kalın ** → <strong>
+        text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+        // * veya - ile başlayan satırları madde işaretine çevir
+        text = text.replace(/^[\*\-] (.+)/gm, '• $1');
+
+        // # başlıkları kaldır, sadece metni bırak
+        text = text.replace(/^#{1,3}\s+(.+)/gm, '<strong>$1</strong>');
+
+        // Boş satırlara göre paragraflara böl
+        const paragraphs = text.split(/\n{2,}/);
+        
+        return paragraphs
+            .map(p => p.trim())
+            .filter(p => p.length > 0)
+            .map(p => {
+                // Paragraf içindeki tekli satır sonlarını <br> yap (ama manuel wrapping yapma)
+                return `<p style="margin-bottom: 8px;">${p.replace(/\n/g, '<br>')}</p>`;
+            })
+            .join('');
+    }
+
+    function updateCoachSectionView() {
+        // Render Chat History
+        const chatContainer = document.getElementById('coachChatHistory');
+        const history = dataManager.data.coachChat || [];
+        
+        // Clear except first welcome message
+        chatContainer.innerHTML = `
+            <div class="chat-msg coach">
+                <p>Merhaba! Ben senin sanal gelişim koçunum. Aletin kullanımı, kremler veya süreçle ilgili merak ettiğin her şeyi bana sorabilirsin. (Örn: "krem", "kaç saat", "ağrı")</p>
+            </div>
+        `;
+        
+        history.forEach(msg => {
+            const div = document.createElement('div');
+            div.className = `chat-msg ${msg.role}`;
+            div.innerHTML = msg.role === 'coach'
+                ? formatCoachMessage(msg.text)
+                : `<p>${msg.text}</p>`;
+            chatContainer.appendChild(div);
+        });
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+
+        // Render Encyclopedia
+        const encContainer = document.getElementById('encyclopediaContainer');
+        encContainer.innerHTML = '';
+        
+        // Group by category
+        const cats = {};
+        coachKnowledgeBase.forEach(item => {
+            if (!cats[item.cat]) cats[item.cat] = [];
+            cats[item.cat].push(item);
+        });
+
+        Object.keys(cats).forEach(catName => {
+            const catTitle = document.createElement('h4');
+            catTitle.style = "font-size: 13px; color: #888; margin: 15px 0 8px 5px;";
+            catTitle.textContent = catName.toUpperCase();
+            encContainer.appendChild(catTitle);
+
+            cats[catName].forEach(item => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'encyclopedia-item';
+                itemDiv.innerHTML = `
+                    <div class="encyclopedia-header">
+                        <span>${item.q}</span>
+                        <span style="font-size:12px; opacity:0.5;">▼</span>
+                    </div>
+                    <div class="encyclopedia-body">${item.a}</div>
+                `;
+                itemDiv.addEventListener('click', () => {
+                    const body = itemDiv.querySelector('.encyclopedia-body');
+                    body.classList.toggle('open');
+                });
+                encContainer.appendChild(itemDiv);
+            });
+        });
+    }
+
+// GEMINI API Integration
+async function askGemini(userMessage) {
+    const apiKey = dataManager.data.geminiApiKey;
+    const model = dataManager.data.geminiModelName || 'gemini-3-flash-preview';
+    if (!apiKey) return null;
+
+    const totalGrowth = dataManager.getTotalGrowth().toFixed(1);
+    const stage = dataManager.getStage();
+    const name = dataManager.data.name || "Kullanıcı";
+    
+    // Ensure model string doesn't have "models/" prefix twice or illegal characters
+    const cleanModel = model.replace('models/', '').trim();
+    
+    // Son 7 günlük kullanıcı notlarını topla (Koç daha iyi yanıt verebilsin diye)
+    let recentNotes = [];
+    const today = new Date();
+    for(let i=0; i<7; i++) {
+        const d = new Date(today);
+        d.setDate(d.getDate() - i);
+        const dStr = d.toISOString().split('T')[0];
+        if(dataManager.data.notes[dStr]) {
+            recentNotes.push(`[${dStr}]: ${dataManager.data.notes[dStr].join(' | ')}`);
+        }
+    }
+    const notesContext = recentNotes.length > 0 ? `\nKullanıcının Son Notları:\n${recentNotes.join('\n')}` : "";
+
+    // System Prompt and Context (CHAT MODE: DIRECT & CONCISE)
+    const systemContext = `Sen UTakip uygulamasının uzman gelişim koçusun (SOHBET MODU). 
+    Kullanıcının adı: ${name}, Yaşı: ${dataManager.data.age}, Başlangıç Boyu: ${dataManager.data.startSize} cm, Güncel Boyu: ${dataManager.data.currentSize} cm.
+    Toplam gelişim: ${totalGrowth} mm (${stage}. aşama).${notesContext}
+    KRİTİK KURAL: Her yanıta kullanıcının istatistiklerini (yaş, mm gelişim vb.) veya genel tebrik mesajlarını sıralayarak BAŞLAMA. 
+    Doğrudan kullanıcının sorusuna cevap ver. İstatistikleri sadece soruyla doğrudan ilgiliyse (örneğin "ne kadar geliştim?" veya "yaşıma göre durumum ne?" diye sorulursa) kullan. 
+    Tıbbi doktor olmadığını ama süreç uzmanı olduğunu unutma. Yanıtların kısa, öz, profesyonel ve doğrudan olmalı.`;
+
+    try {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{
+                    parts: [{ text: `CONTEXT: ${systemContext}\n\nUSER QUESTION: ${userMessage}` }]
+                }]
+            })
+        });
+
+        const data = await response.json();
+        
+        if (data.error) {
+            console.error("Gemini API Error Detail:", data.error);
+            if (data.error.status === "NOT_FOUND") {
+                return `❌ Model Bulunamadı: '${cleanModel}' bu API versiyonunda (v1beta) mevcut değil. Lütfen 'Modelleri Listele' butonuyla anahtarınızın desteklediği modelleri kontrol edin.`;
+            }
+            return `❌ Gemini Hatası: ${data.error.message || 'Bilinmeyen Hata'}`;
+        }
+
+        if (data.candidates && data.candidates[0].content.parts[0].text) {
+            return data.candidates[0].content.parts[0].text;
+        }
+        return "⚠️ Yanıt alınamadı. API anahtarınızın 'Gemini 1.5 Flash' modeline erişimi olduğundan emin olun.";
+    } catch (error) {
+        console.error("Gemini Fetch Error:", error);
+        return "🚨 Bağlantı başarısız. İnternet erişiminizi veya API anahtarınızı (Ayarlar -> Gemini API Key) kontrol edip tekrar deneyin.";
+    }
+}
+
+// ASK COACH Logic
+document.getElementById('btnAskCoach').addEventListener('click', async () => {
+    const queryInput = document.getElementById('coachQuery');
+    const btn = document.getElementById('btnAskCoach');
+    const text = queryInput.value.trim();
+    if (!text) return;
+
+    // Loading State
+    const originalBtnText = btn.textContent;
+    btn.textContent = "...";
+    btn.disabled = true;
+
+    // Save User Message
+    dataManager.data.coachChat.push({ role: 'user', text: text });
+    updateCoachSectionView();
+    queryInput.value = '';
+
+    let answer = "";
+    
+    // Check if we use Gemini or Local Search
+    if (dataManager.data.geminiApiKey) {
+        answer = await askGemini(text);
+    } else {
+        // Fallback to local search
+        const lowerText = text.toLowerCase();
+        answer = "Maalesef bu konuda spesifik bir bilgim yok. Ama kütüphaneye göz atabilir veya 'kremler', 'kullanım', 'güvenlik' gibi genel konuları sorabilirsin.";
+        let bestMatch = null;
+        let maxHits = 0;
+        coachKnowledgeBase.forEach(item => {
+            let hits = 0;
+            item.keys.forEach(k => { if (lowerText.includes(k)) hits++; });
+            if (hits > maxHits) { maxHits = hits; bestMatch = item; }
+        });
+        if (bestMatch) answer = bestMatch.a;
+    }
+
+    // Save Coach Answer
+    dataManager.data.coachChat.push({ role: 'coach', text: answer });
+    dataManager.save();
+    
+    btn.textContent = originalBtnText;
+    btn.disabled = false;
+    updateCoachSectionView();
+});
+
+    // Enter key for Chat
+    document.getElementById('coachQuery').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') document.getElementById('btnAskCoach').click();
+    });
+
+    function updateJournalView() {
+        const container = document.getElementById('journalContainer');
+        if (!container) return;
+        container.innerHTML = '';
+
+        const noteEntries = Object.entries(dataManager.data.notes);
+        if (noteEntries.length === 0) {
+            container.innerHTML = `<div class="card" style="text-align:center; padding: 40px 20px; opacity: 0.6;">
+                <div style="font-size: 40px; margin-bottom: 10px;">✍️</div>
+                <p>Henüz bir günlük kaydın bulunmuyor. Anasayfadan seans eklerken not yazmayı unutma!</p>
+            </div>`;
+            return;
+        }
+
+        // Sort by date descending
+        noteEntries.sort((a, b) => b[0].localeCompare(a[0]));
+
+        noteEntries.forEach(([date, notes]) => {
+            const card = document.createElement('div');
+            card.className = 'card journal-entry';
+            card.style = "border-left: 3px solid #a5d6ff; margin-bottom: 5px;";
+            
+            const dateObj = new Date(date);
+            const dateStr = dateObj.toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric', weekday: 'long' });
+            
+            card.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <span style="font-weight: 700; color: #a5d6ff; font-size: 14px;">${dateStr}</span>
+                    <span style="font-size: 11px; opacity: 0.5;">${date}</span>
+                </div>
+                <div style="color: var(--text-primary); font-size: 14px; line-height: 1.5;">
+                    ${notes.map((n, idx) => `<div style="margin-bottom: 8px; padding-bottom: 8px; ${idx < notes.length - 1 ? 'border-bottom: 1px solid rgba(255,255,255,0.05);' : ''}">
+                        <span style="opacity: 0.8;">📝 ${n}</span>
+                    </div>`).join('')}
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    function generateCoachAdvice() {
+        if (!dataManager.data.startSize) {
+            return "Merhaba! Sana en iyi şekilde rehberlik edebilmem için lütfen 'Ayarlar' sekmesinden yaşını, temel ölçülerini ve hedeflerini kaydet.";
+        }
+
+        const name = dataManager.data.name || "dostum";
+        const age = dataManager.data.age || 0;
+        const currentSize = dataManager.data.currentSize > 0 ? dataManager.data.currentSize : dataManager.data.startSize;
+        const targetSize = dataManager.data.targetSize;
+
+        const d = new Date();
+        const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const currentYYYYMM = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        
+        let monthTotalMins = 0;
+        Object.keys(dataManager.data.sessions).forEach(dateStr => {
+            if (dateStr.startsWith(currentYYYYMM)) {
+                monthTotalMins += dataManager.data.sessions[dateStr].reduce((sum, s) => sum + (s.mins || 0), 0);
+            }
+        });
+        
+        const monthlyGrowth = dataManager.getMonthlyGrowth(currentYYYYMM);
+        
+        let consecutiveDays = 0;
+        let daysActiveInWeek = 0;
+        let chainBroken = false;
+        
+        for (let i = 0; i <= 10; i++) {
+            const checkDate = new Date();
+            checkDate.setDate(checkDate.getDate() - i);
+            const dateStr = `${checkDate.getFullYear()}-${String(checkDate.getMonth() + 1).padStart(2, '0')}-${String(checkDate.getDate()).padStart(2, '0')}`;
+            
+            const hasSessions = (dataManager.data.sessions[dateStr] && dataManager.data.sessions[dateStr].length > 0);
+            if (i < 7 && hasSessions) daysActiveInWeek++;
+            
+            if (i > 0) {
+                if (hasSessions && !chainBroken) consecutiveDays++;
+                else if (!hasSessions) chainBroken = true;
+            }
+        }
+
+        const workedToday = (dataManager.data.sessions[todayStr] && dataManager.data.sessions[todayStr].length > 0);
+        
+        let healingFactor = age >= 40 ? "Senin yaş grubunda (+40) hücresel çoğalmanın ve doku esnemesinin oturması ekstra zamana ihtiyaç duyabilir. Dinlenmelere dikkat etmelisin. " : 
+                           (age >= 30 ? "Vücut yaşın gereği dokuların mikroyırtıklardan arınıp esneyebilmesi için onlara fırsat vermelisin. " : "");
+
+        // 0. SABİTLEME & KORUMA (Hedefe Ulaşılmışsa)
+        if (targetSize > 0 && currentSize >= targetSize) {
+            return `Merhaba <strong>${name}</strong>,<br>🎉 <strong>HEDEFE ULAŞTIN! (${currentSize} cm)</strong><br><br>Ancak işimiz henüz tam bitmedi! Hücre bölünmesiyle kazandığın yepyeni dokunun "olgunlaşması" ve kolajen yapısının sertleşip tamamen senin olması zaman alır. <strong>Kural:</strong> Hedefine ulaştıktan sonra, en az 3 ile 6 ay boyunca "düşük gerginlikte" (yaylar 0.5 - 1 boğum içerde olacak şekilde) günde sadece 1-2 saat <em>koruma amaçlı</em> takmaya devam etmelisin. Bu, dokunun hafızasına yeni boyutu kalıcı olarak kazıyacaktır! Aksi halde geri çekilme yaşayabilirsin.`;
+        }
+
+        // 1. ACİL DURUM UYARILARI (AŞIRI ÇALIŞMA VEYA TEMBELLİK)
+        if (consecutiveDays >= 5 && !workedToday) {
+            return `Merhaba <strong>${name}</strong>,<br>${healingFactor}Son <strong>${consecutiveDays} gündür</strong> aralıksız cihazı kullanıyorsun. Extender sistemlerinde penisin hücre bölünmesi yaşayabilmesi için mutlaka dinlenmeye ihtiyacı vardır. Haftada en az 1-2 gün ara vermen gelişimi hızlandıracaktır. Bugün cihazı takmamanı (dinlenme günü yapmanı) şiddetle tavsiye ederim.`;
+        }
+
+        if (daysActiveInWeek === 0 && !workedToday) {
+            const target = targetSize ? targetSize + " cm'lik hedefine " : "hedeflerine ";
+            return `Merhaba <strong>${name}</strong>,<br>Son günlerde hiç çalışma kaydı girmemişsin. Büyüme sürecindeki en önemli kural <strong>tutarlılıktır</strong>. ${target}kalıcı olarak ulaşmak için cihazı düzenli kullanmalısın. Hadi bugün güzel bir esneme seansıyla sahalara geri dön!`;
+        }
+
+        // 2. PERİYODİK ANALİZ (Ayın başı, ortası ve son 3 günü)
+        const todayNum = d.getDate();
+        const isAnalysisDay = [1, 2, 15, 28, 29, 30, 31].includes(todayNum);
+        
+        if (isAnalysisDay) {
+            let msg = `Merhaba <strong>${name}</strong>, bugün <strong>Analiz ve Değerlendirme</strong> günümüz! Takvim verilerini detaylıca inceledim. `;
+            if (monthTotalMins > 0) {
+                const mText = monthlyGrowth > 0 ? ` ve bu ay uzama grafiğinde <strong>${monthlyGrowth.toFixed(1)} mm</strong> net gelişim kaydetmişsin` : "";
+                msg += `Bu ay içerisinde takvime toplam <strong>${formatMinutes(monthTotalMins)}</strong> cihaz kullanım süresi aktarmışsın${mText}. `;
+            } else {
+                msg += `Henüz bu aya ait bir rutinin oluşmamış, istatistiklerini takip edebilmem için seans verilerini sistemli girmelisin. `;
+            }
+            
+            if (workedToday) {
+                msg += `Tüm bunların üstüne bugünkü seansını da başarıyla tamamlamışsın, harikasın. Çizgini bozmadan devam et!`;
+            } else {
+                if (consecutiveDays >= 4) {
+                    msg += `Son günlerde oldukça iyi çalışmışsın. Değerlendirme günümüzün onuruna bugün dinlenme arası verip dokularının iyileşmesine fırsat tanıyabilirsin.`;
+                } else {
+                    msg += `Bu süreçteki gelişim hızını maksimuma çıkarmak için bugünkü dökümünü henüz yapmadıysan hemen cihazı kullanmaya bir saat ayır, iyi çalışmalar!`;
+                }
+            }
+            return msg;
+        }
+
+        // 3. GÜNÜN TAVSİYESİ / UZMAN BİLGİSİ (Normal günlerde)
+        const tips = [
+            "<strong>Uzman Notu - Plato Dönemine Dikkat:</strong> Vücut bazen belirli bir uzunluktan sonra esnemeye direnç gösterir. Eğer 0.5 cm gerginliği artırdığınız ayda peniste uyuşma, deri çatlaması veya ereksiyon kalitesinde düşüş hissederseniz, o ayı <em>'sabitleme ayı'</em> ilan edin. Yeni artışa zorlamayın, mevcut boya uyum sağlamasını bekleyin.",
+            "<strong>Hücresel Onarım Zırhı - Kremler:</strong> Çalışmadan sonra dokunun hızlı onarılması kolajen üretimiyle olur! Cihazı çıkardıktan sonra Panthenol (örn: Bepanthol) veya 'Madecassol' tarzı doku yenileyici merhemlerle çok hafif dairesel masaj yapmak cildi nemlendirir, çatlakları önler ve hücre bölünmesini muazzam destekler.",
+            "<strong>Günün Bilgisi - Sabitleme (Konsolidasyon):</strong> Hedefinize varınca cihazı kutuya kaldırmayın! Hücre bölünmesiyle eklenen uzunluğun kalıcı olması (bağ dokusunun sertleşmesi) 3-6 ay sürer. Ulaştıktan sonra 3-6 ay boyunca gevşek yuvada (düşük gerginlik) günde 1 saat 'koruma seansı' yapın.",
+            "<strong>Günün Beklentisi - Isınma (Warm-up):</strong> Cihazı takmadan hemen önce bölgeye 2-3 dakika ılık-sıcak havlu veya jel ped uygulamak dokuları pamuk gibi esnemeye hazırlar ve seans sırasındaki mikro onarımı %60 oranında artırır.",
+            "<strong>Günün Bilgisi - Hücre Bölünmesi (Mitoz):</strong> Extender'ın mucizesi esnetmek değil, oluşturulan mikro gerilimlerin onarılmasını sağlamaktır. Asıl doku inşası işlemi, siz cihazı çıkardıktan sonra ve özellikle gece uyurken yoğun bir şekilde gerçekleşir.",
+            "<strong>Beslenme Notu - Vücudun İnşaat Malzemesi:</strong> Bina dikmek için çimentoya ihtiyaç var! Yeni doku gelişimi yoğun kolajen proteinine ihtiyaç duyar. Kullanım sürecinde diyetinize fazladan C Vitamini (kolajeni sentezler), Çinko ve protein ağırlıklı besinler eklemelisiniz.",
+            "<strong>Günün Bilgisi - Gerginlik Yanılgısı:</strong> Cihazı sırf çok uzasın diye maksimum gergide (aşırı vidalı) takmak sadece hücrelere kan gitmesini engeller ve dokuları strese sokup gelişimi yavaşlatır. Acı verici değil, ısıtan hafif tatlı bir esneme hissi arzuladığımız tek şeydir.",
+            "<strong>Dinlenme Süreci (Rest Days):</strong> Sporda olduğu gibi penil gelişimde de cihazı sıkı tutarken büyümezsiniz; çıkardıktan sonraki kan dolumu anında büyürsünüz. Haftada 1-2 günü 'Rest Day' (dinlenme) günü şeçmek en zekice ilerleme yoludur.",
+            "<strong>Günün Bilgisi - Soğuma (Cool-down) Jelleriyle:</strong> Seans sonrası E vitamini bakım yağları veya epitelizan (yenileyici) kremlerle hafif dairesel masajlar yapmak, o bölgeye taze kan toplayarak açılmış bağ dokularının yeni boyutta kalıcılaşmasını hızlandırır.",
+            "<strong>Uzman Notu - Günlük Vakit Bölmek:</strong> Cihazı 4 saat boyunca delice tutup penisi boğmaktansa, 2'şer saatten 2 veya 3 seansa bölmek dokunun oksijensiz kalmasını (iskemi riskini) engeller, sinir dokularını kusursuz korur.",
+            "<strong>Günün Uyarısı - Gerçek Ağrı Sınırı:</strong> Cihazı takarken glans bölgesinde morarma, soğukluk, beyazlama veya zonklama (şiddetli anlık ağrı) hissederseniz vidaları derhal geveşetin veya çıkarın. Penis asıp kurutulacak bir yapı değil damarlı canlı bir organımızdır.",
+            "<strong>Günün Bilgisi - Açı Pratikleri (Yön):</strong> Her zaman dümdüz değil; yatakta aşağı, ayakta hafif çapraz veya dik açı gibi farklı kullanım şekilleri denemek iç 'suspansatuvar' bağları farklı yönlerden esnetip kuvvet uyarımı sağlar.",
+            "<strong>Psikoloji Notu - Sabır Faktörü:</strong> Boyut artışı 'haftalık' takip edilmez. İlk aylarda inanılmaz gözle görünür sonuçlar aramak yerine, içerideki hücrelerin sessizce kalıcı temeli santim santim inşa ettiğine güvenip sistemli bir makine gibi rutine devam etmelisiniz.",
+            "<strong>Günün Tavsiyesi - Kegel Pompası:</strong> Extender kullanmadığınız pasif saatlerde (masa başında otururken) periyodik olarak pelvik taban (PC) kaslarını sıkıp bırakmak, penis damarlarına doğal oksijen dolu yeni şok kanın pompalanmasını tetikler.",
+            "<strong>Günün Korkulu Rüyası - Gece Kullanımı (Uyumak):</strong> İnternette uykuda takılabileceği söylenmesine asla aldanmayın! Erkeklerin biyolojik gece boyu 4-5 adet sabah dahil 'istemsiz güçlü ereksiyon' döngüsü vardır. Cihaz varken ereksiyon olmak sinir hasarına veya eğilmelerine yol açar.",
+            "<strong>Günün Notu - Mezüra Manipülasyonu:</strong> Her sabah cetvele sarılıp milimleri kovalamak sizi inanılmaz bir hayal kırıklığına sürükler, ereksiyon psikolojinizi yorar. Her ay (30 günde 1) sadece aynı sahte şartlarda (soğuk-ılık ortam ölçümü benzer şekilde) raporlayın.",
+            "<strong>Günün Bilgisi - Deri ve Mukozal Hasar:</strong> Cihazın silikon bağı veya kementi derinizi keserse kesinlikle kullanım durdurulmalı. Bunu önlemek için, ipin geçtiği bölgeye medikal pamuk sararak veya bebek pudrası uygulayarak sürtünmenin kesilmesini sağlayın.",
+            "<strong>Uzman Bilgisi - İstemsiz Gevşemeler (Slip-Off):</strong> Takarken penis başınız yuvadan sıklıkla geriye kayıyorsa sünnet (coronal) etrafına ufak yapışkan elastik (koheziv - kendi kendine yapışan) bandaj sarmak hem acıyı emer hem de tutuş gücünü 5 katına çıkarır."
+        ];
+        
+        let start = new Date(d.getFullYear(), 0, 0);
+        let diff = d - start + (start.getTimezoneOffset() - d.getTimezoneOffset()) * 60 * 1000;
+        let oneDay = 1000 * 60 * 60 * 24;
+        let dayOfYear = Math.floor(diff / oneDay);
+        
+        // Random yerine her gün Predictable Cycle
+        let tipIndex = dayOfYear % tips.length;
+        let selectedTip = tips[tipIndex];
+
+        let header = `Merhaba <strong>${name}</strong>,<br>`;
+        
+        if (workedToday) {
+            return header + `Bugünkü hedefini başarıyla tamamlamışsın, harika gidiyorsun! Dinlenirken bugünün rehber tüyosuna (Uzmandan) mutlaka bir göz at:<br><br><span style="padding: 10px; display:inline-block; border:1px dashed #404040; background:rgba(0,0,0,0.1); border-radius: 8px;">${selectedTip}</span>`;
+        } else {
+            return header + `Bugünkü extender sürecini henüz takvime dahil etmemiş görünüyorsun. Antrenmana başlamadan önce, sana tecrübelere dayanan harika bir anatomik tüyom var:\n\n<br><br><span style="padding: 10px; display:inline-block; border:1px dashed #404040; background:rgba(0,0,0,0.1); border-radius: 8px;">${selectedTip}</span>`;
+        }
+    }
+
+
+    function updateSettingsView() {
+        document.getElementById('userName').value = dataManager.data.name || '';
+        document.getElementById('userAge').value = dataManager.data.age || '';
+        document.getElementById('startDate').value = dataManager.data.startDate || '';
+        document.getElementById('startSize').value = (dataManager.data.startSize !== undefined && !isNaN(dataManager.data.startSize)) ? dataManager.data.startSize : '';
+        document.getElementById('targetSize').value = (dataManager.data.targetSize !== undefined && !isNaN(dataManager.data.targetSize)) ? dataManager.data.targetSize : '';
+        document.getElementById('targetMonthlyGrowth').value = dataManager.data.targetMonthlyGrowth || 2;
+        document.getElementById('dailyGoalHours').value = dataManager.data.dailyGoalHours || 6;
+        document.getElementById('geminiApiKey').value = dataManager.data.geminiApiKey || '';
+        document.getElementById('geminiModelName').value = dataManager.data.geminiModelName || 'gemini-1.5-flash';
+        
+        if(dataManager.data.currentSize !== undefined && !isNaN(dataManager.data.currentSize)) {
+            document.getElementById('currentSize').value = dataManager.data.currentSize;
+        } else {
+            document.getElementById('currentSize').value = '';
+        }
+        
+        const today = new Date();
+        const currentYYYYMM = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+        if(dataManager.data.monthlyTension && dataManager.data.monthlyTension[currentYYYYMM]) {
+            document.getElementById('currentTension').value = dataManager.data.monthlyTension[currentYYYYMM];
+        } else {
+            document.getElementById('currentTension').value = '';
+        }
+    }
+
+    // --- EVENTS ---
+
+    document.getElementById('btnSaveBaseSettings').addEventListener('click', () => {
+        const name = document.getElementById('userName').value;
+        const age = document.getElementById('userAge').value;
+        const date = document.getElementById('startDate').value;
+        const size = document.getElementById('startSize').value;
+        const target = document.getElementById('targetSize').value;
+        const growth = document.getElementById('targetMonthlyGrowth').value;
+        const apiKey = document.getElementById('geminiApiKey').value;
+        const modelName = document.getElementById('geminiModelName').value;
+        const dailyGoal = document.getElementById('dailyGoalHours').value;
+        if(!date || !size) return alert("Başlangıç tarihi ve boyutunu girin.");
+        
+        dataManager.setBaseSettings(name, age, date, size, target, growth, apiKey, modelName, dailyGoal);
+        alert("Temel ayarlar başarıyla kaydedildi.");
+        updateSettingsView();
+        updateHomeView();
+    });
+
+    // Veri Yönetimi - Export
+    document.getElementById('btnExportData')?.addEventListener('click', () => {
+        const dataStr = JSON.stringify(dataManager.data, null, 2);
+        const blob = new Blob([dataStr], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `uTakip_Yedek_${new Date().toISOString().split('T')[0]}.json`;
+        link.click();
+        URL.revokeObjectURL(url);
+    });
+
+    // Veri Yönetimi - Import
+    document.getElementById('btnImportData')?.addEventListener('click', () => {
+        document.getElementById('importFile').click();
+    });
+
+    document.getElementById('importFile')?.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const importedData = JSON.parse(event.target.result);
+                if (!importedData.sessions || !importedData.startDate) {
+                    throw new Error("Geçersiz yedek dosyası.");
+                }
+                if (confirm("Mevcut verileriniz silinecek ve yedekteki veriler yüklenecek. Onaylıyor musunuz?")) {
+                    localStorage.setItem('uTakipData', JSON.stringify(importedData));
+                    location.reload();
+                }
+            } catch (err) {
+                alert("Hata: " + err.message);
+            }
+        };
+        reader.readAsText(file);
+    });
+
+    // Model Diagnostic Tool
+    document.getElementById('btnCheckModels')?.addEventListener('click', async () => {
+        const apiKey = document.getElementById('geminiApiKey').value.trim();
+        const output = document.getElementById('modelListOutput');
+        
+        if (!apiKey) return alert("Önce API anahtarını girin.");
+        
+        output.style.display = 'block';
+        output.textContent = "Bağlantı test ediliyor...";
+        
+        try {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+            const data = await response.json();
+            
+            if (data.error) {
+                output.innerHTML = `<span style="color: #ff6b6b">❌ Hata: ${data.error.message}</span>`;
+            } else if (data.models) {
+                const names = data.models
+                    .filter(m => m.supportedGenerationMethods.includes('generateContent'))
+                    .map(m => m.name.replace('models/', ''));
+                
+                output.innerHTML = `<strong>Erişilebilir Modeller:</strong><br>` + names.join('<br>');
+                alert("Başarılı! Kullanabileceğiniz modeller aşağıda listelendi.");
+            }
+        } catch (e) {
+            output.textContent = "Hata: " + e.message;
+        }
+    });
+
+    document.getElementById('btnSaveCurrentData').addEventListener('click', () => {
+        const cs = document.getElementById('currentSize').value;
+        const ct = document.getElementById('currentTension').value;
+        if(!cs && !ct) return alert("Lütfen en az bir veriyi doldurun.");
+        
+        dataManager.setCurrentData(cs, ct);
+        alert("Aylık güncel verileriniz yapay zeka hafızasına kaydedildi.");
+        updateHomeView();
+    });
+
+    document.getElementById('btnAddTime').addEventListener('click', () => {
+        const hours = parseInt(document.getElementById('inputHours').value) || 0;
+        const minutes = parseInt(document.getElementById('inputMinutes').value) || 0;
+        const diffStr = document.getElementById('inputDifficulty').value;
+        const noteStr = document.getElementById('inputNote').value;
+        const totalMinutes = (hours * 60) + minutes;
+        
+        if (totalMinutes <= 0) return alert('Lütfen geçerli bir süre girin.');
+
+        // Get today's date in YYYY-MM-DD
+        const today = new Date();
+        // Adjust for local timezone accurately
+        const offset = today.getTimezoneOffset() * 60000;
+        const localISOTime = (new Date(today - offset)).toISOString().split('T')[0];
+
+        if(dataManager.addSession(localISOTime, totalMinutes, diffStr, noteStr)) {
+            // Reset input
+            document.getElementById('inputHours').value = '0';
+            document.getElementById('inputMinutes').value = '0';
+            document.getElementById('inputNote').value = '';
+            document.getElementById('inputDifficulty').value = 'normal';
+            
+            // Go to calendar
+            navBtns[1].click(); // Takvim sekmesine geç
+        }
+    });
+
+    document.getElementById('btnClearData').addEventListener('click', () => {
+        if(confirm("Tüm gelişiminizi kalıcı olarak silmek istediğinize emin misiniz?")) {
+            localStorage.removeItem('uTakipData');
+            location.reload();
+        }
+    });
+
+    // --- TIMER LOGIC ---
+    let timerInterval = null;
+
+    function updateTimerDisplay() {
+        const display = document.getElementById('timerDisplay');
+        const btn = document.getElementById('btnToggleTimer');
+        if (!display || !btn) return;
+
+        if (dataManager.data.timerStartTime > 0) {
+            const elapsedMs = Date.now() - dataManager.data.timerStartTime;
+            const totalSecs = Math.floor(elapsedMs / 1000);
+            
+            const h = Math.floor(totalSecs / 3600);
+            const m = Math.floor((totalSecs % 3600) / 60);
+            const s = totalSecs % 60;
+            
+            display.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+            btn.textContent = 'Durdur ve Kaydet';
+            btn.classList.add('btn-danger'); // UI Feedback
+        } else {
+            display.textContent = '00:00:00';
+            btn.textContent = 'Süreci Başlat';
+            btn.classList.remove('btn-danger');
+        }
+    }
+
+    function startTimerUI() {
+        if (timerInterval) clearInterval(timerInterval);
+        timerInterval = setInterval(updateTimerDisplay, 1000);
+        updateTimerDisplay();
+    }
+
+    document.getElementById('btnToggleTimer')?.addEventListener('click', () => {
+        if (dataManager.data.timerStartTime <= 0) {
+            // BAŞLAT
+            dataManager.data.timerStartTime = Date.now();
+            dataManager.save();
+            startTimerUI();
+        } else {
+            // DURDUR VE KAYDET
+            const elapsedMs = Date.now() - dataManager.data.timerStartTime;
+            const totalMins = Math.floor(elapsedMs / 60000);
+            
+            if (totalMins > 0) {
+                const today = new Date();
+                const offset = today.getTimezoneOffset() * 60000;
+                const localISOTime = (new Date(today - offset)).toISOString().split('T')[0];
+                
+                if (dataManager.addSession(localISOTime, totalMins, 'normal', 'Kronometre ile kaydedildi.')) {
+                    alert(`Tebrikler! ${totalMins} dakikalık seans başarıyla kaydedildi.`);
+                }
+            } else {
+                alert('Seans çok kısa olduğundan kaydedilmedi (en az 1 dakika gereklidir).');
+            }
+            
+            dataManager.data.timerStartTime = 0;
+            dataManager.save();
+            if (timerInterval) clearInterval(timerInterval);
+            updateTimerDisplay();
+            updateHomeView();
+        }
+    });
+
+    // --- UNIVERSAL STEPPER LOGIC ---
+    document.querySelectorAll('.btn-stepper').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const inputId = btn.getAttribute('data-input');
+            const delta = parseFloat(btn.getAttribute('data-delta'));
+            const input = document.getElementById(inputId);
+            if (!input) return;
+
+            let val = parseFloat(input.value) || 0;
+            val += delta;
+
+            // Constraints & Precision
+            if (inputId === 'inputMinutes') {
+                if (val < 0) val = 0;
+                if (val > 59) val = 59;
+            } else if (inputId.toLowerCase().includes('size') || inputId.toLowerCase().includes('tension') || inputId.toLowerCase().includes('growth')) {
+                if (val < 0) val = 0;
+                val = Math.round(val * 10) / 10; // 0.1 decimal precision
+            } else {
+                if (val < 0) val = 0;
+            }
+            
+            input.value = val;
+            
+            // Trigger events for other listeners
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+    });
+
+    // Universal Auto-clear "0" on focus for all number inputs
+    document.addEventListener('focusin', (e) => {
+        if (e.target.tagName === 'INPUT' && e.target.type === 'number') {
+            if (e.target.value === '0') e.target.value = '';
+        }
+    });
+    document.addEventListener('focusout', (e) => {
+        if (e.target.tagName === 'INPUT' && e.target.type === 'number') {
+            if (e.target.value === '') e.target.value = '0';
+        }
+    });
+
+    // Init App
+    renderRulerScale();
+    updateSettingsView();
+    updateHomeView();
+    if (dataManager.data.timerStartTime > 0) startTimerUI();
+});

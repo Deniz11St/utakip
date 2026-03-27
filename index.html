@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- PWA Settings -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0d1117">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>UTakip - Extender Tracker</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+        // Sadece HTTP/HTTPS veya localhost üzerinden çalışırken SW kaydet (Local file:// hatasını önlemek için)
+        if ('serviceWorker' in navigator && (window.location.protocol.startsWith('http') || window.location.hostname === 'localhost')) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').catch(e => console.log('SW registration skipped or failed.'));
+            });
+        }
+    </script>
+    <style>
+        /* Hide default number spinners */
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+            appearance: textfield;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Views -->
+        <main class="content">
+            <!-- Home View -->
+            <section id="home" class="view active">
+                <header class="view-header">
+                    <h2>Anasayfa</h2>
+                    <p class="subtitle">Başlangıç: <span id="displayStartDate">Ayarlanmadı</span></p>
+                    <p class="subtitle" id="displayTargetInfo" style="color: #a5d6ff; margin-top: 5px; display: none;">
+                        🎯 Hedef: <strong id="displayTargetSize">18.0</strong> cm <span style="opacity:0.8; font-size: 0.9em;">(Tahmini Bitiş: <span id="displayEstimate">-</span>)</span>
+                    </p>
+                </header>
+
+                <!-- Koç (Görsel bütünlük için turkuaz bant kaldırıldı) -->
+                <div class="card coach-card highlight-card" style="background: rgba(165, 214, 255, 0.03); border: 1px solid rgba(165, 214, 255, 0.15); margin-bottom: 25px;">
+                    <h3 style="display: flex; align-items: center; gap: 8px; color: #a5d6ff; margin-bottom: 0;">
+                        <span style="font-size: 1.2rem;">🤖</span> UTakip Sanal Koç Üstadı
+                    </h3>
+                    <p id="coachMessage" style="font-size: 14px; line-height: 1.5; color: var(--text-secondary); margin-top: 10px; font-style: italic;">
+                        Sizi tanımam için lütfen Ayarlar sayfasından temel bilgilerinizi doldurun.
+                    </p>
+                </div>
+
+                <div class="card ruler-card">
+                    <div class="ruler-header">
+                        <h3>Gelişim Cetveli</h3>
+                        <span id="stageDisplay" class="stage-badge">İlk Hedef</span>
+                    </div>
+                    
+                    <div class="ruler-container">
+                        <div class="scale top-scale" id="topScale"></div>
+                        <div class="ruler-bar-track">
+                            <div class="ruler-bar-fill" id="rulerFill" style="width: 0%;"></div>
+                        </div>
+                        <div class="scale bottom-scale" id="bottomScale"></div>
+                    </div>
+                    
+                    <div class="ruler-footer">
+                        <div id="targetEstimates" style="margin-top: 0; font-size: 11px; opacity: 0.8; display: flex; flex-direction: column; gap: 4px;">
+                            <span id="estMid">Tahmini Orta Nokta (%50): -</span>
+                            <span id="estEnd">Tahmini Hedef Bitişi (%100): -</span>
+                        </div>
+
+                        <!-- Günlük Çalışma Hedefi -->
+                        <div class="daily-ruler-container" style="margin-top: 18px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 15px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <span style="font-size: 12px; font-weight: 600; color: var(--text-secondary); letter-spacing: 0.3px;">Günlük Çalışma Hedefi (<span id="dailyGoalLabel">6</span>s)</span>
+                                <span id="dailyTimeText" style="font-size: 13px; font-weight: 700; color: #fff;">0s 0dk</span>
+                            </div>
+                            <div class="daily-progress-bg" style="height: 8px; background: rgba(255,255,255,0.05); border-radius: 4px; overflow: hidden; position: relative; border: 1px solid rgba(255,255,255,0.03);">
+                                <div id="dailyProgressFill" style="width: 0%; height: 100%; background: #fff; transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1), background 0.6s;"></div>
+                                <!-- 4 Saat (Min) İşareti -->
+                                <div style="position: absolute; left: 50%; top: 0; bottom: 0; border-left: 1px dashed rgba(255,255,255,0.25); z-index: 1;"></div>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-top: 6px; font-size: 10px; font-weight: 500; opacity: 0.4;">
+                                <span>0s</span>
+                                <span style="transform: translateX(-50%);">4s (Min)</span>
+                                <span id="dailyGoalEndLabel">6s+</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card timer-card" style="background: linear-gradient(135deg, rgba(165, 214, 255, 0.1) 0%, rgba(13, 17, 23, 0.4) 100%); border: 1px solid rgba(165, 214, 255, 0.2); text-align: center; padding: 25px 20px; margin-bottom: 25px;">
+                    <div style="font-size: 12px; color: #a5d6ff; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;">⏱️ Aktif Seans Sayacı</div>
+                    <div id="timerDisplay" style="font-size: 48px; font-weight: 700; font-family: 'Courier New', Courier, monospace; color: #fff; text-shadow: 0 0 20px rgba(165, 214, 255, 0.3); margin-bottom: 20px;">00:00:00</div>
+                    <button id="btnToggleTimer" class="btn-primary" style="width: 100%; font-weight: 700; letter-spacing: 0.5px;">Süreci Başlat</button>
+                    <div id="timerHint" style="font-size: 11px; color: var(--text-secondary); margin-top: 12px; font-style: italic;">Durdurduğunda süren otomatik olarak takvime işlenir.</div>
+                </div>
+
+                <div class="card time-entry-card">
+                    <h3>Süre Ekle</h3>
+                    <div class="input-group-row" style="display: flex; gap: 15px;">
+                        <div class="input-group" style="flex: 1;">
+                            <label style="display: block; margin-bottom: 8px; font-size: 13px; opacity: 0.8;">Saat</label>
+                            <div style="display: flex; align-items: center; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden;">
+                                <input type="number" id="inputHours" min="0" value="0" style="flex: 1; min-width: 0; background: none; border: none; color: white; text-align: center; height: 45px; font-size: 16px; font-weight: 600;">
+                                <div style="display: flex; flex-direction: column; border-left: 1px solid rgba(255,255,255,0.1);">
+                                    <button class="btn-stepper" data-input="inputHours" data-delta="1" style="width: 40px; height: 22.5px; background: rgba(165,214,255,0.05); border: none; border-bottom: 1px solid rgba(255,255,255,0.1); color: #a5d6ff; cursor: pointer; font-size: 10px; display: flex; align-items: center; justify-content: center;">▲</button>
+                                    <button class="btn-stepper" data-input="inputHours" data-delta="-1" style="width: 40px; height: 22.5px; background: rgba(165,214,255,0.05); border: none; color: #a5d6ff; cursor: pointer; font-size: 10px; display: flex; align-items: center; justify-content: center;">▼</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="input-group" style="flex: 1;">
+                            <label style="display: block; margin-bottom: 8px; font-size: 13px; opacity: 0.8;">Dakika</label>
+                            <div style="display: flex; align-items: center; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden;">
+                                <input type="number" id="inputMinutes" min="0" max="59" value="0" style="flex: 1; min-width: 0; background: none; border: none; color: white; text-align: center; height: 45px; font-size: 16px; font-weight: 600;">
+                                <div style="display: flex; flex-direction: column; border-left: 1px solid rgba(255,255,255,0.1);">
+                                    <button class="btn-stepper" data-input="inputMinutes" data-delta="5" style="width: 40px; height: 22.5px; background: rgba(165,214,255,0.05); border: none; border-bottom: 1px solid rgba(255,255,255,0.1); color: #a5d6ff; cursor: pointer; font-size: 10px; display: flex; align-items: center; justify-content: center;">▲</button>
+                                    <button class="btn-stepper" data-input="inputMinutes" data-delta="-5" style="width: 40px; height: 22.5px; background: rgba(165,214,255,0.05); border: none; color: #a5d6ff; cursor: pointer; font-size: 10px; display: flex; align-items: center; justify-content: center;">▼</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="input-group" style="margin-top: 15px; margin-bottom: 20px;">
+                        <label for="inputDifficulty">Gerginlik Hissi (Zorluk Derecesi)</label>
+                        <select id="inputDifficulty" style="width: 100%; padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.3); color: white; border: 1px solid var(--card-border); font-size: 14px;">
+                            <option value="rahat">🟢 Çok Rahat (Hafif bir esneme hissi)</option>
+                            <option value="normal" selected>🟡 Normal (İdeal çekme hissi)</option>
+                            <option value="zor">🔴 Zorlayıcı (Gergin, sınırda hissettiren)</option>
+                        </select>
+                    </div>
+                    <div class="input-group" style="margin-top: 15px; margin-bottom: 20px;">
+                        <label for="inputNote">Seans Notu (İsteğe Bağlı)</label>
+                        <textarea id="inputNote" placeholder="Deri durumu, hisler vb..." style="width: 100%; padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.3); color: white; border: 1px solid var(--card-border); font-size: 14px; height: 60px; resize: none;"></textarea>
+                    </div>
+                    <button id="btnAddTime" class="btn-primary">Bugüne Ekle</button>
+                </div>
+
+                <!-- Gelişim Grafiği (Buraya taşındı) -->
+                <div class="card chart-card" style="padding: 15px; background: rgba(0,0,0,0.2); position: relative; height: 300px; margin-top: 25px;">
+                    <h3 style="margin-top: 0; color: #a5d6ff; font-size: 15px;">🔍 Gelişim Grafiği İvmesi</h3>
+                    <div style="height: 230px; position: relative;">
+                        <canvas id="growthChart"></canvas>
+                    </div>
+                </div>
+                <div class="card stat-summary-card" style="margin-top: 15px;">
+                    <p id="chartSummaryText" style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;"></p>
+                </div>
+
+            </section>
+
+            <!-- Calendar View -->
+            <section id="calendar" class="view">
+                <header class="view-header">
+                    <h2>Gelişim Takvimi <small style="font-size:12px; font-weight:normal; opacity:0.7;">(Aylara Dokun)</small></h2>
+                </header>
+                
+                <div id="calendarAccordionContainer">
+                    <!-- JS will generate accordions here -->
+                </div>
+            </section>
+
+            </section>
+
+            <!-- Journal View (Yeni Sekme) -->
+            <section id="journal" class="view">
+                <header class="view-header">
+                    <h2>Günlük</h2>
+                    <p class="subtitle">Sürecine dair notlar ve deneyimlerin.</p>
+                </header>
+                <div id="journalContainer" style="display: flex; flex-direction: column; gap: 15px;">
+                    <!-- JS ile doldurulacak -->
+                </div>
+            </section>
+
+            <!-- Settings View -->
+            <section id="settings" class="view">
+                <header class="view-header">
+                    <h2>Ayarlar</h2>
+                </header>
+
+                <div class="card settings-card">
+                    <h3 style="margin-top: 0;">Kişisel Özellikler</h3>
+                    
+                    <div class="input-group-row">
+                        <div class="input-group">
+                            <label for="userName">İsim / Rumuz</label>
+                            <input type="text" id="userName" placeholder="Örn: Efe">
+                            <small class="hint">Koç size böyle seslenecek</small>
+                        </div>
+                        <div class="input-group">
+                            <label for="userAge">Yaşınız</label>
+                            <div style="display: flex; align-items: center; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden;">
+                                <input type="number" id="userAge" placeholder="Örn: 30" style="flex: 1; min-width: 0; background: none; border: none; color: white; text-align: center; height: 45px; font-size: 16px;">
+                                <div style="display: flex; flex-direction: column; border-left: 1px solid rgba(255,255,255,0.1);">
+                                    <button class="btn-stepper" data-input="userAge" data-delta="1" style="width: 40px; height: 22.5px; background: rgba(165,214,255,0.05); border: none; border-bottom: 1px solid rgba(255,255,255,0.1); color: #a5d6ff; cursor: pointer; font-size: 10px; display: flex; align-items: center; justify-content: center;">▲</button>
+                                    <button class="btn-stepper" data-input="userAge" data-delta="-1" style="width: 40px; height: 22.5px; background: rgba(165,214,255,0.05); border: none; color: #a5d6ff; cursor: pointer; font-size: 10px; display: flex; align-items: center; justify-content: center;">▼</button>
+                                </div>
+                            </div>
+                            <small class="hint">Hücre analiz faktörü</small>
+                        </div>
+                    </div>
+
+                    <h3 style="margin-top: 15px;">Temel Ayarlar</h3>
+                    <div class="input-group">
+                        <label for="startDate">Başlangıç Tarihi</label>
+                        <input type="date" id="startDate">
+                    </div>
+                    <div class="input-group">
+                        <label for="startSize">Başlangıç Boyutu (cm)</label>
+                        <div style="display: flex; align-items: center; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden;">
+                            <input type="number" id="startSize" step="0.1" placeholder="Örn: 15.0" style="flex: 1; min-width: 0; background: none; border: none; color: white; text-align: center; height: 45px; font-size: 16px;">
+                            <div style="display: flex; flex-direction: column; border-left: 1px solid rgba(255,255,255,0.1);">
+                                <button class="btn-stepper" data-input="startSize" data-delta="0.1" style="width: 40px; height: 22.5px; background: rgba(165,214,255,0.05); border: none; border-bottom: 1px solid rgba(255,255,255,0.1); color: #a5d6ff; cursor: pointer; font-size: 10px; display: flex; align-items: center; justify-content: center;">▲</button>
+                                <button class="btn-stepper" data-input="startSize" data-delta="-0.1" style="width: 40px; height: 22.5px; background: rgba(165,214,255,0.05); border: none; color: #a5d6ff; cursor: pointer; font-size: 10px; display: flex; align-items: center; justify-content: center;">▼</button>
+                            </div>
+                        </div>
+                        <small class="hint">Örn: 15 veya 15.5 yazın</small>
+                    </div>
+                    <div class="input-group">
+                        <label for="targetSize">Hedef Boyut (cm)</label>
+                        <div style="display: flex; align-items: center; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden;">
+                            <input type="number" id="targetSize" step="0.1" placeholder="Örn: 18.0" style="flex: 1; min-width: 0; background: none; border: none; color: white; text-align: center; height: 45px; font-size: 16px;">
+                            <div style="display: flex; flex-direction: column; border-left: 1px solid rgba(255,255,255,0.1);">
+                                <button class="btn-stepper" data-input="targetSize" data-delta="0.1" style="width: 40px; height: 22.5px; background: rgba(165,214,255,0.05); border: none; border-bottom: 1px solid rgba(255,255,255,0.1); color: #a5d6ff; cursor: pointer; font-size: 10px; display: flex; align-items: center; justify-content: center;">▲</button>
+                                <button class="btn-stepper" data-input="targetSize" data-delta="-0.1" style="width: 40px; height: 22.5px; background: rgba(165,214,255,0.05); border: none; color: #a5d6ff; cursor: pointer; font-size: 10px; display: flex; align-items: center; justify-content: center;">▼</button>
+                            </div>
+                        </div>
+                        <small class="hint">Ulaşmak istediğiniz nihai hedef</small>
+                    </div>
+                    <div class="input-group">
+                        <label for="targetMonthlyGrowth">Aylık Büyüme Beklentisi (mm)</label>
+                        <div style="display: flex; align-items: center; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden;">
+                            <input type="number" id="targetMonthlyGrowth" step="0.5" min="0.5" max="10" placeholder="Örn: 2" style="flex: 1; min-width: 0; background: none; border: none; color: white; text-align: center; height: 45px; font-size: 16px;">
+                            <div style="display: flex; flex-direction: column; border-left: 1px solid rgba(255,255,255,0.1);">
+                                <button class="btn-stepper" data-input="targetMonthlyGrowth" data-delta="0.5" style="width: 40px; height: 22.5px; background: rgba(165,214,255,0.05); border: none; border-bottom: 1px solid rgba(255,255,255,0.1); color: #a5d6ff; cursor: pointer; font-size: 10px; display: flex; align-items: center; justify-content: center;">▲</button>
+                                <button class="btn-stepper" data-input="targetMonthlyGrowth" data-delta="-0.5" style="width: 40px; height: 22.5px; background: rgba(165,214,255,0.05); border: none; color: #a5d6ff; cursor: pointer; font-size: 10px; display: flex; align-items: center; justify-content: center;">▼</button>
+                            </div>
+                        </div>
+                        <small class="hint">Kişisel hedefinize göre 1 ile 5 arası mm beklentiniz</small>
+                    </div>
+                    <div class="input-group">
+                        <label for="dailyGoalHours">Günlük Çalışma Hedefi (Saat)</label>
+                        <div style="display: flex; align-items: center; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden;">
+                            <input type="number" id="dailyGoalHours" min="1" max="24" placeholder="Örn: 6" style="flex: 1; min-width: 0; background: none; border: none; color: white; text-align: center; height: 45px; font-size: 16px;">
+                            <div style="display: flex; flex-direction: column; border-left: 1px solid rgba(255,255,255,0.1);">
+                                <button class="btn-stepper" data-input="dailyGoalHours" data-delta="1" style="width: 40px; height: 22.5px; background: rgba(165,214,255,0.05); border: none; border-bottom: 1px solid rgba(255,255,255,0.1); color: #a5d6ff; cursor: pointer; font-size: 10px; display: flex; align-items: center; justify-content: center;">▲</button>
+                                <button class="btn-stepper" data-input="dailyGoalHours" data-delta="-1" style="width: 40px; height: 22.5px; background: rgba(165,214,255,0.05); border: none; color: #a5d6ff; cursor: pointer; font-size: 10px; display: flex; align-items: center; justify-content: center;">▼</button>
+                            </div>
+                        </div>
+                        <small class="hint">Uzman önerisi 4-8 saat arasıdır (Varsayılan: 6)</small>
+                    </div>
+
+                    <div class="card" style="background: rgba(165, 214, 255, 0.05); border: 1px dashed rgba(165, 214, 255, 0.3); margin-bottom: 20px;">
+                        <h3 style="color: #a5d6ff; font-size: 15px; margin-bottom: 10px;">🤖 Sanal Koç Zekası (Gemini AI)</h3>
+                        <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 15px;">
+                            Koçun gerçek bir yapay zeka gibi yanıt vermesi için ücretsiz bir API anahtarı gereklidir. Anahtarınız yoksa koç hazır kütüphane bilgilerini kullanır.
+                        </p>
+                        <div class="input-group">
+                            <label for="geminiApiKey">Gemini API Key</label>
+                            <input type="password" id="geminiApiKey" placeholder="AI Studio'dan aldığınız anahtar">
+                            <small class="hint"><a href="https://aistudio.google.com/app/apikey" target="_blank" style="color: #a5d6ff; text-decoration: underline;">👉 Buradan Ücretsiz Al (Google AI Studio)</a></small>
+                        </div>
+                        <div class="input-group">
+                            <label for="geminiModelName">Gemini Model İsmi</label>
+                            <input type="text" id="geminiModelName" placeholder="Örn: gemini-3-flash-preview">
+                            <small class="hint">Varsayılan: gemini-3-flash-preview (Güncel Stabil Model)</small>
+                        </div>
+                        <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
+                            <button id="btnCheckModels" class="btn-secondary" style="font-size: 12px; padding: 5px;">🗝️ Anahtar Geçerliliğini Test Et & Modelleri Listele</button>
+                            <div id="modelListOutput" style="font-size: 11px; color: #888; background: rgba(0,0,0,0.3); padding: 5px; border-radius: 4px; display: none; max-height: 100px; overflow-y: auto;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Veri Yönetimi -->
+                    <div class="card" style="background: rgba(255, 133, 133, 0.03); border: 1px dashed rgba(255, 255, 255, 0.1); margin-top: 20px; border-radius: 12px; padding: 15px;">
+                        <h4 style="color: var(--text-secondary); font-size: 13px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 16px;">💾</span> Veri Yönetimi ve Yedekleme
+                        </h4>
+                        <p style="font-size: 11px; color: #888; margin-bottom: 15px;">
+                            Verileriniz sadece bu tarayıcıda saklanır. Cihaz değiştirmek veya veri kaybını önlemek için düzenli yedek almanız önerilir.
+                        </p>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                            <button id="btnExportData" class="btn-secondary" style="font-size: 11px; padding: 10px 5px;">📤 Yedek İndir (.json)</button>
+                            <button id="btnImportData" class="btn-secondary" style="font-size: 11px; padding: 10px 5px;">📥 Yedek Yükle</button>
+                            <input type="file" id="importFile" style="display: none;" accept=".json">
+                        </div>
+                        <button id="btnClearData" class="btn-danger" style="width: 100%; font-size: 10px; padding: 8px; opacity: 0.2; background: rgba(255,0,0,0.1); border: 1px solid rgba(255,255,255,0.05);">⚠️ Tüm Verileri Kalıcı Olarak Sıfırla</button>
+                    </div>
+
+                    <button id="btnSaveBaseSettings" class="btn-primary" style="margin-top: 20px; width: 100%;">Tüm Ayarları Kaydet</button>
+                </div> <!-- Settings-card sonu -->
+
+                <div class="card settings-card highlight-card">
+                    <h3>Aylık Güncel Durumunuz</h3>
+                    <p class="hint-text">Yapay zeka koçuna veri sağlamak için her ay ölçümlerinizi ve gerginlik durumunuzu kaydedin.</p>
+                    <div class="input-group-row" style="display: flex; gap: 15px;">
+                        <div class="input-group" style="flex: 1;">
+                            <label for="currentSize">Güncel Boyut (cm)</label>
+                            <div style="display: flex; align-items: center; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden;">
+                                <input type="number" id="currentSize" step="0.1" placeholder="Örn: 15.3" style="flex: 1; min-width: 0; background: none; border: none; color: white; text-align: center; height: 45px; font-size: 16px;">
+                                <div style="display: flex; flex-direction: column; border-left: 1px solid rgba(255,255,255,0.1);">
+                                    <button class="btn-stepper" data-input="currentSize" data-delta="0.1" style="width: 40px; height: 22.5px; background: rgba(165,214,255,0.05); border: none; border-bottom: 1px solid rgba(255,255,255,0.1); color: #a5d6ff; cursor: pointer; font-size: 10px; display: flex; align-items: center; justify-content: center;">▲</button>
+                                    <button class="btn-stepper" data-input="currentSize" data-delta="-0.1" style="width: 40px; height: 22.5px; background: rgba(165,214,255,0.05); border: none; color: #a5d6ff; cursor: pointer; font-size: 10px; display: flex; align-items: center; justify-content: center;">▼</button>
+                                </div>
+                            </div>
+                            <small class="hint">Cetveli uzatır</small>
+                        </div>
+                        <div class="input-group" style="flex: 1;">
+                            <label for="currentTension">Cihaz Gerginliği (cm)</label>
+                            <div style="display: flex; align-items: center; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden;">
+                                <input type="number" id="currentTension" step="0.1" placeholder="Mil/Vida Boyu" style="flex: 1; min-width: 0; background: none; border: none; color: white; text-align: center; height: 45px; font-size: 16px;">
+                                <div style="display: flex; flex-direction: column; border-left: 1px solid rgba(255,255,255,0.1);">
+                                    <button class="btn-stepper" data-input="currentTension" data-delta="0.1" style="width: 40px; height: 22.5px; background: rgba(165,214,255,0.05); border: none; border-bottom: 1px solid rgba(255,255,255,0.1); color: #a5d6ff; cursor: pointer; font-size: 10px; display: flex; align-items: center; justify-content: center;">▲</button>
+                                    <button class="btn-stepper" data-input="currentTension" data-delta="-0.1" style="width: 40px; height: 22.5px; background: rgba(165,214,255,0.05); border: none; color: #a5d6ff; cursor: pointer; font-size: 10px; display: flex; align-items: center; justify-content: center;">▼</button>
+                                </div>
+                            </div>
+                            <small class="hint">Uyguladığınız baskı</small>
+                        </div>
+                    </div>
+                    <button id="btnSaveCurrentData" class="btn-primary">Güncel Verileri Kaydet</button>
+                </div>
+            </section>
+
+            <!-- Coach/Library View -->
+            <section id="coach" class="view">
+
+                <!-- Panel Switcher -->
+                <div class="panel-switcher">
+
+                    <!-- Panel 1: Sanal Koç (varsayılan AÇIK) -->
+                    <div class="panel-pane" id="paneCoach">
+                        <div class="panel-tab" onclick="switchPanel('coach')">
+                            <span>🤖 Sanal Koç</span>
+                            <span class="panel-tab-hint">Aktif</span>
+                        </div>
+                        <div class="panel-content">
+                            <div id="coachChatHistory" class="coach-chat-history">
+                                <div class="chat-msg coach">
+                                    <p>Merhaba! Ben senin sanal gelişim koçunum. Aletin kullanımı, kremler veya süreçle ilgili merak ettiğin her şeyi bana sorabilirsin.</p>
+                                </div>
+                            </div>
+                            <div class="coach-input-row">
+                                <input type="text" id="coachQuery" placeholder="Koç'a soru sor...">
+                                <button id="btnAskCoach" class="btn-primary">Sor</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Panel 2: Ansiklopedi (varsayılan KAPALI, altta) -->
+                    <div class="panel-pane collapsed" id="paneEncyclopedia">
+                        <div class="panel-tab" onclick="switchPanel('encyclopedia')">
+                            <span>📚 Extender Ansiklopedisi</span>
+                            <span class="panel-tab-hint">Aç ▲</span>
+                        </div>
+                        <div class="panel-content">
+                            <div id="encyclopediaContainer">
+                                <!-- JS ile kategorize edilmiş bilgiler gelecek -->
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+        </main>
+
+        <!-- Navigation (Bottom for mobile app feel) -->
+        <nav class="bottom-nav">
+            <button class="nav-btn active" data-target="home">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                <span>Anasayfa</span>
+            </button>
+            <button class="nav-btn" data-target="calendar">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                <span>Takvim</span>
+            </button>
+            <button class="nav-btn" data-target="journal">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+                <span>Günlük</span>
+            </button>
+            <button class="nav-btn" data-target="coach">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                <span>Koç</span>
+            </button>
+            <button class="nav-btn" data-target="settings">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                <span>Ayarlar</span>
+            </button>
+        </nav>
+    </div>
+    
+    <!-- Hayati: JS dosyasının eklenmesi unutulduğu için butonlar çalışmıyordu, eklendi -->
+    <script src="app.js?v=2"></script>
+</body>
+</html>
