@@ -259,7 +259,7 @@ function playNotificationSound() {
 function sendLocalNotification(title, body) {
     if (!("Notification" in window)) return;
     if (Notification.permission === "granted") {
-        const options = { body: body, icon: 'icon.png', vibrate: [200, 100, 200], badge: 'icon.png' };
+        const options = { body: body, icon: 'icon.png', vibrate: [200, 100, 200], badge: 'icon.png', requireInteraction: true };
         if (navigator.serviceWorker && navigator.serviceWorker.controller) {
             navigator.serviceWorker.ready.then(reg => { reg.showNotification(title, options); });
         } else { new Notification(title, options); }
@@ -1346,6 +1346,22 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         }
     });
 
+    // --- WAKE LOCK API ---
+    let wakeLockObj = null;
+    async function requestWakeLock() {
+        try {
+            if ('wakeLock' in navigator) {
+                wakeLockObj = await navigator.wakeLock.request('screen');
+            }
+        } catch (err) { console.warn("Wake Lock error:", err); }
+    }
+    function releaseWakeLock() {
+        if (wakeLockObj !== null) {
+            wakeLockObj.release();
+            wakeLockObj = null;
+        }
+    }
+
     // --- TIMER LOGIC ---
     let timerInterval = null;
 
@@ -1443,6 +1459,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             state.notified = false;
             dataManager.save();
             startTimerUI();
+            requestWakeLock();
         } else if (state.mode === 'work') {
             // DURDUR (Transition to Break)
             const elapsedMs = Date.now() - state.startTime;
@@ -1462,6 +1479,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             if (state.current >= dataManager.data.timerSettings.count) {
                 alert("Bugünkü tüm seanslarını tamamladın! Harika iş.");
                 dataManager.resetActiveSession();
+                releaseWakeLock();
             } else {
                 state.mode = 'break';
                 state.startTime = Date.now();
