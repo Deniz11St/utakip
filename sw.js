@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v5';
+const CACHE_NAME = 'utakip-v6';
 const ASSETS = [
     './',
     './index.html',

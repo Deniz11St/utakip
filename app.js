@@ -528,7 +528,40 @@ document.addEventListener('DOMContentLoaded', () => {
                             const box = document.createElement('div');
                             box.className = 'session-box';
                             const diffIcon = sessionObj.diff === 'rahat' ? '🟢' : (sessionObj.diff === 'zor' ? '🔴' : '🟡');
-                            box.innerHTML = `${mins} dk <span style="font-size:11px">${diffIcon}</span>`;
+                            box.innerHTML = `
+                                <div style="display:flex; align-items:center; justify-content:center; gap:4px; cursor:pointer;" title="Düzenle / Sil">
+                                    <span>${mins} dk</span>
+                                    <span style="font-size:11px">${diffIcon}</span>
+                                    <span style="font-size:10px; opacity:0.5;">✏️</span>
+                                </div>
+                            `;
+                            
+                            box.addEventListener('click', (e) => {
+                                e.stopPropagation();
+                                const newMinsStr = prompt(`${dateStr} tarihindeki seans süresini güncelle (Dakika):\n\nSilmek istersen 0 yazabilirsin.`, mins);
+                                if (newMinsStr !== null) {
+                                    const newMins = parseInt(newMinsStr);
+                                    if (!isNaN(newMins) && newMins >= 0) {
+                                        if (newMins === 0) {
+                                            if (confirm("Bu seans kaydını tamamen silmek istediğinden emin misin?")) {
+                                                dataManager.data.sessions[dateStr].splice(s, 1);
+                                                if (dataManager.data.sessions[dateStr].length === 0) {
+                                                    delete dataManager.data.sessions[dateStr];
+                                                }
+                                            } else {
+                                                return;
+                                            }
+                                        } else {
+                                            dataManager.data.sessions[dateStr][s].mins = newMins;
+                                        }
+                                        dataManager.save();
+                                        updateCalendarView();
+                                        updateHomeView();
+                                    } else {
+                                        alert("Lütfen geçerli bir dakika (sayı) girin.");
+                                    }
+                                }
+                            });
                             sessionsCol.appendChild(box);
                         } else {
                             const empty = document.createElement('div');
