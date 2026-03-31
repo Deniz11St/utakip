@@ -1400,18 +1400,21 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
 
     function updateTimerDisplay() {
         const display = document.getElementById('timerDisplay');
-        const btn = document.getElementById('btnToggleTimer');
+        const btnSession = document.getElementById('btnStartSession');
+        const btnBreak = document.getElementById('btnStartBreak');
         const info = document.getElementById('timerSessionInfo');
         const badge = document.getElementById('timerModeBadge');
         const card = document.getElementById('timerCard');
-        if (!display || !btn || !info || !badge || !card) return;
+        if (!display || !btnSession || !btnBreak || !info || !badge || !card) return;
 
         const state = dataManager.data.activeSessionState;
         
         if (state.mode === 'ready') {
             display.textContent = '00:00:00';
-            btn.textContent = 'Süreci Başlat';
-            btn.className = 'btn-primary';
+            btnSession.textContent = '▶ Seans Başlat';
+            btnSession.className = 'btn-primary';
+            btnBreak.textContent = '☕ Mola Başlat';
+            btnBreak.className = 'btn-secondary';
             info.textContent = `Toplam Hedef: ${dataManager.data.timerSettings.count} Seans`;
             badge.textContent = 'Hazır';
             badge.className = 'mode-ready';
@@ -1432,8 +1435,10 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             badge.className = 'mode-work';
             card.classList.add('mode-work');
             card.classList.remove('mode-break');
-            btn.textContent = 'Durdur ve Kaydet';
-            btn.className = 'btn-danger';
+            btnSession.textContent = '⏹ Seansı Durdur & Kaydet';
+            btnSession.className = 'btn-danger';
+            btnBreak.textContent = '☕ Mola Başlat';
+            btnBreak.className = 'btn-secondary';
 
             // Check if duration reached
             const limitMins = dataManager.data.timerSettings.duration;
@@ -1449,8 +1454,10 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             badge.className = 'mode-break';
             card.classList.add('mode-break');
             card.classList.remove('mode-work');
-            btn.textContent = 'Molayı Bitir ve Sıradaki Seans';
-            btn.className = 'btn-primary';
+            btnSession.textContent = '▶ Seans Başlat';
+            btnSession.className = 'btn-primary';
+            btnBreak.textContent = '⏹ Molayı Durdur';
+            btnBreak.className = 'btn-danger';
 
             // Check if break duration reached
             const breakLimitMins = dataManager.data.timerSettings.break;
@@ -1476,15 +1483,43 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         updateTimerDisplay();
     }
 
-    document.getElementById('btnToggleTimer')?.addEventListener('click', () => {
+    function manualSaveAndEndSession() {
+        const state = dataManager.data.activeSessionState;
+        const elapsedMs = Date.now() - state.startTime;
+        const totalMins = Math.floor(elapsedMs / 60000);
+        
+        if (totalMins > 0) {
+            const today = new Date();
+            const offset = today.getTimezoneOffset() * 60000;
+            const localISOTime = (new Date(today - offset)).toISOString().split('T')[0];
+            
+            if (dataManager.addSession(localISOTime, totalMins, 'normal', `Seans ${state.current} kaydedildi.`)) {
+                showSuccessAchievement("Seans Kaydedildi", `${totalMins} dakika günlüğe eklendi.`, "✅");
+            }
+        }
+        
+        state.mode = 'ready';
+        if (state.current >= dataManager.data.timerSettings.count) {
+            alert("Bugünkü tüm seanslarını tamamladın! Harika iş.");
+            dataManager.resetActiveSession();
+        }
+        dataManager.save();
+        updateTimerDisplay();
+        updateHomeView();
+        releaseWakeLock();
+    }
+
+    document.getElementById('btnStartSession')?.addEventListener('click', () => {
         const state = dataManager.data.activeSessionState;
 
-        if (state.mode === 'ready' || state.mode === 'break') {
-            // BAŞLAT (Work Mode)
+        if (state.mode === 'work') {
+            // Seansı Durdur
+            manualSaveAndEndSession();
+        } else {
+            // Başlat (Ready veya Break modundan Session'a geçer)
             if (state.mode === 'break') {
-                // Save break info if needed? User didn't explicitly ask to save break durations to calendar, 
-                // but we can track it. For now, just advance session.
-                state.current++;
+               // molayı durdur, sonraki seansa başlanacak
+               state.current++;
             }
             
             state.mode = 'work';
@@ -1493,35 +1528,35 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             dataManager.save();
             startTimerUI();
             requestWakeLock();
-        } else if (state.mode === 'work') {
-            // DURDUR (Transition to Break)
-            const elapsedMs = Date.now() - state.startTime;
-            const totalMins = Math.floor(elapsedMs / 60000);
-            
-            if (totalMins > 0) {
-                const today = new Date();
-                const offset = today.getTimezoneOffset() * 60000;
-                const localISOTime = (new Date(today - offset)).toISOString().split('T')[0];
-                
-                if (dataManager.addSession(localISOTime, totalMins, 'normal', `Seans ${state.current} kaydedildi.`)) {
-                    showSuccessAchievement("Seans Kaydedildi", `${totalMins} dakika günlüğe eklendi.`, "✅");
-                }
-            }
-            
-            // Eğer planlanan seans sayısı bittiyse sıfırla, yoksa molaya geç
-            if (state.current >= dataManager.data.timerSettings.count) {
-                alert("Bugünkü tüm seanslarını tamamladın! Harika iş.");
-                dataManager.resetActiveSession();
-                releaseWakeLock();
-            } else {
-                state.mode = 'break';
-                state.startTime = Date.now();
-                state.notified = false;
-            }
-            
+        }
+    });
+
+    document.getElementById('btnStartBreak')?.addEventListener('click', () => {
+        const state = dataManager.data.activeSessionState;
+
+        if (state.mode === 'break') {
+            // Molayı Durdur -> Ready
+            state.mode = 'ready';
             dataManager.save();
             updateTimerDisplay();
-            updateHomeView();
+            releaseWakeLock();
+        } else {
+            // Mola Başlat (Work'ten veya Ready'den geçer)
+            if (state.mode === 'work') {
+                manualSaveAndEndSession();
+            }
+            
+            // Re-fetch state after manualSaveAndEndSession because it could be reset
+            const newState = dataManager.data.activeSessionState;
+            if(newState.current >= dataManager.data.timerSettings.count && newState.current == 1 && newState.mode == 'ready' ) {
+                // Was completely reset
+            } else {
+                newState.mode = 'break';
+                newState.startTime = Date.now();
+                newState.notified = false;
+                dataManager.save();
+                startTimerUI();
+            }
         }
     });
 

@@ -101,8 +101,11 @@
                     <div id="timerSessionInfo" style="font-size: 12px; color: #a5d6ff; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;">⏱️ Aktif Seans Sayacı</div>
                     <div id="timerDisplay" style="font-size: 48px; font-weight: 700; font-family: 'Courier New', Courier, monospace; color: #fff; text-shadow: 0 0 20px rgba(165, 214, 255, 0.3); margin-bottom: 10px;">00:00:00</div>
                     <div id="timerModeBadge" style="display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 20px; background: rgba(165, 214, 255, 0.1); color: #a5d6ff;">Hazır</div>
-                    <button id="btnToggleTimer" class="btn-primary" style="width: 100%; font-weight: 700; letter-spacing: 0.5px;">Süreci Başlat</button>
-                    <div id="timerHint" style="font-size: 11px; color: var(--text-secondary); margin-top: 12px; font-style: italic;">Durdurduğunda süren otomatik olarak takvime işlenir.</div>
+                    <div style="display: flex; gap: 10px; width: 100%;">
+                        <button id="btnStartSession" class="btn-primary" style="flex: 1; font-weight: 700; letter-spacing: 0.5px; padding: 12px 10px; font-size: 13px;">▶ Seans Başlat</button>
+                        <button id="btnStartBreak" class="btn-secondary" style="flex: 1; font-weight: 700; letter-spacing: 0.5px; border: 1px solid rgba(255,255,255,0.1); padding: 12px 10px; font-size: 13px;">☕ Mola Başlat</button>
+                    </div>
+                    <div id="timerHint" style="font-size: 11px; color: var(--text-secondary); margin-top: 12px; font-style: italic;">Manuel kontrol: Seans ve mola geçişlerini kendin yönet. Süre bitimlerinde bildirim alacaksın.</div>
                 </div>
 
                 <div class="card time-entry-card">
@@ -338,7 +341,7 @@
                         </h4>
                         <div style="margin-bottom: 15px;">
                             <button id="btnUpdateApp" class="btn-secondary" style="width: 100%; background: rgba(165,214,255,0.1); border: 1px solid rgba(165,214,255,0.2); color: #a5d6ff; font-weight: 600; padding: 10px; margin-bottom: 5px;">🚀 Yeni Versiyonu Denetle ve Yükle</button>
-                            <div style="font-size: 10px; color: #666; text-align: center;">Mevcut Sürüm: v1.4.1</div>
+                            <div style="font-size: 10px; color: #666; text-align: center;">Mevcut Sürüm: v1.4.2</div>
                         </div>
                         <p style="font-size: 11px; color: #888; margin-bottom: 15px;">
                             Verileriniz sadece bu tarayıcıda saklanır. Cihaz değiştirmek veya veri kaybını önlemek için düzenli yedek almanız önerilir.
@@ -453,6 +456,6 @@
     </div>
     
     <!-- Hayati: JS dosyasının eklenmesi unutulduğu için butonlar çalışmıyordu, eklendi -->
-    <script src="app.js?v=4"></script>
+    <script src="app.js?v=5"></script>
 </body>
 </html>
