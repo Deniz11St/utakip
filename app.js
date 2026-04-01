@@ -306,22 +306,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- SETUP: UI Generics ---
     
-    function renderRulerScale(startCm = 0) {
+    function renderRulerScale(startCm = 0, targetCm = 0) {
         const topScale = document.getElementById('topScale');
         const bottomScale = document.getElementById('bottomScale');
         topScale.innerHTML = '';
         bottomScale.innerHTML = '';
         
-        // 10 mm lines
-        for(let i=0; i<=10; i++) {
+        // Gösterilecek toplam cm sayısı (Bant uzunluğu). En az 5 cm olsun.
+        const cmCount = Math.max(5, Math.ceil(targetCm - startCm) + 3); 
+        const totalMm = cmCount * 10;
+        
+        // Ekranda her 10 mm, tam 1 ekran genişliği kaplasın diye (cmCount * 100%) genişlik atıyoruz.
+        document.getElementById('rulerContainer').style.width = `${cmCount * 100}%`;
+        
+        for(let i=0; i<=totalMm; i++) {
             const isMajor = (i % 5 === 0);
+            const isCm = (i % 10 === 0);
             
             const tTick = document.createElement('div');
             tTick.className = `tick top ${isMajor ? 'major' : ''}`;
-            if(isMajor) {
+            
+            if (isMajor) {
                 let val = startCm + (i / 10);
                 let displayVal = val % 1 === 0 ? val : val.toFixed(1);
                 tTick.setAttribute('data-val', displayVal);
+            }
+            if (isCm) {
+                tTick.style.scrollSnapAlign = 'center';
             }
             topScale.appendChild(tTick);
             
@@ -329,6 +340,8 @@ document.addEventListener('DOMContentLoaded', () => {
             bTick.className = `tick bottom ${isMajor ? 'major' : ''}`;
             bottomScale.appendChild(bTick);
         }
+        
+        return totalMm;
     }
 
     // --- LOGIC: Views ---
@@ -376,12 +389,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const coachCard = document.querySelector('.coach-card');
 
         // Update Thermometer
-        const progress = dataManager.getStageProgress();
         const stage = dataManager.getStage();
         
-        // Dinamik cetvel ölçek hesabı (cm olarak)
-        const startCm = dataManager.data.startSize + (stage - 1);
-        renderRulerScale(startCm);
+        const startCm = dataManager.data.startSize;
+        const targetCm = dataManager.data.targetSize > 0 ? dataManager.data.targetSize : startCm + 5;
+        
+        // Cetveli tek bir upuzun bant olarak render ediyoruz
+        const totalMm = renderRulerScale(startCm, targetCm);
         
         const stageName = stage === 1 ? 'İlk Hedef' : `${stage}. Hedef`;
         document.getElementById('stageDisplay').textContent = stageName;
@@ -416,12 +430,29 @@ document.addEventListener('DOMContentLoaded', () => {
             estEndEl.textContent = 'Tahmini Hedef Bitişi: -';
         }
 
-        // Animate ruler (10mm = 100% width)
-        const widthPercent = (progress / 10) * 100;
+        // Kırmızı barı güncelle ve scroll ayarı yap
+        let growth = dataManager.getTotalGrowth();
+        if(growth < 0) growth = 0;
+        if(growth > totalMm) growth = totalMm;
+        
+        const widthPercent = (growth / totalMm) * 100;
+        
         setTimeout(() => {
             const fill = document.getElementById('rulerFill');
             if(fill) fill.style.width = `${widthPercent}%`;
-        }, 100);
+            
+            const viewport = document.getElementById('rulerViewport');
+            if (viewport) {
+                let scrollStageMm = stage > 0 ? (stage - 1) * 10 : 0;
+                const scrollWidth = viewport.scrollWidth;
+                const pxPerMm = scrollWidth / totalMm;
+                
+                viewport.scrollTo({
+                    left: scrollStageMm * pxPerMm,
+                    behavior: 'smooth'
+                });
+            }
+        }, 150);
 
         // Daily Work Goal Update
         const dailyMins = dataManager.getTodayMinutes();
