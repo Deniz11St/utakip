@@ -312,12 +312,12 @@ document.addEventListener('DOMContentLoaded', () => {
         topScale.innerHTML = '';
         bottomScale.innerHTML = '';
         
-        // Gösterilecek toplam cm sayısı (Bant uzunluğu). En az 5 cm olsun.
-        const cmCount = Math.max(5, Math.ceil(targetCm - startCm) + 3); 
-        const totalMm = cmCount * 10;
+        // Toplam mm uzunluğu: Hedef varsa -> (Hedef - Başlangıç) * 10 + 5 mm. Yoksa -> Varsayılan 50 mm.
+        let totalMm = targetCm > startCm ? Math.round((targetCm - startCm) * 10) + 5 : 55;
+        if (totalMm < 20) totalMm = 25; // Çok kısa kalmaması için minimum bir baraj
         
-        // Ekranda her 10 mm, tam 1 ekran genişliği kaplasın diye (cmCount * 100%) genişlik atıyoruz.
-        document.getElementById('rulerContainer').style.width = `${cmCount * 100}%`;
+        // Ekranda her 10 mm tam 1 ekran genişliği (100% width) kaplıyorsa => width = ((totalMm / 10) * 100)%
+        document.getElementById('rulerContainer').style.width = `${(totalMm / 10) * 100}%`;
         
         for(let i=0; i<=totalMm; i++) {
             const isMajor = (i % 5 === 0);
@@ -326,18 +326,34 @@ document.addEventListener('DOMContentLoaded', () => {
             const tTick = document.createElement('div');
             tTick.className = `tick top ${isMajor ? 'major' : ''}`;
             
-            if (isMajor) {
-                let val = startCm + (i / 10);
-                let displayVal = val % 1 === 0 ? val : val.toFixed(1);
-                tTick.setAttribute('data-val', displayVal);
-            }
             if (isCm) {
                 tTick.style.scrollSnapAlign = 'center';
             }
+            
+            // Final bayrağı etiketi: targetCm tam o i konumundaysa
+            const targetMm = targetCm > startCm ? Math.round((targetCm - startCm) * 10) : -1;
+            if (i === targetMm) {
+                const flag = document.createElement('div');
+                flag.textContent = '🏁';
+                flag.style.position = 'absolute';
+                flag.style.top = '-32px';
+                flag.style.left = '50%';
+                flag.style.transform = 'translateX(-50%)';
+                flag.style.fontSize = '20px';
+                tTick.appendChild(flag);
+            }
+            
             topScale.appendChild(tTick);
             
             const bTick = document.createElement('div');
             bTick.className = `tick bottom ${isMajor ? 'major' : ''}`;
+            
+            if (isMajor) {
+                let val = startCm + (i / 10);
+                let displayVal = val % 1 === 0 ? val : val.toFixed(1);
+                bTick.setAttribute('data-val', displayVal);
+            }
+            
             bottomScale.appendChild(bTick);
         }
         

@@ -483,24 +483,14 @@ button {
     background: var(--text-primary);
 }
 
-.tick.top.major::before {
+.tick.bottom.major::after {
     content: attr(data-val);
-    position: absolute;
-    top: -24px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 11px;
-    color: var(--text-primary);
-}
-
-.tick.bottom.major:last-child::after {
-    content: "mm";
     position: absolute;
     bottom: -24px;
     left: 50%;
     transform: translateX(-50%);
     font-size: 11px;
-    color: var(--text-secondary);
+    color: var(--text-primary);
 }
 
 .ruler-bar-track {
