@@ -260,9 +260,17 @@ function sendLocalNotification(title, body) {
     if (!("Notification" in window)) return;
     if (Notification.permission === "granted") {
         const options = { body: body, icon: 'icon.png', vibrate: [200, 100, 200], badge: 'icon.png', requireInteraction: true };
-        if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-            navigator.serviceWorker.ready.then(reg => { reg.showNotification(title, options); });
-        } else { new Notification(title, options); }
+        if (navigator.serviceWorker) {
+            navigator.serviceWorker.ready.then(reg => { 
+                if (reg && reg.showNotification) {
+                    reg.showNotification(title, options); 
+                } else {
+                    new Notification(title, options);
+                }
+            });
+        } else { 
+            new Notification(title, options); 
+        }
     }
 }
 
