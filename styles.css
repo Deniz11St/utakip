@@ -437,7 +437,8 @@ button {
     scroll-snap-type: x mandatory;
     scrollbar-width: none;
     -ms-overflow-style: none;
-    margin: 40px 0 30px 0;
+    margin: 0;
+    padding: 40px 0 40px 0;
     touch-action: pan-x;
 }
 
@@ -453,65 +454,87 @@ button {
     padding: 0 10px;
 }
 
-.scale {
+.ruler-numbers-top {
     display: flex;
     flex-direction: row;
     justify-content: space-between;
+    align-items: flex-end;
     width: 100%;
     height: 30px;
-}
-
-.scale.top-scale {
-    align-items: flex-end;
     padding-bottom: 8px;
 }
 
-.scale.bottom-scale {
-    align-items: flex-start;
-    padding-top: 8px;
-}
-
-.tick {
+.tick-number-pos {
     width: 2px;
-    background: var(--text-secondary);
-    height: 10px;
     position: relative;
+    display: flex;
+    justify-content: center;
 }
 
-.tick.major {
-    height: 20px;
-    background: var(--text-primary);
-}
-
-.tick.bottom.major::after {
-    content: attr(data-val);
+.ruler-floating-number {
     position: absolute;
-    bottom: -24px;
-    left: 50%;
-    transform: translateX(-50%);
+    bottom: 0;
     font-size: 11px;
-    color: var(--text-primary);
+    font-weight: 700;
+    color: #e6edf3;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+}
+
+.ruler-target-flag {
+    position: absolute;
+    bottom: 20px;
+    font-size: 20px;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
 }
 
 .ruler-bar-track {
     width: 100%;
-    height: 20px;
-    background: rgba(0, 0, 0, 0.5);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 10px;
+    height: 36px;
+    background: rgba(22, 27, 34, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 18px;
     position: relative;
     overflow: hidden;
-    box-shadow: inset 0 0 5px rgba(0,0,0,0.8);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5), 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.ruler-dots {
+    position: absolute;
+    width: 100%;
+    height: 100%;
     display: flex;
+    justify-content: space-between;
     align-items: center;
+    z-index: 1;
+}
+
+.ruler-dot {
+    width: 3px;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 50%;
+}
+
+.ruler-dot.major {
+    width: 5px;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 0 6px rgba(255, 255, 255, 0.6);
 }
 
 .ruler-bar-fill {
     height: 100%;
-    background: var(--mercury-color);
-    box-shadow: 0 0 10px rgba(255, 35, 35, 0.5);
-    border-radius: 10px;
+    background: linear-gradient(90deg, rgba(255, 75, 75, 0.3) 0%, rgba(255, 35, 35, 0.6) 100%);
+    box-shadow: 0 0 15px rgba(255, 35, 35, 0.4);
+    border-radius: 18px;
     transition: width 1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    position: absolute;
+    left: 0;
+    top: 0;
+    z-index: 2;
+    pointer-events: none;
 }
 
 .ruler-footer {

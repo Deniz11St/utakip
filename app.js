@@ -324,10 +324,19 @@ document.addEventListener('DOMContentLoaded', () => {
             const isCm = (i % 10 === 0);
             
             const tTick = document.createElement('div');
-            tTick.className = `tick top ${isMajor ? 'major' : ''}`;
+            tTick.className = `tick-number-pos ${isMajor ? 'major' : ''}`;
             
             if (isCm) {
                 tTick.style.scrollSnapAlign = 'center';
+            }
+            
+            if (isMajor) {
+                let val = startCm + (i / 10);
+                let displayVal = val % 1 === 0 ? val : val.toFixed(1);
+                const numberEl = document.createElement('div');
+                numberEl.className = 'ruler-floating-number';
+                numberEl.textContent = displayVal;
+                tTick.appendChild(numberEl);
             }
             
             // Final bayrağı etiketi: targetCm tam o i konumundaysa
@@ -335,25 +344,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (i === targetMm) {
                 const flag = document.createElement('div');
                 flag.textContent = '🏁';
-                flag.style.position = 'absolute';
-                flag.style.top = '-32px';
-                flag.style.left = '50%';
-                flag.style.transform = 'translateX(-50%)';
-                flag.style.fontSize = '20px';
+                flag.className = 'ruler-target-flag';
                 tTick.appendChild(flag);
             }
             
             topScale.appendChild(tTick);
             
             const bTick = document.createElement('div');
-            bTick.className = `tick bottom ${isMajor ? 'major' : ''}`;
-            
-            if (isMajor) {
-                let val = startCm + (i / 10);
-                let displayVal = val % 1 === 0 ? val : val.toFixed(1);
-                bTick.setAttribute('data-val', displayVal);
-            }
-            
+            bTick.className = `ruler-dot ${isMajor ? 'major' : ''}`;
             bottomScale.appendChild(bTick);
         }
         
