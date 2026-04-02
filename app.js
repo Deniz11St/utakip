@@ -337,6 +337,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 numberEl.className = 'ruler-floating-number';
                 numberEl.textContent = displayVal;
                 tTick.appendChild(numberEl);
+                
+                // Tıklanabilir alan ekleyelim
+                tTick.style.cursor = 'pointer';
+                const cmVal = startCm + (i / 10);
+                tTick.onclick = () => { if (window.showPointEstimate) window.showPointEstimate(cmVal); };
             }
             
             // Final bayrağı etiketi: targetCm tam o i konumundaysa
@@ -352,6 +357,13 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const bTick = document.createElement('div');
             bTick.className = `ruler-dot ${isMajor ? 'major' : ''}`;
+            
+            if (isMajor) {
+                bTick.style.cursor = 'pointer';
+                const cmVal = startCm + (i / 10);
+                bTick.onclick = () => { if (window.showPointEstimate) window.showPointEstimate(cmVal); };
+            }
+            
             bottomScale.appendChild(bTick);
         }
         
@@ -410,39 +422,65 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Cetveli tek bir upuzun bant olarak render ediyoruz
         const totalMm = renderRulerScale(startCm, targetCm);
-        
-        const stageName = stage === 1 ? 'İlk Hedef' : `${stage}. Hedef`;
-        document.getElementById('stageDisplay').textContent = stageName;
 
         // Tarih Tahminleri Hesaplama
         const estMidEl = document.getElementById('estMid');
         const estEndEl = document.getElementById('estEnd');
         
-        if (dataManager.data.startDate && dataManager.data.targetMonthlyGrowth > 0) {
+        // Global bir timer referansı tutarak çakışmaları önleyelim
+        if (!window.rulerTimer) window.rulerTimer = null;
+
+        const dateOpts = { day: '2-digit', month: 'long', year: 'numeric' };
+
+        // Bir sonraki iki hedefi hesaplayan fonksiyon (Kullanıcının isteği: 5mm'lik sıradaki iki hedef)
+        function updateDefaultEstimates() {
+            if (dataManager.data.startDate && dataManager.data.targetMonthlyGrowth > 0) {
+                const startDate = new Date(dataManager.data.startDate);
+                const rate = dataManager.data.targetMonthlyGrowth;
+                const currentSize = dataManager.data.currentSize || dataManager.data.startSize;
+                
+                // Sıradaki ilk 5mm'lik hedef (örn: 16.2 ise 16.5, 16.5 ise 17.0)
+                const next1Cm = (Math.floor(currentSize * 2) + 1) / 2;
+                const next2Cm = next1Cm + 0.5;
+                
+                const mmDiff1 = Math.round((next1Cm - dataManager.data.startSize) * 10);
+                const mmDiff2 = Math.round((next2Cm - dataManager.data.startSize) * 10);
+                
+                const date1 = new Date(startDate);
+                date1.setDate(date1.getDate() + (mmDiff1 / rate) * 30.4375);
+                
+                const date2 = new Date(startDate);
+                date2.setDate(date2.getDate() + (mmDiff2 / rate) * 30.4375);
+                
+                estMidEl.innerHTML = `🎯 Sıradaki Hedef (<b>${next1Cm.toFixed(1)} cm</b>): ${date1.toLocaleDateString('tr-TR', dateOpts)}`;
+                estEndEl.innerHTML = `🏆 Sonraki Hedef (<b>${next2Cm.toFixed(1)} cm</b>): ${date2.toLocaleDateString('tr-TR', dateOpts)}`;
+            } else {
+                estMidEl.textContent = 'Tahmini Orta Nokta: -';
+                estEndEl.textContent = 'Tahmini Hedef Bitişi: -';
+            }
+        }
+
+        // Tıklama yapıldığında geçici süreyle o noktanın bilgisini gösterir
+        window.showPointEstimate = (targetCmValue) => {
+            if (window.rulerTimer) clearTimeout(window.rulerTimer);
+            
             const startDate = new Date(dataManager.data.startDate);
             const rate = dataManager.data.targetMonthlyGrowth;
+            const mmDiff = Math.max(0, Math.round((targetCmValue - dataManager.data.startSize) * 10));
             
-            // Mevcut hedefin (stage) milimetre sınırları
-            const midTotalMm = (stage - 1) * 10 + 5;
-            const endTotalMm = stage * 10;
+            const targetDate = new Date(startDate);
+            targetDate.setDate(targetDate.getDate() + (mmDiff / rate) * 30.4375);
             
-            // Başlangıçtan itibaren kaç gün sürer? (1 ay ~ 30.44 gün)
-            const daysToMid = (midTotalMm / rate) * 30.4375;
-            const daysToEnd = (endTotalMm / rate) * 30.4375;
+            estMidEl.innerHTML = `🔍 <b>${targetCmValue.toFixed(1)} cm</b> Sorgusu: ${targetDate.toLocaleDateString('tr-TR', dateOpts)}`;
+            estEndEl.innerHTML = `<span style="opacity: 0.5;">(Tahmini varış süresidir)</span>`;
             
-            const midDate = new Date(startDate);
-            midDate.setDate(midDate.getDate() + daysToMid);
-            
-            const endDate = new Date(startDate);
-            endDate.setDate(endDate.getDate() + daysToEnd);
-            
-            const dateOpts = { day: '2-digit', month: 'long', year: 'numeric' };
-            estMidEl.textContent = `🎯 ${stageName} Orta Nokta (5 mm): ${midDate.toLocaleDateString('tr-TR', dateOpts)}`;
-            estEndEl.textContent = `🏆 ${stageName} Tamamlama (10 mm): ${endDate.toLocaleDateString('tr-TR', dateOpts)}`;
-        } else {
-            estMidEl.textContent = 'Tahmini Orta Nokta: -';
-            estEndEl.textContent = 'Tahmini Hedef Bitişi: -';
-        }
+            window.rulerTimer = setTimeout(() => {
+                updateDefaultEstimates();
+            }, 3500);
+        };
+
+        // İlk yüklemede varsayılan hedefleri göster
+        if (!window.rulerTimer) updateDefaultEstimates();
 
         // Kırmızı barı güncelle ve scroll ayarı yap
         let growth = dataManager.getTotalGrowth();
