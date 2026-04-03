@@ -371,16 +371,62 @@
             <section id="coach" class="view">
                 <header class="view-header">
                     <h2>Sanal Koç</h2>
+                    <p class="sub-header">AI destekli gelişim asistanınız.</p>
                 </header>
-                <div class="panel-switcher">
-                    <div class="panel-pane" id="paneCoach">
-                        <div class="panel-tab" onclick="switchPanel('coach')"><span>🤖 Koç</span></div>
-                        <div class="panel-content">
-                            <div id="coachChatHistory" class="coach-chat-history"></div>
-                            <div class="coach-input-row">
-                                <input type="text" id="coachQuery" placeholder="Sorunuzu yazın...">
-                                <button id="btnAskCoach" class="btn-primary">Sor</button>
-                            </div>
+                <div class="card coach-full-card">
+                    <div id="coachChatHistory" class="coach-chat-history"></div>
+                    <div class="coach-input-row">
+                        <input type="text" id="coachQuery" placeholder="Sorunuzu buraya yazın...">
+                        <button id="btnAskCoach" class="btn-primary btn-small">Sor</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Encyclopedia View -->
+            <section id="encyclopedia" class="view">
+                <header class="view-header">
+                    <h2>Uzatma Ansiklopedisi</h2>
+                    <p class="sub-header">Uzman teknikler ve gelişim rehberi.</p>
+                </header>
+                
+                <div class="encyclopedia-list">
+                    <div class="encyclopedia-item">
+                        <div class="encyclopedia-header" onclick="this.parentElement.querySelector('.encyclopedia-body').classList.toggle('open')">
+                            <h3><span class="material-symbols-outlined">menu_book</span> Başlangıç Rehberi</h3>
+                            <span class="material-symbols-outlined">expand_more</span>
+                        </div>
+                        <div class="encyclopedia-body">
+                            <p>Uzatma sürecinde en önemli kural kademeli hasardır. İlk 2 hafta boyunca düşük gerginlikte (Günde 2-4 saat) cihazın dokulara alışmasını sağlayın. Acele etmek doku hasarına yol açabilir.</p>
+                        </div>
+                    </div>
+
+                    <div class="encyclopedia-item">
+                        <div class="encyclopedia-header" onclick="this.parentElement.querySelector('.encyclopedia-body').classList.toggle('open')">
+                            <h3><span class="material-symbols-outlined">speed</span> Gerginlik Prensipleri</h3>
+                            <span class="material-symbols-outlined">expand_more</span>
+                        </div>
+                        <div class="encyclopedia-body">
+                            <p>Doğru gerginlik "çekme hissi" ile "acı" arasındaki o ince çizgidir. Asla şiddetli ağrı hissetmemelisiniz. İdeal gerginlikte deri gergin durmalı ancak morarma veya uyuşma olmamalıdır.</p>
+                        </div>
+                    </div>
+
+                    <div class="encyclopedia-item">
+                        <div class="encyclopedia-header" onclick="this.parentElement.querySelector('.encyclopedia-body').classList.toggle('open')">
+                            <h3><span class="material-symbols-outlined">restart_alt</span> Mola ve İyileşme</h3>
+                            <span class="material-symbols-outlined">expand_more</span>
+                        </div>
+                        <div class="encyclopedia-body">
+                            <p>Büyüme cihaz takılırken değil, dokular dinlenirken gerçekleşir. Her 2-3 saatlik seanstan sonra en az 30-45 dakika mola vererek kan akışının normale dönmesini bekleyin.</p>
+                        </div>
+                    </div>
+
+                    <div class="encyclopedia-item">
+                        <div class="encyclopedia-header" onclick="this.parentElement.querySelector('.encyclopedia-body').classList.toggle('open')">
+                            <h3><span class="material-symbols-outlined">monitoring</span> İlerleme Takibi</h3>
+                            <span class="material-symbols-outlined">expand_more</span>
+                        </div>
+                        <div class="encyclopedia-body">
+                            <p>Ölçümlerinizi her zaman aynı koşullarda yapın. Milimetrik değişimler yerine aylık ortalamalara odaklanın. Motivasyonunuzu kaybetmemek için UTakip grafiklerini düzenli inceleyin.</p>
                         </div>
                     </div>
                 </div>
@@ -396,8 +442,8 @@
             <button class="nav-btn" data-target="calendar">
                 <span class="material-symbols-outlined nav-icon">calendar_month</span>
             </button>
-            <button class="nav-btn" data-target="journal">
-                <span class="material-symbols-outlined nav-icon">menu_book</span>
+            <button class="nav-btn" data-target="encyclopedia">
+                <span class="material-symbols-outlined nav-icon">library_books</span>
             </button>
             <button class="nav-btn" data-target="coach">
                 <span class="material-symbols-outlined nav-icon">smart_toy</span>
@@ -408,6 +454,6 @@
         </nav>
     </div>
     
-    <script src="app.js?v=15"></script>
+    <script src="app.js?v=16"></script>
 </body>
 </html>

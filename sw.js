@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v14-v1.6.0'; // Modern Tasarım Revizyonu v1.6.0 için güncellendi
+const CACHE_NAME = 'utakip-v16-v1.6.1'; // Bağımsız Ansiklopedi Sekmesi (v1.6.1) için güncellendi
 const ASSETS = [
     './',
     './index.html',

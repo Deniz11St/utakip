@@ -1,24 +1,3 @@
-// Panel Switcher — Koç & Ansiklopedi (mutual exclusive tam ekran)
-function switchPanel(target) {
-    const coachPane = document.getElementById('paneCoach');
-    const encPane   = document.getElementById('paneEncyclopedia');
-    if (!coachPane || !encPane) return;
-
-    const coachHint = coachPane.querySelector('.panel-tab-hint');
-    const encHint   = encPane.querySelector('.panel-tab-hint');
-
-    if (target === 'encyclopedia') {
-        coachPane.classList.add('collapsed');
-        encPane.classList.remove('collapsed');
-        if (coachHint) coachHint.textContent = 'Aç ▼';
-        if (encHint)   encHint.textContent   = 'Aktif';
-    } else {
-        encPane.classList.add('collapsed');
-        coachPane.classList.remove('collapsed');
-        if (coachHint) coachHint.textContent = 'Aktif';
-    }
-}
-
 // Başarı bildirimi (Achievement Pop-up)
 function showSuccessAchievement(title, message, icon = '🏆') {
     const el = document.createElement('div');
