@@ -257,6 +257,109 @@ input:focus {
     background: rgba(165, 214, 255, 0.2);
 }
 
+/* Dual Stepper Component */
+.dual-stepper-container {
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    padding: 6px;
+    width: 100%;
+    max-width: 320px;
+}
+
+.dual-stepper-inner {
+    flex: 1;
+    display: flex;
+    align-items: center;
+}
+
+.dual-box {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 4px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    user-select: none;
+}
+
+.dual-box.active {
+    background: rgba(47, 129, 247, 0.15);
+    box-shadow: inset 0 0 0 1px rgba(47, 129, 247, 0.3);
+}
+
+.dual-box input {
+    width: 100% !important;
+    background: none !important;
+    border: none !important;
+    text-align: center !important;
+    font-size: 20px !important;
+    font-weight: 700 !important;
+    padding: 0 !important;
+    color: #fff !important;
+    pointer-events: none; /* Kutu genelinden tıklama alınacak */
+}
+
+.dual-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    opacity: 0.5;
+    margin-bottom: 2px;
+}
+
+.dual-divider {
+    padding: 0 10px;
+    font-weight: bold;
+    opacity: 0.3;
+}
+
+.dual-controls {
+    display: flex;
+    gap: 6px;
+    padding-left: 10px;
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    margin-left: 4px;
+}
+
+.btn-dual-stepper {
+    width: 44px;
+    height: 44px;
+    background: rgba(165, 214, 255, 0.1);
+    border: 1px solid rgba(165, 214, 255, 0.1);
+    border-radius: 12px;
+    color: #a5d6ff;
+    font-size: 20px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    user-select: none;
+}
+
+.btn-dual-stepper:active {
+    transform: scale(0.9);
+    background: rgba(165, 214, 255, 0.25);
+    color: #fff;
+}
+
+.dual-stepper-container.single .dual-box {
+    cursor: default;
+}
+
+.dual-stepper-container.single .dual-box.active {
+    background: none;
+    box-shadow: none;
+}
+
+
 .hint {
     font-size: 12px;
     color: var(--text-secondary);
@@ -343,19 +446,27 @@ button {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
+    justify-content: center;
     flex: 1;
     height: 100%;
-    justify-content: center;
-    transition: color 0.2s;
+    transition: all 0.2s;
+}
+
+.nav-icon {
+    font-size: 24px;
+    transition: transform 0.2s;
+    filter: grayscale(0.5);
+    opacity: 0.7;
+}
+
+.nav-btn.active .nav-icon {
+    transform: scale(1.1);
+    filter: grayscale(0);
+    opacity: 1;
 }
 
 .nav-btn * {
-    pointer-events: none; /* Mobilde svg tıklamalarını engellemek için */
-}
-
-.bottom-nav button span {
-    font-size: 10px;
+    pointer-events: none;
 }
 
 /* =============================================

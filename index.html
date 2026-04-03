@@ -258,36 +258,38 @@
                         
                         <div class="input-group">
                             <label>Seans Yapısı (Sayı x Süre)</label>
-                            <div style="display: flex; gap: 15px; align-items: center;">
-                                <div class="modern-stepper-container">
-                                    <input type="number" id="timerCount" min="1" max="10" value="3" class="modern-stepper-input">
-                                    <div class="modern-stepper-controls">
-                                        <button class="btn-stepper" data-input="timerCount" data-delta="-1">−</button>
-                                        <button class="btn-stepper" data-input="timerCount" data-delta="1">+</button>
+                            <div class="dual-stepper-container" id="timerDualStepper">
+                                <div class="dual-stepper-inner">
+                                    <div class="dual-box active" data-target="timerCount">
+                                        <span class="dual-label">Sayı</span>
+                                        <input type="number" id="timerCount" value="3" readonly>
                                     </div>
-                                    <span style="padding-right: 8px; font-size: 12px; opacity: 0.5;">Seans</span>
+                                    <div class="dual-divider">x</div>
+                                    <div class="dual-box" data-target="timerDuration">
+                                        <span class="dual-label">Süre</span>
+                                        <input type="number" id="timerDuration" value="120" readonly>
+                                    </div>
                                 </div>
-                                <span style="font-weight: bold; opacity: 0.5;">x</span>
-                                <div class="modern-stepper-container">
-                                    <input type="number" id="timerDuration" min="1" value="120" class="modern-stepper-input">
-                                    <div class="modern-stepper-controls">
-                                        <button class="btn-stepper" data-input="timerDuration" data-delta="-10">−</button>
-                                        <button class="btn-stepper" data-input="timerDuration" data-delta="10">+</button>
-                                    </div>
-                                    <span style="padding-right: 8px; font-size: 12px; opacity: 0.5;">Dk</span>
+                                <div class="dual-controls">
+                                    <button class="btn-dual-stepper" data-delta="-1">−</button>
+                                    <button class="btn-dual-stepper" data-delta="1">+</button>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="input-group" style="margin-top: 15px;">
+                        <div class="input-group" style="margin-top: 20px;">
                             <label for="timerBreak">Mola Süresi (Dakika)</label>
-                            <div class="modern-stepper-container">
-                                <input type="number" id="timerBreak" min="0" value="30" class="modern-stepper-input">
-                                <div class="modern-stepper-controls">
-                                    <button class="btn-stepper" data-input="timerBreak" data-delta="-5">−</button>
-                                    <button class="btn-stepper" data-input="timerBreak" data-delta="5">+</button>
+                            <div class="dual-stepper-container single">
+                                <div class="dual-stepper-inner">
+                                    <div class="dual-box active" data-target="timerBreak" style="flex-direction: row; gap: 10px; justify-content: center;">
+                                        <input type="number" id="timerBreak" value="30" style="width: 50px;" readonly>
+                                        <span style="font-size: 12px; opacity: 0.5;">Dakika</span>
+                                    </div>
                                 </div>
-                                <span style="padding-right: 12px; font-size: 12px; opacity: 0.5;">Dakika</span>
+                                <div class="dual-controls">
+                                    <button class="btn-dual-stepper" data-delta="-5">−</button>
+                                    <button class="btn-dual-stepper" data-delta="5">+</button>
+                                </div>
                             </div>
                         </div>
 
@@ -324,7 +326,7 @@
                     <div class="card" style="background: rgba(255, 133, 133, 0.03); border: 1px dashed rgba(255, 255, 255, 0.1); margin-top: 20px; border-radius: 12px; padding: 15px;">
                         <h4 style="color: var(--text-secondary); font-size: 13px; margin-bottom: 12px;">💾 Veri Yönetimi</h4>
                         <button id="btnUpdateApp" class="btn-secondary" style="width: 100%; padding: 10px; margin-bottom: 5px;">🚀 Güncellemeyi Denetle</button>
-                        <div style="font-size: 10px; color: #666; text-align: center;">Mevcut Sürüm: v1.4.8</div>
+                        <div style="font-size: 10px; color: #666; text-align: center;">Mevcut Sürüm: v1.5.0</div>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
                             <button id="btnExportData" class="btn-secondary" style="font-size: 11px;">📤 Dışa Aktar</button>
                             <button id="btnImportData" class="btn-secondary" style="font-size: 11px;">📥 İçe Aktar</button>
@@ -387,14 +389,24 @@
 
         <!-- Navigation -->
         <nav class="bottom-nav">
-            <button class="nav-btn active" data-target="home">Anasayfa</button>
-            <button class="nav-btn" data-target="calendar">Takvim</button>
-            <button class="nav-btn" data-target="journal">Günlük</button>
-            <button class="nav-btn" data-target="coach">Koç</button>
-            <button class="nav-btn" data-target="settings">Ayarlar</button>
+            <button class="nav-btn active" data-target="home">
+                <span class="nav-icon">🏠</span>
+            </button>
+            <button class="nav-btn" data-target="calendar">
+                <span class="nav-icon">📅</span>
+            </button>
+            <button class="nav-btn" data-target="journal">
+                <span class="nav-icon">📓</span>
+            </button>
+            <button class="nav-btn" data-target="coach">
+                <span class="nav-icon">🤖</span>
+            </button>
+            <button class="nav-btn" data-target="settings">
+                <span class="nav-icon">⚙️</span>
+            </button>
         </nav>
     </div>
     
-    <script src="app.js?v=13"></script>
+    <script src="app.js?v=14"></script>
 </body>
 </html>

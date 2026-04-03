@@ -1682,6 +1682,52 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         });
     });
 
+    // --- DUAL STEPPER LOGIC (New Design) ---
+    // Handle box selection (Count vs Duration)
+    document.querySelectorAll('.dual-box').forEach(box => {
+        box.addEventListener('click', () => {
+            const container = box.closest('.dual-stepper-container');
+            if (container.classList.contains('single')) return; // Mola gibi tekli alanlarda seçime gerek yok zaten aktif
+
+            container.querySelectorAll('.dual-box').forEach(b => b.classList.remove('active'));
+            box.classList.add('active');
+        });
+    });
+
+    // Handle shared controls
+    document.querySelectorAll('.btn-dual-stepper').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const container = btn.closest('.dual-stepper-container');
+            const activeBox = container.querySelector('.dual-box.active');
+            if (!activeBox) return;
+
+            const inputId = activeBox.getAttribute('data-target');
+            let delta = parseFloat(btn.getAttribute('data-delta'));
+            const input = document.getElementById(inputId);
+            if (!input) return;
+
+            // Timer duration için 10'ar dakikalık adımlar (eğer buton 1 birimlikse)
+            if (inputId === 'timerDuration' && Math.abs(delta) === 1) {
+                delta *= 10;
+            }
+
+            let val = parseFloat(input.value) || 0;
+            val += delta;
+
+            // Constraints
+            if (val < 1 && inputId !== 'timerBreak') val = 1;
+            if (val < 0) val = 0;
+            if (inputId === 'timerCount' && val > 10) val = 10;
+            
+            input.value = val;
+
+            // Trigger events
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+    });
+
     // Universal Auto-clear "0" on focus for all number inputs
     document.addEventListener('focusin', (e) => {
         if (e.target.tagName === 'INPUT' && e.target.type === 'number') {
