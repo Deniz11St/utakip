@@ -48,12 +48,12 @@
                     </p>
                 </header>
 
-                <!-- Koç -->
-                <div class="card coach-card highlight-card" style="background: rgba(165, 214, 255, 0.03); border: 1px solid rgba(165, 214, 255, 0.15); margin-bottom: 25px;">
-                    <h3 style="display: flex; align-items: center; gap: 8px; color: #a5d6ff; margin-bottom: 0;">
-                        <span style="font-size: 1.2rem;">🤖</span> UTakip Sanal Koç Üstadı
+                <!-- Koç Özet -->
+                <div class="card coach-summary-card">
+                    <h3>
+                        <span class="material-symbols-outlined">smart_toy</span> UTakip Sanal Koç
                     </h3>
-                    <p id="coachMessage" style="font-size: 14px; line-height: 1.5; color: var(--text-secondary); margin-top: 10px; font-style: italic;">
+                    <p id="coachMessage">
                         Sizi tanımam için lütfen Ayarlar sayfasından temel bilgilerinizi doldurun.
                     </p>
                 </div>
@@ -99,22 +99,22 @@
                 </div>
 
                 <!-- Zamanlayıcı -->
-                <div class="card timer-card" id="timerCard" style="background: linear-gradient(135deg, rgba(165, 214, 255, 0.1) 0%, rgba(13, 17, 23, 0.4) 100%); border: 1px solid rgba(165, 214, 255, 0.2); text-align: center; padding: 25px 20px; margin-bottom: 25px;">
-                    <div id="timerSessionInfo" style="font-size: 12px; color: #a5d6ff; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;">⏱️ Aktif Seans Sayacı</div>
-                    <div id="timerDisplay" style="font-size: 48px; font-weight: 700; font-family: 'Courier New', Courier, monospace; color: #fff; text-shadow: 0 0 20px rgba(165, 214, 255, 0.3); margin-bottom: 10px;">00:00:00</div>
-                    <div id="timerModeBadge" style="display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 20px; background: rgba(165, 214, 255, 0.1); color: #a5d6ff;">Hazır</div>
-                    <div style="display: flex; gap: 10px; width: 100%;">
-                        <button id="btnStartSession" class="btn-primary" style="flex: 1; font-weight: 700; letter-spacing: 0.5px; padding: 12px 10px; font-size: 13px;">▶ Seans Başlat</button>
-                        <button id="btnStartBreak" class="btn-secondary" style="flex: 1; font-weight: 700; letter-spacing: 0.5px; border: 1px solid rgba(255,255,255,0.1); padding: 12px 10px; font-size: 13px;">☕ Mola Başlat</button>
+                <div class="card timer-card active-timer" id="timerCard">
+                    <div id="timerSessionInfo" class="timer-info">⏱️ AKTİF SEANS SAYACI</div>
+                    <div id="timerDisplay" class="timer-display">00:00:00</div>
+                    <div id="timerModeBadge" class="timer-badge">Hazır</div>
+                    <div class="timer-controls">
+                        <button id="btnStartSession" class="btn-primary">▶ Seans Başlat</button>
+                        <button id="btnStartBreak" class="btn-secondary">☕ Mola Başlat</button>
                     </div>
                 </div>
 
                 <!-- Süre Ekle -->
                 <div class="card time-entry-card">
                     <h3>Süre Ekle</h3>
-                    <div class="input-group-row" style="display: flex; gap: 15px;">
-                        <div class="input-group" style="flex: 1;">
-                            <label style="display: block; margin-bottom: 8px; font-size: 13px; opacity: 0.8;">Saat</label>
+                    <div class="input-group-row">
+                        <div class="input-group">
+                            <label>Saat</label>
                             <div class="modern-stepper-container">
                                 <input type="number" id="inputHours" min="0" value="0" class="modern-stepper-input">
                                 <div class="modern-stepper-controls">
@@ -123,8 +123,8 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="input-group" style="flex: 1;">
-                            <label style="display: block; margin-bottom: 8px; font-size: 13px; opacity: 0.8;">Dakika</label>
+                        <div class="input-group">
+                            <label>Dakika</label>
                             <div class="modern-stepper-container">
                                 <input type="number" id="inputMinutes" min="0" max="59" value="0" class="modern-stepper-input">
                                 <div class="modern-stepper-controls">
@@ -134,9 +134,9 @@
                             </div>
                         </div>
                     </div>
-                    <div class="input-group" style="margin-top: 15px; margin-bottom: 20px;">
+                    <div class="input-group">
                         <label for="inputDifficulty">Gerginlik Hissi (Zorluk Derecesi)</label>
-                        <select id="inputDifficulty" style="width: 100%; padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.3); color: white; border: 1px solid var(--card-border); font-size: 14px;">
+                        <select id="inputDifficulty">
                             <option value="rahat">🟢 Çok Rahat (Hafif bir esneme hissi)</option>
                             <option value="normal" selected>🟡 Normal (İdeal çekme hissi)</option>
                             <option value="zor">🔴 Zorlayıcı (Gergin, sınırda hissettiren)</option>
@@ -150,14 +150,14 @@
                 </div>
 
                 <!-- Grafikler -->
-                <div class="card chart-card" style="padding: 15px; background: rgba(0,0,0,0.2); position: relative; height: 300px; margin-top: 25px;">
-                    <h3 style="margin-top: 0; color: #a5d6ff; font-size: 15px;">🔍 Gelişim Grafiği İvmesi</h3>
-                    <div style="height: 230px; position: relative;">
+                <div class="card chart-card">
+                    <h3><span class="material-symbols-outlined">trending_up</span> Gelişim Grafiği İvmesi</h3>
+                    <div class="chart-container">
                         <canvas id="growthChart"></canvas>
                     </div>
                 </div>
-                <div class="card stat-summary-card" style="margin-top: 15px;">
-                    <p id="chartSummaryText" style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;"></p>
+                <div class="card stat-summary-card">
+                    <p id="chartSummaryText"></p>
                 </div>
 
             </section>
@@ -252,10 +252,8 @@
                         </div>
                     </div>
 
-                    <div class="card" style="background: rgba(165, 214, 255, 0.05); border: 1px solid rgba(165, 214, 255, 0.15); margin-bottom: 20px; padding: 15px; border-radius: 12px;">
-                        <h3 style="color: #a5d6ff; font-size: 15px; margin-top: 0; margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
-                            <span>⏱️</span> Gelişmiş Zamanlayıcı ve Bildirimler
-                        </h3>
+                    <div class="card settings-section">
+                        <h3><span class="material-symbols-outlined">notifications_active</span> Zamanlayıcı & Bildirimler</h3>
                         
                         <div class="input-group">
                             <label>Seans Yapısı (Sayı x Süre)</label>
@@ -278,13 +276,13 @@
                             </div>
                         </div>
 
-                        <div class="input-group" style="margin-top: 20px;">
+                        <div class="input-group">
                             <label for="timerBreak">Mola Süresi (Dakika)</label>
                             <div class="dual-stepper-container single">
                                 <div class="dual-stepper-inner">
                                     <div class="dual-box active" data-target="timerBreak" style="flex-direction: row; gap: 10px; justify-content: center;">
                                         <input type="number" id="timerBreak" value="30" style="width: 50px;" readonly>
-                                        <span style="font-size: 12px; opacity: 0.5;">Dakika</span>
+                                        <span class="hint" style="margin-top: 0;">Dakika</span>
                                     </div>
                                 </div>
                                 <div class="dual-controls">
@@ -294,20 +292,20 @@
                             </div>
                         </div>
 
-                        <div style="margin-top: 20px; display: flex; flex-direction: column; gap: 12px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <span style="font-size: 13px; color: var(--text-secondary);">Bildirim İzni</span>
-                                <button id="btnRequestNotif" class="btn-secondary" style="padding: 5px 12px; font-size: 11px;">İzin İste</button>
+                        <div class="settings-toggle-list">
+                            <div class="toggle-item">
+                                <span>Bildirim İzni</span>
+                                <button id="btnRequestNotif" class="btn-secondary btn-small">İzin İste</button>
                             </div>
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <span style="font-size: 13px; color: var(--text-secondary);">Sesli Uyarı</span>
+                            <div class="toggle-item">
+                                <span>Sesli Uyarı</span>
                                 <label class="switch">
                                     <input type="checkbox" id="notifSound" checked>
                                     <span class="slider round"></span>
                                 </label>
                             </div>
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <span style="font-size: 13px; color: var(--text-secondary);">Titreşim</span>
+                            <div class="toggle-item">
+                                <span>Titreşim</span>
                                 <label class="switch">
                                     <input type="checkbox" id="notifVibrate" checked>
                                     <span class="slider round"></span>
@@ -316,24 +314,26 @@
                         </div>
                     </div>
 
-                    <div class="card" style="background: rgba(165, 214, 255, 0.05); border: 1px dashed rgba(165, 214, 255, 0.3); margin-bottom: 20px;">
-                        <h3 style="color: #a5d6ff; font-size: 15px; margin-bottom: 10px;">🤖 Sanal Koç Zekası (Gemini AI)</h3>
+                    <div class="card settings-section gemini-card">
+                        <h3><span class="material-symbols-outlined">psychology</span> Sanal Koç Zekası (AI)</h3>
                         <div class="input-group">
-                            <label for="geminiApiKey">Gemini API Key</label>
-                            <input type="password" id="geminiApiKey" placeholder="AI Studio'dan aldığınız anahtar">
+                            <label for="geminiApiKey">Gemini API Anahtarı</label>
+                            <input type="password" id="geminiApiKey" placeholder="AI Studio anahtarınızı girin">
                         </div>
                     </div>
 
-                    <div class="card" style="background: rgba(255, 133, 133, 0.03); border: 1px dashed rgba(255, 255, 255, 0.1); margin-top: 20px; border-radius: 12px; padding: 15px;">
-                        <h4 style="color: var(--text-secondary); font-size: 13px; margin-bottom: 12px;">💾 Veri Yönetimi</h4>
-                        <button id="btnUpdateApp" class="btn-secondary" style="width: 100%; padding: 10px; margin-bottom: 5px;">🚀 Güncellemeyi Denetle</button>
-                        <div style="font-size: 10px; color: #666; text-align: center;">Mevcut Sürüm: v1.5.1</div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
-                            <button id="btnExportData" class="btn-secondary" style="font-size: 11px;">📤 Dışa Aktar</button>
-                            <button id="btnImportData" class="btn-secondary" style="font-size: 11px;">📥 İçe Aktar</button>
-                            <input type="file" id="importFile" style="display: none;" accept=".json">
+                    <div class="card settings-section">
+                        <h3><span class="material-symbols-outlined">database</span> Veri Yönetimi</h3>
+                        <div class="data-actions-grid">
+                            <button id="btnUpdateApp" class="btn-secondary">🚀 Güncellemeyi Denetle</button>
+                            <div class="version-text">Mevcut Sürüm: v1.6.0</div>
+                            <div class="import-export-row">
+                                <button id="btnExportData" class="btn-secondary">📤 Dışa Aktar</button>
+                                <button id="btnImportData" class="btn-secondary">📥 İçe Aktar</button>
+                                <input type="file" id="importFile" style="display: none;" accept=".json">
+                            </div>
+                            <button id="btnClearData" class="btn-danger">⚠️ Tüm Verileri Sıfırla</button>
                         </div>
-                        <button id="btnClearData" class="btn-danger" style="width: 100%; font-size: 10px; padding: 8px; margin-top: 10px; opacity: 0.5;">⚠️ Verileri Sıfırla</button>
                     </div>
 
                     <button id="btnSaveBaseSettings" class="btn-primary" style="margin-top: 20px; width: 100%;">Ayarları Kaydet</button>
