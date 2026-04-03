@@ -50,9 +50,14 @@
 
                 <!-- Koç Özet -->
                 <div class="card coach-summary-card">
-                    <h3>
-                        <span class="material-symbols-outlined">smart_toy</span> UTakip Sanal Koç
-                    </h3>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <h3 style="margin-bottom: 0;">
+                            <span class="material-symbols-outlined">smart_toy</span> UTakip Sanal Koç
+                        </h3>
+                        <button class="btn-secondary btn-small" id="btnHomeOpenJournal">
+                            <span class="material-symbols-outlined" style="font-size: 16px;">edit_note</span> Günlük
+                        </button>
+                    </div>
                     <p id="coachMessage">
                         Sizi tanımam için lütfen Ayarlar sayfasından temel bilgilerinizi doldurun.
                     </p>
@@ -166,16 +171,64 @@
             <section id="calendar" class="view">
                 <header class="view-header">
                     <h2>Gelişim Takvimi</h2>
+                    <p class="sub-header">Geçmiş seanslarınızın detaylı dökümü.</p>
                 </header>
                 <div id="calendarAccordionContainer"></div>
             </section>
 
-            <!-- Journal View -->
+            <!-- Journal View (Independent Page) -->
             <section id="journal" class="view">
-                <header class="view-header">
-                    <h2>Günlük</h2>
+                <header class="view-header" style="display: flex; align-items: center; gap: 15px;">
+                    <button class="nav-btn btn-back" id="btnJournalBack" style="flex: none; width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.05);">
+                        <span class="material-symbols-outlined">arrow_back</span>
+                    </button>
+                    <div style="flex: 1;">
+                        <h2 style="font-size: 20px;">Günlük Notu</h2>
+                        <p id="journalTodayDate" class="sub-header">04 Nisan Cumartesi</p>
+                    </div>
                 </header>
-                <div id="journalContainer" style="display: flex; flex-direction: column; gap: 15px;"></div>
+
+                <div class="card journal-input-card">
+                    <div class="journal-quick-grid">
+                        <div class="journal-check-item">
+                            <span class="material-symbols-outlined">mode_fan</span>
+                            <label>Pompa?</label>
+                            <input type="checkbox" id="jPump">
+                        </div>
+                        <div class="journal-check-item">
+                            <span class="material-symbols-outlined">favorite_border</span>
+                            <label>Mast?</label>
+                            <input type="checkbox" id="jMast">
+                        </div>
+                    </div>
+
+                    <div class="input-group" style="margin-top: 15px;">
+                        <label>Acı / Hassasiyet Seviyesi</label>
+                        <div class="pain-selector">
+                            <button class="btn-pain" data-val="0">Yok</button>
+                            <button class="btn-pain" data-val="1">Hafif</button>
+                            <button class="btn-pain" data-val="2">Orta</button>
+                            <button class="btn-pain" data-val="3">Sert</button>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="jScrew">Vida Ayarı (Ekstra Mesafe)</label>
+                        <input type="text" id="jScrew" placeholder="Örn: +1 mm">
+                    </div>
+
+                    <div class="input-group">
+                        <label for="jNote">Bugünkü Hislerin & Notların</label>
+                        <textarea id="jNote" placeholder="Cihaz kullanımı, deri durumu vb..."></textarea>
+                    </div>
+
+                    <button id="btnSaveJournal" class="btn-primary">Bugünü Kaydet</button>
+                </div>
+
+                <h3 style="margin: 25px 0 15px 0; font-size: 16px; opacity: 0.8; display: flex; align-items: center; gap: 8px;">
+                    <span class="material-symbols-outlined">history</span> Geçmiş Günlükler
+                </h3>
+                <div id="journalContainer" style="display: flex; flex-direction: column; gap: 15px; margin-bottom: 50px;"></div>
             </section>
 
             <!-- Settings View -->
@@ -454,6 +507,6 @@
         </nav>
     </div>
     
-    <script src="app.js?v=16"></script>
+    <script src="app.js?v=17"></script>
 </body>
 </html>

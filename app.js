@@ -160,11 +160,26 @@ class TrackerData {
         }
         this.data.sessions[dateStr].push({ mins: parseInt(minutes), diff: diff });
         if (note) {
-            if (!this.data.notes[dateStr]) this.data.notes[dateStr] = [];
-            this.data.notes[dateStr].push(note);
+            this.addJournalNote(dateStr, { note: note });
         }
         this.save();
         return true;
+    }
+
+    addJournalNote(dateStr, noteObj) {
+        if (!this.data.notes) this.data.notes = {};
+        if (!this.data.notes[dateStr]) this.data.notes[dateStr] = [];
+        
+        // Eğer noteObj bir string ise objeye çevir
+        const structuredNote = typeof noteObj === 'string' ? { note: noteObj } : noteObj;
+        
+        // Aynı günün verisi varsa üzerine yazmak yerine listeye ekle (veya günün tek bir ana günlüğü varsa güncelle)
+        // Kullanıcı deneyimi için günlük notları listeleniyor.
+        this.data.notes[dateStr].push({
+            timestamp: Date.now(),
+            ...structuredNote
+        });
+        this.save();
     }
     
     // Getters
@@ -268,19 +283,35 @@ document.addEventListener('DOMContentLoaded', () => {
     navBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             const target = btn.getAttribute('data-target');
-            
-            navBtns.forEach(b => b.classList.remove('active'));
-            views.forEach(v => v.classList.remove('active'));
-
-            btn.classList.add('active');
-            document.getElementById(target).classList.add('active');
-            
-            // Refresh data when switching to specific tabs
-            if(target === 'home') updateHomeView();
-            if(target === 'calendar') updateCalendarView();
-            if(target === 'journal') updateJournalView();
-            if(target === 'coach') updateCoachSectionView();
+            switchView(target);
         });
+    });
+
+    function switchView(target) {
+        navBtns.forEach(b => b.classList.remove('active'));
+        views.forEach(v => v.classList.remove('active'));
+
+        const targetBtn = document.querySelector(`.nav-btn[data-target="${target}"]`);
+        if (targetBtn) targetBtn.classList.add('active');
+        
+        const targetView = document.getElementById(target);
+        if (targetView) targetView.classList.add('active');
+        
+        // Refresh data when switching
+        if(target === 'home') updateHomeView();
+        if(target === 'calendar') updateCalendarView();
+        if(target === 'journal') updateJournalView();
+        if(target === 'coach') updateCoachSectionView();
+    }
+
+    // Home Page Journal Button
+    document.getElementById('btnHomeOpenJournal')?.addEventListener('click', () => {
+        switchView('journal');
+    });
+
+    // Journal Back Button
+    document.getElementById('btnJournalBack')?.addEventListener('click', () => {
+        switchView('home');
     });
 
     // --- SETUP: UI Generics ---
@@ -524,6 +555,96 @@ document.addEventListener('DOMContentLoaded', () => {
         updateChartView();
     }
     
+    function updateJournalView() {
+        const today = new Date();
+        const dateStr = today.toISOString().split('T')[0];
+        const options = { weekday: 'long', day: 'numeric', month: 'long' };
+        document.getElementById('journalTodayDate').textContent = today.toLocaleDateString('tr-TR', options);
+
+        const container = document.getElementById('journalContainer');
+        container.innerHTML = '';
+
+        // Get last 7 days of notes
+        const allDates = Object.keys(dataManager.data.notes || {}).sort().reverse();
+        const lastDates = allDates.slice(0, 10);
+
+        if (lastDates.length === 0) {
+            container.innerHTML = '<p style="text-align:center; opacity:0.5; font-size:13px; margin:20px;">Henüz bir günlük kaydı bulunmuyor.</p>';
+        }
+
+        lastDates.forEach(d => {
+            const notes = dataManager.data.notes[d];
+            notes.forEach(n => {
+                const card = document.createElement('div');
+                card.className = 'card journal-entry-card';
+                
+                const noteObj = typeof n === 'string' ? { note: n } : n;
+                const dateObj = new Date(d);
+                
+                let tagsHtml = '';
+                if (noteObj.pump) tagsHtml += '<span class="j-tag">🌀 Pompa</span>';
+                if (noteObj.mast) tagsHtml += '<span class="j-tag">🔥 Mast</span>';
+                if (noteObj.pain > 0) {
+                    const levels = ["", "Hafif Hassasiyet", "Orta Derece Acı", "Şiddetli Acı"];
+                    tagsHtml += `<span class="j-tag" style="background:rgba(218,54,51,0.1); color:#ff6b6b;">⚡ ${levels[noteObj.pain]}</span>`;
+                }
+                if (noteObj.screw) tagsHtml += `<span class="j-tag">🔧 Vida: ${noteObj.screw}</span>`;
+
+                card.innerHTML = `
+                    <div class="header">
+                        <span>${dateObj.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}</span>
+                        <span style="opacity:0.5">${new Date(noteObj.timestamp || dateObj).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                    <p style="font-size:14px; line-height:1.5;">${noteObj.note || 'Not girilmemiş.'}</p>
+                    <div class="journal-tags">${tagsHtml}</div>
+                `;
+                container.appendChild(card);
+            });
+        });
+    }
+
+    // Pain Selector Logic
+    let selectedPainLevel = 0;
+    const painBtns = document.querySelectorAll('.btn-pain');
+    painBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            painBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            selectedPainLevel = parseInt(btn.getAttribute('data-val'));
+        });
+    });
+
+    document.getElementById('btnSaveJournal')?.addEventListener('click', () => {
+        const pump = document.getElementById('jPump').checked;
+        const mast = document.getElementById('jMast').checked;
+        const screw = document.getElementById('jScrew').value;
+        const note = document.getElementById('jNote').value;
+        
+        const today = new Date();
+        const offset = today.getTimezoneOffset() * 60000;
+        const dateStr = (new Date(today - offset)).toISOString().split('T')[0];
+
+        dataManager.addJournalNote(dateStr, {
+            pump, mast, screw, note,
+            pain: selectedPainLevel
+        });
+
+        showSuccessAchievement("Günlük Kaydedildi", "Bugünkü verilerin AI hafızasına eklendi.", "📝");
+        
+        // Reset
+        document.getElementById('jPump').checked = false;
+        document.getElementById('jMast').checked = false;
+        document.getElementById('jScrew').value = '';
+        document.getElementById('jNote').value = '';
+        painBtns.forEach(b => b.classList.remove('active'));
+        selectedPainLevel = 0;
+
+        updateJournalView();
+        updateHomeView();
+        
+        setTimeout(() => switchView('home'), 1000);
+    });
+
     function formatMinutes(totalMins) {
         if (!totalMins) return '0 dk';
         const h = Math.floor(totalMins / 60);
@@ -1211,16 +1332,33 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         let oneDay = 1000 * 60 * 60 * 24;
         let dayOfYear = Math.floor(diff / oneDay);
         
-        // Random yerine her gün Predictable Cycle
+        // Global Tip
         let tipIndex = dayOfYear % tips.length;
         let selectedTip = tips[tipIndex];
+
+        // --- Yapay Zeka Günlük Analizi (Context) ---
+        let journalContext = "";
+        const allNoteKeys = Object.keys(dataManager.data.notes || {}).sort().reverse();
+        if (allNoteKeys.length > 0) {
+            const lastNoteDate = allNoteKeys[0];
+            const lastNotes = dataManager.data.notes[lastNoteDate];
+            const lastNote = lastNotes[lastNotes.length - 1]; // En sonuncuyu al
+            
+            if (typeof lastNote === 'object') {
+                journalContext = `<br><br><strong>Koç Analizi:</strong> Son günlüğünde `;
+                if (lastNote.pain > 1) journalContext += `şiddetli acıdan bahsetmişsin, bugün vidayı biraz gevşetip dinlenmeye odaklanmalısın. `;
+                else if (lastNote.pump) journalContext += `pompa kullanımı sonrası dokuların canlandığını görüyorum, bu harika. `;
+                else if (lastNote.note) journalContext += `notlarını (<em>"${lastNote.note.substring(0, 30)}..."</em>) hafızama kaydettim. `;
+                journalContext += `Seninle gelişimini takip etmeye devam ediyorum.`;
+            }
+        }
 
         let header = `Merhaba <strong>${name}</strong>,<br>`;
         
         if (workedToday) {
-            return header + `Bugünkü hedefini başarıyla tamamlamışsın, harika gidiyorsun! Dinlenirken bugünün rehber tüyosuna (Uzmandan) mutlaka bir göz at:<br><br><span style="padding: 10px; display:inline-block; border:1px dashed #404040; background:rgba(0,0,0,0.1); border-radius: 8px;">${selectedTip}</span>`;
+            return header + `Bugünkü hedefini başarıyla tamamlamışsın, harika gidiyorsun! Dinlenirken bugünün rehber tüyosuna (Uzmandan) mutlaka bir göz at:<br><br><span style="padding: 10px; display:inline-block; border:1px dashed #404040; background:rgba(0,0,0,0.1); border-radius: 8px;">${selectedTip}</span>` + journalContext;
         } else {
-            return header + `Bugünkü extender sürecini henüz takvime dahil etmemiş görünüyorsun. Antrenmana başlamadan önce, sana tecrübelere dayanan harika bir anatomik tüyom var:\n\n<br><br><span style="padding: 10px; display:inline-block; border:1px dashed #404040; background:rgba(0,0,0,0.1); border-radius: 8px;">${selectedTip}</span>`;
+            return header + `Bugünkü extender sürecini henüz takvime dahil etmemiş görünüyorsun. Antrenmana başlamadan önce, sana tecrübelere dayanan harika bir anatomik tüyom var:\n\n<br><br><span style="padding: 10px; display:inline-block; border:1px dashed #404040; background:rgba(0,0,0,0.1); border-radius: 8px;">${selectedTip}</span>` + journalContext;
         }
     }
 
