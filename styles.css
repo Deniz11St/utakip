@@ -453,16 +453,15 @@ button {
 }
 
 .nav-icon {
-    font-size: 24px;
-    transition: transform 0.2s;
-    filter: grayscale(0.5);
-    opacity: 0.7;
+    font-size: 42px !important;
+    color: var(--text-secondary);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .nav-btn.active .nav-icon {
+    color: #fff;
     transform: scale(1.1);
-    filter: grayscale(0);
-    opacity: 1;
+    text-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
 }
 
 .nav-btn * {
