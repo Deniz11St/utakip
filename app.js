@@ -345,7 +345,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 let displayVal = val % 1 === 0 ? val : val.toFixed(1);
                 const numberEl = document.createElement('div');
                 numberEl.className = 'ruler-floating-number';
-                numberEl.textContent = displayVal;
+                numberEl.textContent = displayVal + ' mm';
                 tTick.appendChild(numberEl);
                 
                 // Tıklanabilir alan ekleyelim

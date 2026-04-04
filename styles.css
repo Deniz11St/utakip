@@ -594,7 +594,7 @@ input:checked + .slider:before {
     scrollbar-width: none;
     -ms-overflow-style: none;
     margin: 0;
-    padding: 40px 0 40px 0;
+    padding: 10px 0 20px 0;
     touch-action: pan-x;
 }
 
@@ -821,6 +821,14 @@ input:checked + .slider:before {
     font-size: 14px;
     color: var(--text-secondary);
     padding-left: 5px;
+}
+
+.ruler-estimate-text {
+    font-size: 15px;
+    font-weight: 600;
+    color: #fff;
+    opacity: 0.95;
+    letter-spacing: 0.2px;
 }
 
 /* Calendar Summary */
