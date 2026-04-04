@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v21-v1.6.4'; // v1.6.4: Cetvel ve görsel iyileştirmeler için güncellendi
+const CACHE_NAME = 'utakip-v22-v1.6.5'; // v1.6.5: Cetvel kutu tasarımı düzeltildi (çizgili yapı)
 const ASSETS = [
     './',
     './index.html',
