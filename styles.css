@@ -757,7 +757,9 @@ input:checked + .slider:before {
     font-weight: 700;
     color: #e6edf3;
     text-shadow: 0 2px 4px rgba(0,0,0,0.8);
-    white-space: nowrap;
+    white-space: nowrap !important;
+    display: block !important;
+    text-align: center;
 }
 
 .ruler-target-flag {
@@ -825,12 +827,14 @@ input:checked + .slider:before {
 }
 
 .ruler-estimate-text {
-    font-size: 16px;
-    font-weight: 700;
-    color: #a5d6ff;
-    opacity: 1;
-    letter-spacing: 0.3px;
-    margin-bottom: 4px;
+    font-size: 17px !important;
+    font-weight: 800 !important;
+    color: #a5d6ff !important;
+    opacity: 1 !important;
+    letter-spacing: 0.4px;
+    display: block;
+    margin-bottom: 6px;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.5);
 }
 
 /* Calendar Summary */
