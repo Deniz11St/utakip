@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v17-v1.6.2'; // Akıllı Günlük & AI Geliştirmesi (v1.6.2) için güncellendi
+const CACHE_NAME = 'utakip-v21-v1.6.4'; // v1.6.4: Cetvel ve görsel iyileştirmeler için güncellendi
 const ASSETS = [
     './',
     './index.html',
