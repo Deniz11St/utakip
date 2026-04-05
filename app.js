@@ -1844,9 +1844,11 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             const input = document.getElementById(inputId);
             if (!input) return;
 
-            // Timer duration için 10'ar dakikalık adımlar (eğer buton 1 birimlikse)
+            // Timer duration için 10'ar, giriş dakikası için 5'er dakikalık adımlar
             if (inputId === 'timerDuration' && Math.abs(delta) === 1) {
                 delta *= 10;
+            } else if (inputId === 'inputMinutes' && Math.abs(delta) === 1) {
+                delta *= 5;
             }
 
             let val = parseFloat(input.value) || 0;

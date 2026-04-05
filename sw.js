@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v25-v1.6.8'; // v1.6.8: Kırmızı barın sol ucu tam düzleştirildi
+const CACHE_NAME = 'utakip-v26-v1.6.9'; // v1.6.9: Süre ekle kısmı Dual Stepper yapıldı
 const ASSETS = [
     './',
     './index.html',
