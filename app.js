@@ -1539,6 +1539,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                 if (registration) {
                     // Listen for the controller changing (new SW takes over)
                     navigator.serviceWorker.addEventListener('controllerchange', () => {
+                        sessionStorage.setItem('app_just_updated', 'true');
                         window.location.reload();
                     });
 
@@ -1547,6 +1548,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                     
                     // If after 3 seconds still no reload, force it
                     setTimeout(() => {
+                        sessionStorage.setItem('app_just_updated', 'true');
                         window.location.reload(true);
                     }, 3000);
                 } else {
@@ -1879,9 +1881,33 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         }
     });
 
+    // --- UPDATE STATUS CHECK ---
+    function checkUpdateStatus() {
+        if (sessionStorage.getItem('app_just_updated') === 'true') {
+            sessionStorage.removeItem('app_just_updated');
+            // Ayarlar sekmesine tıkla (navBtns[3])
+            if (navBtns[3]) navBtns[3].click();
+
+            const verText = document.getElementById('appVersionText');
+            if (verText) {
+                const originalText = verText.textContent;
+                verText.style.color = '#2ecc71'; // Yeşil renk
+                verText.style.fontWeight = '700';
+                verText.textContent = '✅ Uygulamanız v1.7.0 sürümüne güncellendi!';
+                
+                setTimeout(() => {
+                    verText.style.color = '';
+                    verText.style.fontWeight = '';
+                    verText.textContent = originalText;
+                }, 5000);
+            }
+        }
+    }
+
     // Init App
     renderRulerScale();
     updateSettingsView();
     updateHomeView();
+    checkUpdateStatus();
     if (dataManager.data.timerStartTime > 0) startTimerUI();
 });

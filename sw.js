@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v26-v1.6.9'; // v1.6.9: Süre ekle kısmı Dual Stepper yapıldı
+const CACHE_NAME = 'utakip-v27-v1.7.0'; // v1.7.0: Güncelleme bildirimi ve yönlendirme düzeltildi
 const ASSETS = [
     './',
     './index.html',
