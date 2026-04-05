@@ -545,7 +545,39 @@ input:checked + .slider:before {
 
 /* Timer Component Layout (v1.7.2) */
 .timer-card {
+    position: relative;
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-icon-toggle {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--card-border);
+    color: var(--text-secondary);
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    z-index: 10;
+}
+
+.btn-icon-toggle:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--primary-color);
+}
+
+.btn-icon-toggle:active {
+    transform: scale(0.9);
+}
+
+.btn-icon-toggle span {
+    font-size: 20px;
 }
 
 #manualTimeSection, #sessionMetaSection {

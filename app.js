@@ -1700,26 +1700,35 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         if (!display || !btnSession || !btnBreak || !info || !badge || !card || !manualSection || !metaSection) return;
 
         const state = dataManager.data.activeSessionState;
+        const isManualMode = card.classList.contains('mode-manual');
+        const toggleBtn = document.getElementById('btnToggleManual');
         
         if (state.mode === 'ready') {
             display.textContent = '00:00:00';
             display.style.opacity = '1';
-            btnSession.style.display = 'block';
+            display.style.display = isManualMode ? 'none' : 'block';
+            
+            btnSession.style.display = isManualMode ? 'none' : 'block';
             btnSession.textContent = '▶ Seans Başlat';
             btnSession.className = 'btn-primary';
-            btnBreak.style.display = 'block';
+            btnBreak.style.display = isManualMode ? 'none' : 'block';
             btnBreak.textContent = '☕ Mola Başlat';
             btnBreak.className = 'btn-secondary';
-            btnManual.style.display = 'block';
+            
+            btnManual.style.display = isManualMode ? 'block' : 'none';
             btnFinalize.style.display = 'none';
-            manualSection.style.display = 'block';
+            manualSection.style.display = isManualMode ? 'block' : 'none';
             metaSection.style.display = 'block';
+            toggleBtn.style.display = 'flex';
+            
             info.textContent = `Hedef: ${dataManager.data.timerSettings.count} Seans`;
             badge.textContent = 'Hazır';
             badge.className = 'timer-badge mode-ready';
             card.classList.remove('mode-work', 'mode-break', 'mode-review');
             return;
         }
+
+        toggleBtn.style.display = 'none'; // Çalışırken veya review'da mod değiştirme
 
         if (state.mode === 'review') {
             const elapsedMs = state.frozenElapsed || 0;
@@ -1807,6 +1816,24 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         timerInterval = setInterval(updateTimerDisplay, 1000);
         updateTimerDisplay();
     }
+
+    document.getElementById('btnToggleManual')?.addEventListener('click', () => {
+        const card = document.getElementById('timerCard');
+        const state = dataManager.data.activeSessionState;
+        if (state.mode !== 'ready') return;
+
+        card.classList.toggle('mode-manual');
+        const isManual = card.classList.contains('mode-manual');
+        localStorage.setItem('timer_entry_mode', isManual ? 'manual' : 'timer');
+        
+        const icon = document.querySelector('#btnToggleManual span');
+        if (isManual) {
+            icon.textContent = 'timer';
+        } else {
+            icon.textContent = 'edit_calendar';
+        }
+        updateTimerDisplay();
+    });
 
     function manualSaveAndEndSession() {
         const state = dataManager.data.activeSessionState;
@@ -1986,6 +2013,16 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
     }
 
     // Init App
+    // Restore entry mode
+    if (localStorage.getItem('timer_entry_mode') === 'manual') {
+        const card = document.getElementById('timerCard');
+        if (card) {
+            card.classList.add('mode-manual');
+            const icon = document.querySelector('#btnToggleManual span');
+            if (icon) icon.textContent = 'timer';
+        }
+    }
+
     renderRulerScale();
     updateSettingsView();
     updateHomeView();

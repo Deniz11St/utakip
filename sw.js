@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v29-v1.7.2'; // v1.7.2: Sayaç ve Manuel Giriş birleştirildi (Review Modu eklendi)
+const CACHE_NAME = 'utakip-v30-v1.7.3'; // v1.7.3: Manuel/Otomatik giriş toggle eklendi
 const ASSETS = [
     './',
     './index.html',
