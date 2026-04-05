@@ -599,7 +599,7 @@ input:checked + .slider:before {
     display: none !important;
 }
 .timer-card.is-manual-view #manualTimeSection,
-.timer-card.is-manual-view #btnAddTime {
+.timer-card.is-manual-view #btnSaveManual {
     display: block !important;
 }
 

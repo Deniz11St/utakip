@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v33-v1.7.6'; // v1.7.6: Toggle bağımsızlığı ve PWA güncelleme iyileştirmesi
+const CACHE_NAME = 'utakip-v34-v1.7.8'; // v1.7.8: PWA Güncelleme zorlayıcı ve Manuel Kayıt butonu
 const ASSETS = [
     './',
     './index.html',

@@ -1498,6 +1498,52 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         reader.readAsText(file);
     });
 
+    // PWA Güncelleme (v1.7.8 - Ultra Aggressive)
+    document.getElementById('btnUpdateApp')?.addEventListener('click', async () => {
+        const btn = document.getElementById('btnUpdateApp');
+        const originalText = btn.textContent;
+        btn.textContent = "🔄 Kontrol Ediliyor...";
+        btn.disabled = true;
+
+        if ('serviceWorker' in navigator) {
+            try {
+                const registration = await navigator.serviceWorker.getRegistration();
+                if (registration) {
+                    btn.textContent = "🚀 Güncelleniyor (v1.7.8)...";
+                    await registration.update();
+                    
+                    if (registration.waiting) {
+                        sessionStorage.setItem('app_just_updated', 'true');
+                        registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+                        window.location.reload();
+                        return;
+                    }
+
+                    navigator.serviceWorker.addEventListener('controllerchange', () => {
+                        sessionStorage.setItem('app_just_updated', 'true');
+                        window.location.reload();
+                    });
+
+                    setTimeout(() => {
+                        if (btn.disabled) {
+                            btn.textContent = "📢 Yenileme Gerekli";
+                            alert("Sistem güncellendi. Değişikliklerin görünmesi için lütfen uygulamayı kapatıp açın.");
+                            btn.disabled = false;
+                        }
+                    }, 4000);
+                }
+            } catch (err) {
+                console.error(err);
+                btn.textContent = "❌ Hata";
+                btn.disabled = false;
+            }
+        } else {
+            alert("Sistem PWA desteklemiyor. Lütfen sayfayı manuel yenileyin.");
+            btn.textContent = originalText;
+            btn.disabled = false;
+        }
+    });
+
     // Model Diagnostic Tool
     document.getElementById('btnCheckModels')?.addEventListener('click', async () => {
         const apiKey = document.getElementById('geminiApiKey').value.trim();
@@ -1543,7 +1589,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                         window.location.reload();
                     });
 
-                    btn.textContent = "🚀 Güncelleniyor...";
+                    btn.textContent = "🚀 Güncelleniyor (v1.7.8)...";
                     await registration.update();
                     
                     // If after 3 seconds still no reload, force it
@@ -1575,7 +1621,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         updateHomeView();
     });
 
-    document.getElementById('btnAddTime').addEventListener('click', () => {
+    document.getElementById('btnSaveManual').addEventListener('click', () => {
         const hours = parseInt(document.getElementById('inputHours').value) || 0;
         const minutes = parseInt(document.getElementById('inputMinutes').value) || 0;
         const diffStr = document.getElementById('inputDifficulty').value;
@@ -1587,12 +1633,6 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         const today = new Date();
         const offset = today.getTimezoneOffset() * 60000;
         const localISOTime = (new Date(today - offset)).toISOString().split('T')[0];
-
-        const difficultyLabel = {
-            'rahat': '🟢 Rahat',
-            'normal': '🟡 Normal',
-            'zor': '🔴 Zor'
-        }[diffStr] || '🟡 Normal';
 
         if(dataManager.addSession(localISOTime, totalMinutes, diffStr, noteStr)) {
             // Reset input with animation
@@ -1609,7 +1649,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                 card.style.transform = 'scale(1)';
                 card.style.opacity = '1';
                 
-                showSuccessAchievement("Başarıyla Eklendi", `${hours}s ${minutes}dk manuel olarak kaydedildi.`, "📥");
+                showSuccessAchievement("Başarıyla Kaydedildi", `${hours}s ${minutes}dk manuel olarak kaydedildi.`, "💾");
                 updateHomeView();
             }, 300);
         }
@@ -1696,6 +1736,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         const card = document.getElementById('timerCard');
         const manualSection = document.getElementById('manualTimeSection');
         const metaSection = document.getElementById('sessionMetaSection');
+        const saveManualBtn = document.getElementById('btnSaveManual');
 
         if (!display || !btnSession || !btnBreak || !info || !card || !manualSection || !metaSection) return;
 
@@ -1992,7 +2033,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                 const originalText = verText.textContent;
                 verText.style.color = '#2ecc71'; // Yeşil renk
                 verText.style.fontWeight = '700';
-                verText.textContent = '✅ Uygulamanız v1.7.6 sürümüne güncellendi!';
+                verText.textContent = '✅ Uygulamanız v1.7.8 sürümüne güncellendi!';
                 
                 setTimeout(() => {
                     verText.style.color = '';
