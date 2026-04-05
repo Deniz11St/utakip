@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v31-v1.7.4'; // v1.7.4: Manuel/Otomatik giriş çakışması (CSS tabanlı) kesin düzeltildi
+const CACHE_NAME = 'utakip-v32-v1.7.5'; // v1.7.5: Toggle mobil görünüm ve çalışma düzeltmeleri
 const ASSETS = [
     './',
     './index.html',

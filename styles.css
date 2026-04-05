@@ -551,25 +551,26 @@ input:checked + .slider:before {
 
 .btn-icon-toggle {
     position: absolute;
-    top: 18px;
-    right: 18px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--card-border);
-    color: var(--text-secondary);
-    width: 34px;
-    height: 34px;
-    border-radius: 10px;
+    top: 15px;
+    right: 15px;
+    background: rgba(255, 255, 255, 0.15); /* Gorunuroluk artirildi */
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #fff;
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     transition: all 0.2s;
-    z-index: 10;
+    z-index: 50; /* En ustte */
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
 }
 
 .btn-icon-toggle:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: var(--primary-color);
+    background: var(--primary-color);
+    border-color: var(--primary-color);
 }
 
 .btn-icon-toggle:active {
@@ -586,30 +587,37 @@ input:checked + .slider:before {
     transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
-/* --- Toggle Mode (v1.7.4) CSS Logic --- */
-/* Hazır modda varsayılan: Manuel alan ve buton kapalı */
-#manualTimeSection, #btnAddTime { display: none !important; }
-#timerDisplay, #btnStartSession, #btnStartBreak { display: block !important; }
-
-/* Manuel Mod Aktifken ve Sayac Calismiyorken (Hazır Modda): Sayac gizle, Manuel goster */
-.timer-card.mode-manual.mode-ready #timerDisplay,
-.timer-card.mode-manual.mode-ready #btnStartSession,
-.timer-card.mode-manual.mode-ready #btnStartBreak {
-    display: none !important;
+/* --- Toggle Mode (v1.7.5) CSS Logic --- */
+/* Hazır modda (ready) Manuel/Otomatik ayrımı */
+.timer-card.mode-ready #manualTimeSection, 
+.timer-card.mode-ready #btnAddTime { 
+    display: none !important; 
 }
-.timer-card.mode-manual.mode-ready #manualTimeSection,
-.timer-card.mode-manual.mode-ready #btnAddTime {
+
+/* Mod Manuel ise ve Hazırsa: Göster */
+.timer-card.mode-ready.mode-manual #manualTimeSection,
+.timer-card.mode-ready.mode-manual #btnAddTime {
     display: block !important;
 }
 
-/* Calisma / Mola / Review modlarinda Manuel gosterimi HER ZAMAN kapali (override) */
-.mode-work #manualTimeSection, .mode-work #btnAddTime,
-.mode-break #manualTimeSection, .mode-break #btnAddTime,
-.mode-review #manualTimeSection, .mode-review #btnAddTime {
+/* Mod Manuel ise ve Hazırsa: Sayacı gizle */
+.timer-card.mode-ready.mode-manual #timerDisplay,
+.timer-card.mode-ready.mode-manual #btnStartSession,
+.timer-card.mode-ready.mode-manual #btnStartBreak {
     display: none !important;
 }
 
-/* Mod degistirme butonu sadece Ready modda gorunur */
+/* Çalışma / Mola / İnceleme modlarında Manuel HER ZAMAN gizlidir */
+.timer-card.mode-work #manualTimeSection, .timer-card.mode-work #btnAddTime,
+.timer-card.mode-break #manualTimeSection, .timer-card.mode-break #btnAddTime,
+.timer-card.mode-review #manualTimeSection, .timer-card.mode-review #btnAddTime {
+    display: none !important;
+}
+
+/* Toggle butonu sadece hazır modda (seans çalışmıyorken) görünür */
+.timer-card.mode-ready #btnToggleManual {
+    display: flex !important;
+}
 .timer-card:not(.mode-ready) #btnToggleManual {
     display: none !important;
 }
