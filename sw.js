@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v22-v1.6.5'; // v1.6.5: Cetvel kutu tasarımı düzeltildi (çizgili yapı)
+const CACHE_NAME = 'utakip-v24-v1.6.7'; // v1.6.7: Cetvel kenarları ve hedef kartı ayrıldı
 const ASSETS = [
     './',
     './index.html',
