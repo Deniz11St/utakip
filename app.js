@@ -1706,29 +1706,24 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         if (state.mode === 'ready') {
             display.textContent = '00:00:00';
             display.style.opacity = '1';
-            display.style.display = isManualMode ? 'none' : 'block';
             
-            btnSession.style.display = isManualMode ? 'none' : 'block';
             btnSession.textContent = '▶ Seans Başlat';
             btnSession.className = 'btn-primary';
-            btnBreak.style.display = isManualMode ? 'none' : 'block';
             btnBreak.textContent = '☕ Mola Başlat';
             btnBreak.className = 'btn-secondary';
             
-            btnManual.style.display = isManualMode ? 'block' : 'none';
             btnFinalize.style.display = 'none';
-            manualSection.style.display = isManualMode ? 'block' : 'none';
             metaSection.style.display = 'block';
-            toggleBtn.style.display = 'flex';
             
             info.textContent = `Hedef: ${dataManager.data.timerSettings.count} Seans`;
             badge.textContent = 'Hazır';
             badge.className = 'timer-badge mode-ready';
+            card.classList.add('mode-ready');
             card.classList.remove('mode-work', 'mode-break', 'mode-review');
             return;
         }
 
-        toggleBtn.style.display = 'none'; // Çalışırken veya review'da mod değiştirme
+        card.classList.remove('mode-ready');
 
         if (state.mode === 'review') {
             const elapsedMs = state.frozenElapsed || 0;
@@ -1759,8 +1754,6 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         display.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
         display.style.opacity = '1';
 
-        manualSection.style.display = 'none';
-        btnManual.style.display = 'none';
         btnFinalize.style.display = 'none';
         
         if (state.mode === 'work') {

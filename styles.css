@@ -586,6 +586,36 @@ input:checked + .slider:before {
     transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
+/* --- Toggle Mode (v1.7.4) CSS Logic --- */
+/* Hazır modda varsayılan: Manuel alan ve buton kapalı */
+#manualTimeSection, #btnAddTime { display: none !important; }
+#timerDisplay, #btnStartSession, #btnStartBreak { display: block !important; }
+
+/* Manuel Mod Aktifken ve Sayac Calismiyorken (Hazır Modda): Sayac gizle, Manuel goster */
+.timer-card.mode-manual.mode-ready #timerDisplay,
+.timer-card.mode-manual.mode-ready #btnStartSession,
+.timer-card.mode-manual.mode-ready #btnStartBreak {
+    display: none !important;
+}
+.timer-card.mode-manual.mode-ready #manualTimeSection,
+.timer-card.mode-manual.mode-ready #btnAddTime {
+    display: block !important;
+}
+
+/* Calisma / Mola / Review modlarinda Manuel gosterimi HER ZAMAN kapali (override) */
+.mode-work #manualTimeSection, .mode-work #btnAddTime,
+.mode-break #manualTimeSection, .mode-break #btnAddTime,
+.mode-review #manualTimeSection, .mode-review #btnAddTime {
+    display: none !important;
+}
+
+/* Mod degistirme butonu sadece Ready modda gorunur */
+.timer-card:not(.mode-ready) #btnToggleManual {
+    display: none !important;
+}
+
+/* ---------------------------------------- */
+
 .timer-display {
     transition: opacity 0.5s ease, transform 0.5s ease;
 }

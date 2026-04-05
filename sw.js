@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v30-v1.7.3'; // v1.7.3: Manuel/Otomatik giriş toggle eklendi
+const CACHE_NAME = 'utakip-v31-v1.7.4'; // v1.7.4: Manuel/Otomatik giriş çakışması (CSS tabanlı) kesin düzeltildi
 const ASSETS = [
     './',
     './index.html',
