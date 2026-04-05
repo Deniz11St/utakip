@@ -327,10 +327,8 @@ input:focus, select:focus, textarea:focus {
 /* Ruler - Modern & Clean */
 .ruler-container {
     background: transparent;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    padding: 30px 5px;
-    margin: 20px 0;
+    padding: 15px 5px;
+    margin: 5px 0;
     border-radius: 0;
 }
 
@@ -575,7 +573,7 @@ input:checked + .slider:before {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 24px;
+    margin-bottom: 10px;
 }
 
 .stage-badge {

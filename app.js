@@ -322,9 +322,12 @@ document.addEventListener('DOMContentLoaded', () => {
         topScale.innerHTML = '';
         bottomScale.innerHTML = '';
         
-        // Toplam mm uzunluğu: Hedef varsa -> (Hedef - Başlangıç) * 10 + 5 mm. Yoksa -> Varsayılan 50 mm.
-        let totalMm = targetCm > startCm ? Math.round((targetCm - startCm) * 10) + 5 : 55;
-        if (totalMm < 20) totalMm = 25; // Çok kısa kalmaması için minimum bir baraj
+        // Toplam mm uzunluğu: Başta 5mm + (Hedef - Başlangıç) * 10 + Sonda 5mm
+        // Hedef yoksa varsayılan 50mm + 10mm (baş/son tampon)
+        let diffMm = targetCm > startCm ? Math.round((targetCm - startCm) * 10) : 50;
+        let totalMm = diffMm + 10; 
+        
+        if (totalMm < 30) totalMm = 35; // Çok kısa kalmaması için
         
         // Ekranda her 10 mm tam 1 ekran genişliği (100% width) kaplıyorsa => width = ((totalMm / 10) * 100)%
         document.getElementById('rulerContainer').style.width = `${(totalMm / 10) * 100}%`;
@@ -340,23 +343,35 @@ document.addEventListener('DOMContentLoaded', () => {
                 tTick.style.scrollSnapAlign = 'center';
             }
             
+            // i=5 noktası gerçek başlangıç CM (startCm) değeridir.
+            // Bu yüzden val ofsetli hesaplanır:
+            let mmRelative = i - 5;
+            let currentValCm = startCm + (mmRelative / 10);
+
             if (isMajor) {
-                let val = startCm + (i / 10);
-                let displayVal = val % 1 === 0 ? val : val.toFixed(1);
+                let displayVal = currentValCm % 1 === 0 ? currentValCm : currentValCm.toFixed(1);
                 const numberEl = document.createElement('div');
                 numberEl.className = 'ruler-floating-number';
                 numberEl.textContent = displayVal + ' mm';
                 tTick.appendChild(numberEl);
                 
-                // Tıklanabilir alan ekleyelim
                 tTick.style.cursor = 'pointer';
-                const cmVal = startCm + (i / 10);
-                tTick.onclick = () => { if (window.showPointEstimate) window.showPointEstimate(cmVal); };
+                const closureVal = currentValCm;
+                tTick.onclick = () => { if (window.showPointEstimate) window.showPointEstimate(closureVal); };
             }
             
-            // Final bayrağı etiketi: targetCm tam o i konumundaysa
-            const targetMm = targetCm > startCm ? Math.round((targetCm - startCm) * 10) : -1;
-            if (i === targetMm) {
+            // Başlangıç Bayrağı (🚩) - i=5 tam startCm konumudur
+            if (i === 5) {
+                const flag = document.createElement('div');
+                flag.textContent = '🚩';
+                flag.className = 'ruler-target-flag'; // Aynı stil kullanılabilir
+                flag.style.color = '#ff6b6b';
+                tTick.appendChild(flag);
+            }
+
+            // Final Bayrağı (🏁) - i = totalMm - 5 tam targetCm konumudur
+            const targetIndex = totalMm - 5;
+            if (i === targetIndex && targetCm > startCm) {
                 const flag = document.createElement('div');
                 flag.textContent = '🏁';
                 flag.className = 'ruler-target-flag';
@@ -370,8 +385,8 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (isMajor) {
                 bTick.style.cursor = 'pointer';
-                const cmVal = startCm + (i / 10);
-                bTick.onclick = () => { if (window.showPointEstimate) window.showPointEstimate(cmVal); };
+                const closureVal = currentValCm;
+                bTick.onclick = () => { if (window.showPointEstimate) window.showPointEstimate(closureVal); };
             }
             
             bottomScale.appendChild(bTick);
@@ -493,11 +508,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!window.rulerTimer) updateDefaultEstimates();
 
         // Kırmızı barı güncelle ve scroll ayarı yap
-        let growth = dataManager.getTotalGrowth();
-        if(growth < 0) growth = 0;
-        if(growth > totalMm) growth = totalMm;
+        // Dolgu cetvelin en başından (startCm - 0.5) güncel boyuta kadar olmalı
+        const currentSize = dataManager.data.currentSize || dataManager.data.startSize;
+        const scaleStartCm = startCm - 0.5;
+        let growthMmRelativeToScale = (currentSize - scaleStartCm) * 10;
         
-        const widthPercent = (growth / totalMm) * 100;
+        if(growthMmRelativeToScale < 0) growthMmRelativeToScale = 0;
+        if(growthMmRelativeToScale > totalMm) growthMmRelativeToScale = totalMm;
+        
+        const widthPercent = (growthMmRelativeToScale / totalMm) * 100;
         
         setTimeout(() => {
             const fill = document.getElementById('rulerFill');
@@ -505,7 +524,8 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const viewport = document.getElementById('rulerViewport');
             if (viewport) {
-                let scrollStageMm = stage > 0 ? (stage - 1) * 10 : 0;
+                // Scroll ofset: Stage başlangıcı + 5mm tampon
+                let scrollStageMm = (stage > 0 ? (stage - 1) * 10 : 0) + 5;
                 const scrollWidth = viewport.scrollWidth;
                 const pxPerMm = scrollWidth / totalMm;
                 
