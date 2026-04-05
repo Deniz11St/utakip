@@ -724,7 +724,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     const dateCol = document.createElement('div');
                     dateCol.className = 'day-date';
-                    dateCol.textContent = i;
+                    dateCol.style = "display: flex; align-items: center; gap: 4px;";
+                    dateCol.innerHTML = `<span>${i}</span>`;
+                    
+                    const editBtn = document.createElement('button');
+                    editBtn.className = 'btn-day-edit';
+                    editBtn.innerHTML = '<span class="material-symbols-outlined">edit_calendar</span>';
+                    editBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        openEditModal(dateStr);
+                    };
+                    dateCol.appendChild(editBtn);
                     dayRow.appendChild(dateCol);
                     
                     const sessionsCol = document.createElement('div');
@@ -1847,24 +1857,96 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         updateTimerDisplay();
     }
 
-    document.getElementById('btnToggleManual')?.addEventListener('click', (e) => {
-        e.preventDefault();
-        const card = document.getElementById('timerCard');
-        const state = dataManager.data.activeSessionState;
-        
-        // Review modunda geçiş yapmaya izin verme
-        if (state.mode === 'review') return;
+    /* --- EDIT MODAL LOGIC (v1.7.9) --- */
+    let currentEditDate = null;
+    const editModal = document.getElementById('editModalOverlay');
+    const editHoursInput = document.getElementById('editHours');
+    const editMinutesInput = document.getElementById('editMinutes');
+    const editTotalLabel = document.getElementById('editTotalMinsLabel');
 
-        card.classList.toggle('is-manual-view');
-        const isManual = card.classList.contains('is-manual-view');
-        localStorage.setItem('timer_entry_mode', isManual ? 'manual' : 'timer');
+    function openEditModal(dateStr) {
+        currentEditDate = dateStr;
+        const sessions = dataManager.data.sessions[dateStr] || [];
+        // Eğer zaten o günün bir seansı varsa ilkini baz alalım (düzenleme için)
+        // Yoksa 0'dan başla
+        const firstSessionMins = sessions.length > 0 ? sessions[0].mins : 0;
         
-        const icon = document.querySelector('#btnToggleManual span');
-        if (isManual) {
-            icon.textContent = 'timer';
+        editHoursInput.value = Math.floor(firstSessionMins / 60);
+        editMinutesInput.value = firstSessionMins % 60;
+        updateEditModalTotal();
+        
+        const dateObj = new Date(dateStr);
+        document.getElementById('editModalTargetDate').textContent = dateObj.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' });
+        
+        editModal.classList.add('show');
+    }
+
+    function closeEditModal() {
+        editModal.classList.remove('show');
+        currentEditDate = null;
+    }
+
+    function updateEditModalTotal() {
+        const h = parseInt(editHoursInput.value) || 0;
+        const m = parseInt(editMinutesInput.value) || 0;
+        editTotalLabel.textContent = (h * 60) + m;
+    }
+
+    document.querySelectorAll('.edit-stepper-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const delta = parseInt(btn.getAttribute('data-delta'));
+            const activeBox = document.querySelector('.edit-modal .dual-box.active');
+            if(!activeBox) return;
+            
+            const inputId = activeBox.getAttribute('data-target');
+            const input = document.getElementById(inputId);
+            let val = parseInt(input.value) || 0;
+            val += delta;
+            if (val < 0) val = 0;
+            if (inputId === 'editMinutes' && val > 59) val = 59;
+            
+            input.value = val;
+            updateEditModalTotal();
+        });
+    });
+
+    // Modal içindeki kutucuk seçimi
+    document.querySelectorAll('.edit-modal .dual-box').forEach(box => {
+        box.addEventListener('click', () => {
+            document.querySelectorAll('.edit-modal .dual-box').forEach(b => b.classList.remove('active'));
+            box.classList.add('active');
+        });
+    });
+
+    document.getElementById('btnCancelEdit')?.addEventListener('click', closeEditModal);
+    editModal.addEventListener('click', (e) => {
+        if(e.target === editModal) closeEditModal();
+    });
+
+    document.getElementById('btnSaveEditModal')?.addEventListener('click', () => {
+        if(!currentEditDate) return;
+        
+        const h = parseInt(editHoursInput.value) || 0;
+        const m = parseInt(editMinutesInput.value) || 0;
+        const totalMins = (h * 60) + m;
+
+        // Eski kayıtları temizleyip yeni toplamı ekleyelim (Kullanıcı o günü "Düzenle"miş oluyor)
+        if (totalMins === 0) {
+            delete dataManager.data.sessions[currentEditDate];
         } else {
-            icon.textContent = 'edit_calendar';
+            // Basitlik adına o günün tüm seanslarını tek bir seansa indirgeyelim (Düzenleme mantığı)
+            dataManager.data.sessions[currentEditDate] = [{
+                mins: totalMins,
+                diff: 'normal',
+                note: 'Geçmiş kayıt / Düzenleme'
+            }];
         }
+        
+        dataManager.save();
+        closeEditModal();
+        updateCalendarView();
+        updateHomeView();
+        showSuccessAchievement("Başarılı!", "Takvim verisi güncellendi.", "📅");
     });
 
     function manualSaveAndEndSession() {

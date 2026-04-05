@@ -385,7 +385,7 @@
                         <h3><span class="material-symbols-outlined">database</span> Veri Yönetimi</h3>
                         <div class="data-actions-grid">
                             <button id="btnUpdateApp" class="btn-secondary">🚀 Güncellemeyi Denetle</button>
-                             <div class="version-text" id="appVersionText">Mevcut Sürüm: v1.7.8</div>
+                             <div class="version-text" id="appVersionText">Mevcut Sürüm: v1.7.9</div>
                             <div class="import-export-row">
                                 <button id="btnExportData" class="btn-secondary">📤 Dışa Aktar</button>
                                 <button id="btnImportData" class="btn-secondary">📥 İçe Aktar</button>
@@ -512,7 +512,41 @@
             </button>
         </nav>
     </div>
+
+    <!-- Geçmiş Veri Düzenleme Modalı (v1.7.9) -->
+    <div id="editModalOverlay" class="modal-overlay">
+        <div class="edit-modal">
+            <div class="modal-header">
+                <h3><span class="material-symbols-outlined">edit_calendar</span> Seans Düzenle</h3>
+                <div id="editModalTargetDate" class="modal-date-label">01 Ocak 2024</div>
+            </div>
+            
+            <div class="modal-body">
+                <div class="dual-stepper-container" style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1);">
+                    <button class="btn-dual-stepper edit-stepper-btn" data-delta="-1">−</button>
+                    <div class="dual-stepper-inner">
+                        <div class="dual-box active" data-target="editHours">
+                            <div class="dual-label">SAAT</div>
+                            <input type="number" id="editHours" value="0" readonly>
+                        </div>
+                        <div class="dual-divider">:</div>
+                        <div class="dual-box" data-target="editMinutes">
+                            <div class="dual-label">DAKİKA</div>
+                            <input type="number" id="editMinutes" value="0" readonly>
+                        </div>
+                    </div>
+                    <button class="btn-dual-stepper edit-stepper-btn" data-delta="1">+</button>
+                </div>
+                <div class="modal-hint">Toplam: <span id="editTotalMinsLabel">0</span> dk</div>
+            </div>
+
+            <div class="modal-footer">
+                <button id="btnCancelEdit" class="btn-secondary">KAPAT</button>
+                <button id="btnSaveEditModal" class="btn-primary">💾 KAYDET</button>
+            </div>
+        </div>
+    </div>
     
-    <script src="app.js?v=34"></script>
+    <script src="app.js?v=35"></script>
 </body>
 </html>
