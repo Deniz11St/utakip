@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v24-v1.6.7'; // v1.6.7: Cetvel kenarları ve hedef kartı ayrıldı
+const CACHE_NAME = 'utakip-v25-v1.6.8'; // v1.6.8: Kırmızı barın sol ucu tam düzleştirildi
 const ASSETS = [
     './',
     './index.html',
