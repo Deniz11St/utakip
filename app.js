@@ -1697,7 +1697,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         const manualSection = document.getElementById('manualTimeSection');
         const metaSection = document.getElementById('sessionMetaSection');
 
-        if (!display || !btnSession || !btnBreak || !info || !badge || !card || !manualSection || !metaSection) return;
+        if (!display || !btnSession || !btnBreak || !info || !card || !manualSection || !metaSection) return;
 
         const state = dataManager.data.activeSessionState;
         const isManualMode = card.classList.contains('mode-manual');
@@ -1716,8 +1716,6 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             metaSection.style.display = 'block';
             
             info.textContent = `Hedef: ${dataManager.data.timerSettings.count} Seans`;
-            badge.textContent = 'Hazır';
-            badge.className = 'timer-badge mode-ready';
             card.classList.add('mode-ready');
             card.classList.remove('mode-work', 'mode-break', 'mode-review');
             return;
@@ -1778,8 +1776,6 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         } else if (state.mode === 'break') {
             metaSection.style.display = 'none';
             info.textContent = `Mola Süreci`;
-            badge.textContent = 'Dinlenme Modu';
-            badge.className = 'timer-badge mode-break';
             card.classList.add('mode-break');
             card.classList.remove('mode-work');
             btnSession.textContent = '▶ Seans Başlat';
@@ -1960,7 +1956,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             val += delta;
 
             // Constraints
-            if (val < 1 && inputId !== 'timerBreak') val = 1;
+            if (val < 1 && inputId !== 'timerBreak' && inputId !== 'inputHours' && inputId !== 'inputMinutes') val = 1;
             if (val < 0) val = 0;
             if (inputId === 'timerCount' && val > 10) val = 10;
             
