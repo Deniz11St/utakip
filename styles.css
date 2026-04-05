@@ -319,6 +319,53 @@ input:focus, select:focus, textarea:focus {
     transition: all 0.2s;
 }
 
+/* Time Stepper Full Width (v1.7.1) */
+.time-stepper-full {
+    background: none !important;
+    border: none !important;
+    padding: 0 !important;
+    gap: 15px !important;
+}
+
+.time-stepper-full .dual-stepper-inner {
+    background: rgba(255, 255, 255, 0.03);
+    padding: 10px;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    justify-content: center;
+}
+
+.time-stepper-full .dual-box {
+    flex: 0 0 80px;
+    padding: 10px 0;
+    background: none;
+}
+
+.time-stepper-full .dual-box.active {
+    background: rgba(88, 166, 255, 0.1) !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    border-radius: 15px;
+}
+
+.time-stepper-full .dual-box input {
+    font-size: 42px !important;
+    text-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+}
+
+.time-stepper-full .btn-dual-stepper.time-btn {
+    width: 64px;
+    height: 64px;
+    font-size: 32px;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.time-stepper-full .btn-dual-stepper.time-btn:active {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
 .btn-dual-stepper:active {
     background: var(--primary-color);
     transform: scale(0.9);
