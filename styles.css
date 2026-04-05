@@ -587,38 +587,36 @@ input:checked + .slider:before {
     transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
-/* --- Toggle Mode (v1.7.5) CSS Logic --- */
-/* Hazır modda (ready) Manuel/Otomatik ayrımı */
-.timer-card.mode-ready #manualTimeSection, 
-.timer-card.mode-ready #btnAddTime { 
-    display: none !important; 
-}
+/* --- Toggle Mode (v1.7.6) CSS Logic --- */
+/* Varsayılan: Manuel alan gizli, Timer açık */
+#manualTimeSection, #btnAddTime { display: none !important; }
+#timerDisplay, #btnStartSession, #btnStartBreak { display: block; }
 
-/* Mod Manuel ise ve Hazırsa: Göster */
-.timer-card.mode-ready.mode-manual #manualTimeSection,
-.timer-card.mode-ready.mode-manual #btnAddTime {
+/* Manuel Görünüm Aktifken: Sayacı Her Koşulda Gizle, Manueli Göster */
+.timer-card.is-manual-view #timerDisplay,
+.timer-card.is-manual-view #btnStartSession,
+.timer-card.is-manual-view #btnStartBreak {
+    display: none !important;
+}
+.timer-card.is-manual-view #manualTimeSection,
+.timer-card.is-manual-view #btnAddTime {
     display: block !important;
 }
 
-/* Mod Manuel ise ve Hazırsa: Sayacı gizle */
-.timer-card.mode-ready.mode-manual #timerDisplay,
-.timer-card.mode-ready.mode-manual #btnStartSession,
-.timer-card.mode-ready.mode-manual #btnStartBreak {
+/* Review modunda her zaman sayacı göster (manuel gizle) */
+.timer-card.mode-review #manualTimeSection,
+.timer-card.mode-review #btnAddTime {
     display: none !important;
 }
-
-/* Çalışma / Mola / İnceleme modlarında Manuel HER ZAMAN gizlidir */
-.timer-card.mode-work #manualTimeSection, .timer-card.mode-work #btnAddTime,
-.timer-card.mode-break #manualTimeSection, .timer-card.mode-break #btnAddTime,
-.timer-card.mode-review #manualTimeSection, .timer-card.mode-review #btnAddTime {
-    display: none !important;
+.timer-card.mode-review #timerDisplay {
+    display: block !important;
+    opacity: 0.4;
 }
 
-/* Toggle butonu sadece hazır modda (seans çalışmıyorken) görünür */
-.timer-card.mode-ready #btnToggleManual {
-    display: flex !important;
-}
-.timer-card:not(.mode-ready) #btnToggleManual {
+/* Mod degistirme butonu sadece Ready, Work ve Break modlarinda gorunur (Review'da gizli) */
+/* Varsayılan görünür */
+.btn-icon-toggle { display: flex !important; }
+.timer-card.mode-review #btnToggleManual {
     display: none !important;
 }
 

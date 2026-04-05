@@ -1810,13 +1810,16 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         updateTimerDisplay();
     }
 
-    document.getElementById('btnToggleManual')?.addEventListener('click', () => {
+    document.getElementById('btnToggleManual')?.addEventListener('click', (e) => {
+        e.preventDefault();
         const card = document.getElementById('timerCard');
         const state = dataManager.data.activeSessionState;
-        if (state.mode !== 'ready') return;
+        
+        // Review modunda geçiş yapmaya izin verme
+        if (state.mode === 'review') return;
 
-        card.classList.toggle('mode-manual');
-        const isManual = card.classList.contains('mode-manual');
+        card.classList.toggle('is-manual-view');
+        const isManual = card.classList.contains('is-manual-view');
         localStorage.setItem('timer_entry_mode', isManual ? 'manual' : 'timer');
         
         const icon = document.querySelector('#btnToggleManual span');
@@ -1825,7 +1828,6 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         } else {
             icon.textContent = 'edit_calendar';
         }
-        updateTimerDisplay();
     });
 
     function manualSaveAndEndSession() {
@@ -1994,7 +1996,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                 const originalText = verText.textContent;
                 verText.style.color = '#2ecc71'; // Yeşil renk
                 verText.style.fontWeight = '700';
-                verText.textContent = '✅ Uygulamanız v1.7.0 sürümüne güncellendi!';
+                verText.textContent = '✅ Uygulamanız v1.7.6 sürümüne güncellendi!';
                 
                 setTimeout(() => {
                     verText.style.color = '';
@@ -2010,7 +2012,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
     if (localStorage.getItem('timer_entry_mode') === 'manual') {
         const card = document.getElementById('timerCard');
         if (card) {
-            card.classList.add('mode-manual');
+            card.classList.add('is-manual-view');
             const icon = document.querySelector('#btnToggleManual span');
             if (icon) icon.textContent = 'timer';
         }

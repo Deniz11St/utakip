@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v32-v1.7.5'; // v1.7.5: Toggle mobil görünüm ve çalışma düzeltmeleri
+const CACHE_NAME = 'utakip-v33-v1.7.6'; // v1.7.6: Toggle bağımsızlığı ve PWA güncelleme iyileştirmesi
 const ASSETS = [
     './',
     './index.html',
@@ -29,6 +29,7 @@ self.addEventListener('activate', (event) => {
             );
         })
     );
+    self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
