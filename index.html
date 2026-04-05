@@ -108,21 +108,15 @@
                     </div>
                 </div>
 
-                <!-- Zamanlayıcı -->
+                <!-- Seans Yönetimi (Zamanlayıcı + Manuel) -->
                 <div class="card timer-card active-timer" id="timerCard">
-                    <div id="timerSessionInfo" class="timer-info">⏱️ AKTİF SEANS SAYACI</div>
+                    <div id="timerSessionInfo" class="timer-info">⏱️ SEANS YÖNETİMİ</div>
+                    
                     <div id="timerDisplay" class="timer-display">00:00:00</div>
                     <div id="timerModeBadge" class="timer-badge">Hazır</div>
-                    <div class="timer-controls">
-                        <button id="btnStartSession" class="btn-primary">▶ Seans Başlat</button>
-                        <button id="btnStartBreak" class="btn-secondary">☕ Mola Başlat</button>
-                    </div>
-                </div>
 
-                <!-- Süre Ekle -->
-                <div class="card time-entry-card">
-                    <h3>Süre Ekle</h3>
-                    <div class="input-group">
+                    <!-- Manuel Süre Giriş Bölümü (Sadece Hazır Modda) -->
+                    <div id="manualTimeSection" class="input-group" style="margin-bottom: 20px;">
                         <div class="dual-stepper-container time-stepper-full" id="timeEntryDualStepper">
                             <button class="btn-dual-stepper time-btn" data-delta="-1">−</button>
                             <div class="dual-stepper-inner">
@@ -137,20 +131,32 @@
                             <button class="btn-dual-stepper time-btn" data-delta="1">+</button>
                         </div>
                     </div>
-                    <div class="input-group">
-                        <label for="inputDifficulty">Gerginlik Hissi (Zorluk Derecesi)</label>
-                        <select id="inputDifficulty">
-                            <option value="rahat">🟢 Çok Rahat (Hafif bir esneme hissi)</option>
-                            <option value="normal" selected>🟡 Normal (İdeal çekme hissi)</option>
-                            <option value="zor">🔴 Zorlayıcı (Gergin, sınırda hissettiren)</option>
-                        </select>
+
+                    <!-- Seans Detayları (Gerginlik & Not) -->
+                    <div id="sessionMetaSection" style="margin-bottom: 15px;">
+                        <div class="input-group">
+                            <label for="inputDifficulty">Gerginlik Hissi (Zorluk Derecesi)</label>
+                            <select id="inputDifficulty">
+                                <option value="rahat">🟢 Çok Rahat (Hafif bir esneme hissi)</option>
+                                <option value="normal" selected>🟡 Normal (İdeal çekme hissi)</option>
+                                <option value="zor">🔴 Zorlayıcı (Gergin, sınırda hissettiren)</option>
+                            </select>
+                        </div>
+                        <div class="input-group" style="margin-top: 15px;">
+                            <label for="inputNote">Seans Notu (İsteğe Bağlı)</label>
+                            <textarea id="inputNote" placeholder="Deri durumu, hisler vb..." style="width: 100%; padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.3); color: white; border: 1px solid var(--card-border); font-size: 14px; height: 50px; resize: none;"></textarea>
+                        </div>
                     </div>
-                    <div class="input-group" style="margin-top: 15px; margin-bottom: 20px;">
-                        <label for="inputNote">Seans Notu (İsteğe Bağlı)</label>
-                        <textarea id="inputNote" placeholder="Deri durumu, hisler vb..." style="width: 100%; padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.3); color: white; border: 1px solid var(--card-border); font-size: 14px; height: 60px; resize: none;"></textarea>
+
+                    <!-- Aksiyon Butonları -->
+                    <div class="timer-controls">
+                        <button id="btnStartSession" class="btn-primary" style="flex: 1;">▶ Seans Başlat</button>
+                        <button id="btnStartBreak" class="btn-secondary" style="flex: 1;">☕ Mola Başlat</button>
+                        <button id="btnAddTime" class="btn-secondary" style="width: auto; padding: 0 15px;" title="Manuel Ekle">➕</button>
+                        <button id="btnFinalizeSession" class="btn-primary" style="display: none; width: 100%;">✅ Seansı Kaydet</button>
                     </div>
-                    <button id="btnAddTime" class="btn-primary">Bugüne Ekle</button>
                 </div>
+
 
                 <!-- Grafikler -->
                 <div class="card chart-card">
@@ -377,7 +383,7 @@
                         <h3><span class="material-symbols-outlined">database</span> Veri Yönetimi</h3>
                         <div class="data-actions-grid">
                             <button id="btnUpdateApp" class="btn-secondary">🚀 Güncellemeyi Denetle</button>
-                            <div class="version-text" id="appVersionText">Mevcut Sürüm: v1.7.1</div>
+                            <div class="version-text" id="appVersionText">Mevcut Sürüm: v1.7.2</div>
                             <div class="import-export-row">
                                 <button id="btnExportData" class="btn-secondary">📤 Dışa Aktar</button>
                                 <button id="btnImportData" class="btn-secondary">📥 İçe Aktar</button>
@@ -505,6 +511,6 @@
         </nav>
     </div>
     
-    <script src="app.js?v=28"></script>
+    <script src="app.js?v=29"></script>
 </body>
 </html>

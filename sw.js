@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v28-v1.7.1'; // v1.7.1: Süre ekle tasarımı genişletildi (Clock Style)
+const CACHE_NAME = 'utakip-v29-v1.7.2'; // v1.7.2: Sayaç ve Manuel Giriş birleştirildi (Review Modu eklendi)
 const ASSETS = [
     './',
     './index.html',

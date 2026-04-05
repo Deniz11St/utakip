@@ -521,12 +521,41 @@ input:checked + .slider:before {
     border-top: 1px solid var(--card-border);
 }
 
+.mode-ready {
+    background: rgba(255, 255, 255, 0.05) !important;
+}
+
 .mode-work {
-    background: rgba(47, 129, 247, 0.1) !important;
+    background: rgba(47, 129, 247, 0.15) !important;
+    color: #58a6ff;
+    border: 1px solid rgba(47, 129, 247, 0.3);
 }
 
 .mode-break {
-    background: rgba(35, 134, 54, 0.1) !important;
+    background: rgba(35, 134, 54, 0.15) !important;
+    color: #7ee787;
+    border: 1px solid rgba(35, 134, 54, 0.3);
+}
+
+.mode-review {
+    background: rgba(255, 165, 0, 0.15) !important;
+    color: #ffa500;
+    border: 1px solid rgba(255, 165, 0, 0.3);
+}
+
+/* Timer Component Layout (v1.7.2) */
+.timer-card {
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#manualTimeSection, #sessionMetaSection {
+    width: 100%;
+    overflow: hidden;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.timer-display {
+    transition: opacity 0.5s ease, transform 0.5s ease;
 }
 
 /* Timer Specific (v1.6.0) */

@@ -1584,22 +1584,79 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         
         if (totalMinutes <= 0) return alert('Lütfen geçerli bir süre girin.');
 
-        // Get today's date in YYYY-MM-DD
         const today = new Date();
-        // Adjust for local timezone accurately
         const offset = today.getTimezoneOffset() * 60000;
         const localISOTime = (new Date(today - offset)).toISOString().split('T')[0];
 
+        const difficultyLabel = {
+            'rahat': '🟢 Rahat',
+            'normal': '🟡 Normal',
+            'zor': '🔴 Zor'
+        }[diffStr] || '🟡 Normal';
+
         if(dataManager.addSession(localISOTime, totalMinutes, diffStr, noteStr)) {
-            // Reset input
-            document.getElementById('inputHours').value = '0';
-            document.getElementById('inputMinutes').value = '0';
+            // Reset input with animation
+            const card = document.getElementById('timerCard');
+            card.style.transform = 'scale(0.98)';
+            card.style.opacity = '0.7';
+            
+            setTimeout(() => {
+                document.getElementById('inputHours').value = '0';
+                document.getElementById('inputMinutes').value = '0';
+                document.getElementById('inputNote').value = '';
+                document.getElementById('inputDifficulty').value = 'normal';
+                
+                card.style.transform = 'scale(1)';
+                card.style.opacity = '1';
+                
+                showSuccessAchievement("Başarıyla Eklendi", `${hours}s ${minutes}dk manuel olarak kaydedildi.`, "📥");
+                updateHomeView();
+            }, 300);
+        }
+    });
+
+    document.getElementById('btnFinalizeSession')?.addEventListener('click', () => {
+        const state = dataManager.data.activeSessionState;
+        const elapsedMs = state.frozenElapsed || (Date.now() - state.startTime);
+        const totalMins = Math.floor(elapsedMs / 60000);
+        const diffStr = document.getElementById('inputDifficulty').value;
+        const noteStr = document.getElementById('inputNote').value;
+
+        if (totalMins > 0) {
+            const today = new Date();
+            const offset = today.getTimezoneOffset() * 60000;
+            const localISOTime = (new Date(today - offset)).toISOString().split('T')[0];
+            
+            if (dataManager.addSession(localISOTime, totalMins, diffStr, noteStr)) {
+                showSuccessAchievement("Seans Kaydedildi", `${totalMins} dakika günlüğe eklendi.`, "✅");
+            }
+        }
+        
+        // Reset and animate back to ready
+        const card = document.getElementById('timerCard');
+        card.style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(10px)';
+
+        setTimeout(() => {
+            state.mode = 'ready';
+            state.frozenElapsed = 0;
+            if (state.current >= dataManager.data.timerSettings.count) {
+                dataManager.resetActiveSession();
+            }
+            // Clear inputs
             document.getElementById('inputNote').value = '';
             document.getElementById('inputDifficulty').value = 'normal';
             
-            // Go to calendar
-            navBtns[1].click(); // Takvim sekmesine geç
-        }
+            dataManager.save();
+            updateTimerDisplay();
+            updateHomeView();
+            
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, 500);
+        
+        releaseWakeLock();
     });
 
     document.getElementById('btnClearData').addEventListener('click', () => {
@@ -1632,23 +1689,56 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         const display = document.getElementById('timerDisplay');
         const btnSession = document.getElementById('btnStartSession');
         const btnBreak = document.getElementById('btnStartBreak');
+        const btnManual = document.getElementById('btnAddTime');
+        const btnFinalize = document.getElementById('btnFinalizeSession');
         const info = document.getElementById('timerSessionInfo');
         const badge = document.getElementById('timerModeBadge');
         const card = document.getElementById('timerCard');
-        if (!display || !btnSession || !btnBreak || !info || !badge || !card) return;
+        const manualSection = document.getElementById('manualTimeSection');
+        const metaSection = document.getElementById('sessionMetaSection');
+
+        if (!display || !btnSession || !btnBreak || !info || !badge || !card || !manualSection || !metaSection) return;
 
         const state = dataManager.data.activeSessionState;
         
         if (state.mode === 'ready') {
             display.textContent = '00:00:00';
+            display.style.opacity = '1';
+            btnSession.style.display = 'block';
             btnSession.textContent = '▶ Seans Başlat';
             btnSession.className = 'btn-primary';
+            btnBreak.style.display = 'block';
             btnBreak.textContent = '☕ Mola Başlat';
             btnBreak.className = 'btn-secondary';
-            info.textContent = `Toplam Hedef: ${dataManager.data.timerSettings.count} Seans`;
+            btnManual.style.display = 'block';
+            btnFinalize.style.display = 'none';
+            manualSection.style.display = 'block';
+            metaSection.style.display = 'block';
+            info.textContent = `Hedef: ${dataManager.data.timerSettings.count} Seans`;
             badge.textContent = 'Hazır';
-            badge.className = 'mode-ready';
-            card.classList.remove('mode-work', 'mode-break');
+            badge.className = 'timer-badge mode-ready';
+            card.classList.remove('mode-work', 'mode-break', 'mode-review');
+            return;
+        }
+
+        if (state.mode === 'review') {
+            const elapsedMs = state.frozenElapsed || 0;
+            const totalSecs = Math.floor(elapsedMs / 1000);
+            const h = Math.floor(totalSecs / 3600);
+            const m = Math.floor((totalSecs % 3600) / 60);
+            const s = totalSecs % 60;
+            display.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+            display.style.opacity = '0.4'; // Silik görünüm
+            
+            btnSession.style.display = 'none';
+            btnBreak.style.display = 'none';
+            btnManual.style.display = 'none';
+            btnFinalize.style.display = 'block';
+            manualSection.style.display = 'none';
+            metaSection.style.display = 'block';
+            badge.textContent = 'Kayıt Bekliyor';
+            badge.className = 'timer-badge mode-review';
+            card.classList.add('mode-review');
             return;
         }
 
@@ -1658,19 +1748,24 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         const m = Math.floor((totalSecs % 3600) / 60);
         const s = totalSecs % 60;
         display.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+        display.style.opacity = '1';
 
+        manualSection.style.display = 'none';
+        btnManual.style.display = 'none';
+        btnFinalize.style.display = 'none';
+        
         if (state.mode === 'work') {
+            metaSection.style.display = 'none'; // Çalışırken gizle
             info.textContent = `Seans ${state.current} / ${dataManager.data.timerSettings.count}`;
             badge.textContent = 'Çalışma Modu';
-            badge.className = 'mode-work';
+            badge.className = 'timer-badge mode-work';
             card.classList.add('mode-work');
             card.classList.remove('mode-break');
-            btnSession.textContent = '⏹ Seansı Durdur & Kaydet';
+            btnSession.textContent = '⏹ Seansı Bitir';
             btnSession.className = 'btn-danger';
             btnBreak.textContent = '☕ Mola Başlat';
             btnBreak.className = 'btn-secondary';
 
-            // Check if duration reached
             const limitMins = dataManager.data.timerSettings.duration;
             const currentMins = Math.floor(elapsedMs / 60000);
             if (currentMins >= limitMins && !state.notified) {
@@ -1679,17 +1774,17 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                 triggerAlert(`Seans ${state.current} Tamamlandı!`, "Şimdi cihazı çıkarıp mola verebilirsin.");
             }
         } else if (state.mode === 'break') {
+            metaSection.style.display = 'none';
             info.textContent = `Mola Süreci`;
             badge.textContent = 'Dinlenme Modu';
-            badge.className = 'mode-break';
+            badge.className = 'timer-badge mode-break';
             card.classList.add('mode-break');
             card.classList.remove('mode-work');
             btnSession.textContent = '▶ Seans Başlat';
             btnSession.className = 'btn-primary';
-            btnBreak.textContent = '⏹ Molayı Durdur';
+            btnBreak.textContent = '⏹ Molayı Bitir';
             btnBreak.className = 'btn-danger';
 
-            // Check if break duration reached
             const breakLimitMins = dataManager.data.timerSettings.break;
             const currentMins = Math.floor(elapsedMs / 60000);
             if (currentMins >= breakLimitMins && !state.notified) {
@@ -1716,27 +1811,13 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
     function manualSaveAndEndSession() {
         const state = dataManager.data.activeSessionState;
         const elapsedMs = Date.now() - state.startTime;
-        const totalMins = Math.floor(elapsedMs / 60000);
         
-        if (totalMins > 0) {
-            const today = new Date();
-            const offset = today.getTimezoneOffset() * 60000;
-            const localISOTime = (new Date(today - offset)).toISOString().split('T')[0];
-            
-            if (dataManager.addSession(localISOTime, totalMins, 'normal', `Seans ${state.current} kaydedildi.`)) {
-                showSuccessAchievement("Seans Kaydedildi", `${totalMins} dakika günlüğe eklendi.`, "✅");
-            }
-        }
-        
-        state.mode = 'ready';
-        if (state.current >= dataManager.data.timerSettings.count) {
-            alert("Bugünkü tüm seanslarını tamamladın! Harika iş.");
-            dataManager.resetActiveSession();
-        }
+        // Timer'ı durdur ve review moduna geç
+        if (timerInterval) clearInterval(timerInterval);
+        state.frozenElapsed = elapsedMs;
+        state.mode = 'review';
         dataManager.save();
         updateTimerDisplay();
-        updateHomeView();
-        releaseWakeLock();
     }
 
     document.getElementById('btnStartSession')?.addEventListener('click', () => {
