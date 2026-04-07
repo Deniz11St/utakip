@@ -54,7 +54,18 @@ class TrackerData {
             }
         };
         const raw = localStorage.getItem('uTakipData');
-        this.data = raw ? JSON.parse(raw) : defaultData;
+        try {
+            if (raw && raw !== "undefined" && raw !== "null") {
+                this.data = JSON.parse(raw);
+            } else {
+                this.data = Object.assign({}, defaultData);
+            }
+        } catch (e) {
+            console.error("Veri yukleme hatasi (Storage Corrupted):", e);
+            this.data = Object.assign({}, defaultData);
+        }
+        
+        if (!this.data) this.data = Object.assign({}, defaultData);
         if (!this.data.monthlyTension) this.data.monthlyTension = {};
         if (!this.data.monthlySize) this.data.monthlySize = {};
         if (!this.data.notes) this.data.notes = {};
@@ -729,7 +740,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     const editBtn = document.createElement('button');
                     editBtn.className = 'btn-day-edit';
-                    editBtn.innerHTML = '<span class="material-symbols-outlined">edit_calendar</span>';
+                    editBtn.title = 'Yeni Seans Ekle';
+                    editBtn.innerHTML = '<span class="material-symbols-outlined">post_add</span>';
                     editBtn.onclick = (e) => {
                         e.stopPropagation();
                         openEditModal(dateStr);
@@ -1508,7 +1520,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         reader.readAsText(file);
     });
 
-    // PWA Güncelleme (v1.7.8 - Ultra Aggressive)
+    // PWA Güncelleme (v1.8.0 - Ultra Aggressive)
     document.getElementById('btnUpdateApp')?.addEventListener('click', async () => {
         const btn = document.getElementById('btnUpdateApp');
         const originalText = btn.textContent;
@@ -1519,7 +1531,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             try {
                 const registration = await navigator.serviceWorker.getRegistration();
                 if (registration) {
-                    btn.textContent = "🚀 Güncelleniyor (v1.7.8)...";
+                    btn.textContent = "🚀 Güncelleniyor (v1.8.0)...";
                     await registration.update();
                     
                     if (registration.waiting) {
@@ -1599,7 +1611,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                         window.location.reload();
                     });
 
-                    btn.textContent = "🚀 Güncelleniyor (v1.7.8)...";
+                    btn.textContent = "🚀 Güncelleniyor (v1.8.0)...";
                     await registration.update();
                     
                     // If after 3 seconds still no reload, force it
@@ -1866,13 +1878,9 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
 
     function openEditModal(dateStr) {
         currentEditDate = dateStr;
-        const sessions = dataManager.data.sessions[dateStr] || [];
-        // Eğer zaten o günün bir seansı varsa ilkini baz alalım (düzenleme için)
-        // Yoksa 0'dan başla
-        const firstSessionMins = sessions.length > 0 ? sessions[0].mins : 0;
-        
-        editHoursInput.value = Math.floor(firstSessionMins / 60);
-        editMinutesInput.value = firstSessionMins % 60;
+        // Yeni ekleneceği için 0'dan başlıyoruz
+        editHoursInput.value = 0;
+        editMinutesInput.value = 0;
         updateEditModalTotal();
         
         const dateObj = new Date(dateStr);
@@ -1930,23 +1938,17 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         const m = parseInt(editMinutesInput.value) || 0;
         const totalMins = (h * 60) + m;
 
-        // Eski kayıtları temizleyip yeni toplamı ekleyelim (Kullanıcı o günü "Düzenle"miş oluyor)
-        if (totalMins === 0) {
-            delete dataManager.data.sessions[currentEditDate];
-        } else {
-            // Basitlik adına o günün tüm seanslarını tek bir seansa indirgeyelim (Düzenleme mantığı)
-            dataManager.data.sessions[currentEditDate] = [{
-                mins: totalMins,
-                diff: 'normal',
-                note: 'Geçmiş kayıt / Düzenleme'
-            }];
+        if (totalMins <= 0) {
+            return alert('Lütfen eklenecek geçerli bir süre girin.');
         }
-        
-        dataManager.save();
-        closeEditModal();
-        updateCalendarView();
-        updateHomeView();
-        showSuccessAchievement("Başarılı!", "Takvim verisi güncellendi.", "📅");
+
+        const success = dataManager.addSession(currentEditDate, totalMins, 'normal', 'Geçmişe dönük (manuel) seans eklendi.');
+        if (success) {
+            closeEditModal();
+            updateCalendarView();
+            updateHomeView();
+            showSuccessAchievement("Başarılı!", "Tarihe yeni seans eklendi.", "📅");
+        }
     });
 
     function manualSaveAndEndSession() {
@@ -2115,7 +2117,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                 const originalText = verText.textContent;
                 verText.style.color = '#2ecc71'; // Yeşil renk
                 verText.style.fontWeight = '700';
-                verText.textContent = '✅ Uygulamanız v1.7.8 sürümüne güncellendi!';
+                verText.textContent = '✅ Uygulamanız v1.8.0 sürümüne güncellendi!';
                 
                 setTimeout(() => {
                     verText.style.color = '';
@@ -2141,5 +2143,5 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
     updateSettingsView();
     updateHomeView();
     checkUpdateStatus();
-    if (dataManager.data.timerStartTime > 0) startTimerUI();
+    if (dataManager.data.activeSessionState && dataManager.data.activeSessionState.mode !== 'ready') startTimerUI();
 });

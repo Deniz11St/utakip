@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v35-v1.7.9'; // v1.7.9: PWA Güncelleme zorlayıcı ve Manuel Kayıt butonu
+const CACHE_NAME = 'utakip-v36-v1.8.0'; // v1.8.0: Arka plan sayacı ve Geçmiş Tarihe Seans Ekleme
 const ASSETS = [
     './',
     './index.html',
