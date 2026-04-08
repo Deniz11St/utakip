@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v36-v1.8.0'; // v1.8.0: Arka plan sayacı ve Geçmiş Tarihe Seans Ekleme
+const CACHE_NAME = 'utakip-v37-v1.8.1'; // v1.8.1: Manuel mod onarımı ve virgüllü veri düzeltmeleri
 const ASSETS = [
     './',
     './index.html',

@@ -147,18 +147,28 @@ class TrackerData {
     }
 
     setCurrentData(size, tension) {
+        let saveNeeded = false;
         const today = new Date();
         const currentYYYYMM = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
         
         if(size) {
-            this.data.currentSize = parseFloat(size);
-            if (!this.data.monthlySize) this.data.monthlySize = {};
-            this.data.monthlySize[currentYYYYMM] = parseFloat(size);
+            const sizeNum = parseFloat(String(size).replace(',', '.'));
+            if (!isNaN(sizeNum)) {
+                this.data.currentSize = sizeNum;
+                if (!this.data.monthlySize) this.data.monthlySize = {};
+                this.data.monthlySize[currentYYYYMM] = sizeNum;
+                saveNeeded = true;
+            }
         }
         if(tension) {
-            this.data.monthlyTension[currentYYYYMM] = parseFloat(tension);
+            const tensionNum = parseFloat(String(tension).replace(',', '.'));
+            if (!isNaN(tensionNum)) {
+                if (!this.data.monthlyTension) this.data.monthlyTension = {};
+                this.data.monthlyTension[currentYYYYMM] = tensionNum;
+                saveNeeded = true;
+            }
         }
-        this.save();
+        if(saveNeeded) this.save();
     }
 
     addSession(dateStr, minutes, diff = 'normal', note = '') {
@@ -520,9 +530,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Kırmızı barı güncelle ve scroll ayarı yap
         // Dolgu cetvelin en başından (startCm - 0.5) güncel boyuta kadar olmalı
-        const currentSize = dataManager.data.currentSize || dataManager.data.startSize;
+        const currentSizeNum = parseFloat(dataManager.data.currentSize) || parseFloat(startCm);
         const scaleStartCm = startCm - 0.5;
-        let growthMmRelativeToScale = (currentSize - scaleStartCm) * 10;
+        let growthMmRelativeToScale = (currentSizeNum - scaleStartCm) * 10;
         
         if(growthMmRelativeToScale < 0) growthMmRelativeToScale = 0;
         if(growthMmRelativeToScale > totalMm) growthMmRelativeToScale = totalMm;
@@ -1416,19 +1426,21 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         document.getElementById('geminiApiKey').value = dataManager.data.geminiApiKey || '';
         document.getElementById('geminiModelName').value = dataManager.data.geminiModelName || 'gemini-1.5-flash';
         
-        if(dataManager.data.currentSize !== undefined && !isNaN(dataManager.data.currentSize)) {
+        if(dataManager.data.currentSize !== undefined && dataManager.data.currentSize !== null && !isNaN(dataManager.data.currentSize)) {
             document.getElementById('currentSize').value = dataManager.data.currentSize;
         } else {
             document.getElementById('currentSize').value = '';
         }
         
-        const today = new Date();
-        const currentYYYYMM = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
-        if(dataManager.data.monthlyTension && dataManager.data.monthlyTension[currentYYYYMM]) {
-            document.getElementById('currentTension').value = dataManager.data.monthlyTension[currentYYYYMM];
-        } else {
-            document.getElementById('currentTension').value = '';
+        // Let's get the latest available tension, regardless of the month, so the input doesn't incorrectly seem 'cleared'
+        let lastTension = '';
+        if (dataManager.data.monthlyTension) {
+            const tensionKeys = Object.keys(dataManager.data.monthlyTension).sort().reverse();
+            if (tensionKeys.length > 0) {
+                lastTension = dataManager.data.monthlyTension[tensionKeys[0]];
+            }
         }
+        document.getElementById('currentTension').value = lastTension !== null ? lastTension : '';
 
         // Timer Settings
         document.getElementById('timerCount').value = dataManager.data.timerSettings.count;
@@ -1520,7 +1532,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         reader.readAsText(file);
     });
 
-    // PWA Güncelleme (v1.8.0 - Ultra Aggressive)
+    // PWA Güncelleme (v1.8.1 - Ultra Aggressive)
     document.getElementById('btnUpdateApp')?.addEventListener('click', async () => {
         const btn = document.getElementById('btnUpdateApp');
         const originalText = btn.textContent;
@@ -1531,7 +1543,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             try {
                 const registration = await navigator.serviceWorker.getRegistration();
                 if (registration) {
-                    btn.textContent = "🚀 Güncelleniyor (v1.8.0)...";
+                    btn.textContent = "🚀 Güncelleniyor (v1.8.1)...";
                     await registration.update();
                     
                     if (registration.waiting) {
@@ -1611,7 +1623,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                         window.location.reload();
                     });
 
-                    btn.textContent = "🚀 Güncelleniyor (v1.8.0)...";
+                    btn.textContent = "🚀 Güncelleniyor (v1.8.1)...";
                     await registration.update();
                     
                     // If after 3 seconds still no reload, force it
@@ -1640,7 +1652,28 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         
         dataManager.setCurrentData(cs, ct);
         alert("Aylık güncel verileriniz yapay zeka hafızasına kaydedildi.");
+        updateSettingsView();
         updateHomeView();
+    });
+
+    document.getElementById('btnToggleManual')?.addEventListener('click', () => {
+        const card = document.getElementById('timerCard');
+        if (!card) return;
+        
+        if (card.classList.contains('mode-manual') || card.classList.contains('is-manual-view')) {
+            card.classList.remove('mode-manual');
+            card.classList.remove('is-manual-view');
+            localStorage.setItem('timer_entry_mode', 'timer');
+            const icon = document.querySelector('#btnToggleManual span');
+            if (icon) icon.textContent = 'edit_calendar';
+        } else {
+            card.classList.add('mode-manual');
+            card.classList.add('is-manual-view');
+            localStorage.setItem('timer_entry_mode', 'manual');
+            const icon = document.querySelector('#btnToggleManual span');
+            if (icon) icon.textContent = 'timer';
+        }
+        updateTimerDisplay();
     });
 
     document.getElementById('btnSaveManual').addEventListener('click', () => {
@@ -1763,15 +1796,40 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         if (!display || !btnSession || !btnBreak || !info || !card || !manualSection || !metaSection) return;
 
         const state = dataManager.data.activeSessionState;
-        const isManualMode = card.classList.contains('mode-manual');
-        const toggleBtn = document.getElementById('btnToggleManual');
-        
+        const isManualMode = card.classList.contains('mode-manual') || card.classList.contains('is-manual-view');
+
+        // Apply Manual View UI if idle
+        if (isManualMode && state.mode === 'ready') {
+            display.style.display = 'none';
+            manualSection.style.display = 'block';
+            metaSection.style.display = 'block';
+            
+            btnSession.style.display = 'none';
+            btnBreak.style.display = 'none';
+            btnFinalize.style.display = 'none';
+            saveManualBtn.style.display = 'block';
+            
+            info.textContent = '📝 MANUEL GİRİŞ MODU';
+            card.className = card.className.replace(/mode-\w+/g, '');
+            card.classList.add('mode-ready');
+            card.classList.add('mode-manual');
+            card.classList.add('is-manual-view');
+            return;
+        } else {
+            display.style.display = 'block';
+            manualSection.style.display = 'none';
+            saveManualBtn.style.display = 'none';
+        }
+
         if (state.mode === 'ready') {
             display.textContent = '00:00:00';
             display.style.opacity = '1';
             
+            btnSession.style.display = 'block';
             btnSession.textContent = '▶ Seans Başlat';
             btnSession.className = 'btn-primary';
+            
+            btnBreak.style.display = 'block';
             btnBreak.textContent = '☕ Mola Başlat';
             btnBreak.className = 'btn-secondary';
             
@@ -1779,8 +1837,8 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             metaSection.style.display = 'block';
             
             info.textContent = `Hedef: ${dataManager.data.timerSettings.count} Seans`;
+            card.className = card.className.replace(/mode-\w+/g, '');
             card.classList.add('mode-ready');
-            card.classList.remove('mode-work', 'mode-break', 'mode-review');
             return;
         }
 
@@ -1793,16 +1851,18 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             const m = Math.floor((totalSecs % 3600) / 60);
             const s = totalSecs % 60;
             display.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-            display.style.opacity = '0.4'; // Silik görünüm
+            display.style.opacity = '0.4'; 
             
             btnSession.style.display = 'none';
             btnBreak.style.display = 'none';
-            btnManual.style.display = 'none';
+            saveManualBtn.style.display = 'none';
             btnFinalize.style.display = 'block';
+            
             manualSection.style.display = 'none';
             metaSection.style.display = 'block';
             badge.textContent = 'Kayıt Bekliyor';
             badge.className = 'timer-badge mode-review';
+            card.className = card.className.replace(/mode-\w+/g, '');
             card.classList.add('mode-review');
             return;
         }
@@ -2117,7 +2177,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                 const originalText = verText.textContent;
                 verText.style.color = '#2ecc71'; // Yeşil renk
                 verText.style.fontWeight = '700';
-                verText.textContent = '✅ Uygulamanız v1.8.0 sürümüne güncellendi!';
+                verText.textContent = '✅ Uygulamanız v1.8.1 sürümüne güncellendi!';
                 
                 setTimeout(() => {
                     verText.style.color = '';
