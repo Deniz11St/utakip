@@ -1801,9 +1801,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         setTimeout(() => {
             state.mode = 'ready';
             state.frozenElapsed = 0;
-            if (state.current >= dataManager.data.timerSettings.count) {
-                dataManager.resetActiveSession();
-            }
+            dataManager.resetActiveSession();
             // Clear inputs
             document.getElementById('inputNote').value = '';
             document.getElementById('inputDifficulty').value = 'normal';
@@ -1962,7 +1960,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             btnFinalize.style.display = 'none';
             metaSection.style.display = 'block';
             
-            info.textContent = `Hedef: ${dataManager.data.timerSettings.count} Seans`;
+            info.textContent = '⏱️ UZATICI SEANSI';
             card.className = card.className.replace(/mode-\w+/g, '');
             card.classList.add('mode-ready');
             return;
@@ -2005,7 +2003,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         
         if (state.mode === 'work') {
             metaSection.style.display = 'none'; // Çalışırken gizle
-            info.textContent = `Seans ${state.current} / ${dataManager.data.timerSettings.count}`;
+            info.textContent = '⏱️ UZATICI ÇALIŞIYOR';
             badge.textContent = 'Çalışma Modu';
             badge.className = 'timer-badge mode-work';
             card.classList.add('mode-work');
