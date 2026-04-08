@@ -1676,6 +1676,71 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         updateTimerDisplay();
     });
 
+    document.getElementById('btnTogglePump')?.addEventListener('click', () => {
+        const card = document.getElementById('timerCard');
+        if (!card) return;
+
+        if (card.classList.contains('mode-pump')) {
+            card.classList.remove('mode-pump');
+            const icon = document.querySelector('#btnTogglePump span');
+            if (icon) icon.textContent = 'mode_fan';
+        } else {
+            card.classList.remove('mode-manual');
+            card.classList.remove('is-manual-view');
+            const manualIcon = document.querySelector('#btnToggleManual span');
+            if (manualIcon) manualIcon.textContent = 'edit_calendar';
+            
+            card.classList.add('mode-pump');
+            const icon = document.querySelector('#btnTogglePump span');
+            if (icon) icon.textContent = 'close';
+        }
+        updateTimerDisplay();
+    });
+
+    const initPumpDur = localStorage.getItem('pump_duration');
+    const pdElem = document.getElementById('pumpDuration');
+    if (initPumpDur && pdElem) {
+        pdElem.value = initPumpDur;
+    }
+
+    pdElem?.addEventListener('change', (e) => {
+        localStorage.setItem('pump_duration', e.target.value);
+        if (pumpEndTime === 0) updateTimerDisplay();
+    });
+
+    document.getElementById('btnStartPump')?.addEventListener('click', () => {
+        if (pumpEndTime > 0) {
+            pumpEndTime = 0;
+            if (pumpInterval) clearInterval(pumpInterval);
+            pumpInterval = null;
+            updateTimerDisplay();
+            releaseWakeLock();
+        } else {
+            const pd = document.getElementById('pumpDuration');
+            const d = pd ? parseInt(pd.value) || 15 : 15;
+            pumpEndTime = Date.now() + (d * 60000);
+            requestWakeLock();
+            
+            if (pumpInterval) clearInterval(pumpInterval);
+            pumpInterval = setInterval(() => {
+                if (pumpEndTime > 0 && Date.now() >= pumpEndTime) {
+                    pumpEndTime = 0;
+                    clearInterval(pumpInterval);
+                    pumpInterval = null;
+                    if (window.navigator && window.navigator.vibrate) {
+                        window.navigator.vibrate([500, 200, 500, 200, 1000]);
+                    }
+                    setTimeout(() => alert("🔔 Pompa Süresi Doldu!"), 100);
+                    updateTimerDisplay();
+                    releaseWakeLock();
+                } else {
+                    updateTimerDisplay();
+                }
+            }, 1000);
+            updateTimerDisplay();
+        }
+    });
+
     document.getElementById('btnSaveManual').addEventListener('click', () => {
         const hours = parseInt(document.getElementById('inputHours').value) || 0;
         const minutes = parseInt(document.getElementById('inputMinutes').value) || 0;
@@ -1777,6 +1842,10 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         }
     }
 
+    // --- PUMP TIMER LOGIC ---
+    let pumpInterval = null;
+    let pumpEndTime = 0;
+
     // --- TIMER LOGIC ---
     let timerInterval = null;
 
@@ -1797,6 +1866,63 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
 
         const state = dataManager.data.activeSessionState;
         const isManualMode = card.classList.contains('mode-manual') || card.classList.contains('is-manual-view');
+        const isPumpMode = card.classList.contains('mode-pump');
+
+        const btnStartPump = document.getElementById('btnStartPump');
+        const pumpSection = document.getElementById('pumpSettingSection');
+        const pumpDisplay = document.getElementById('pumpTimerDisplay');
+
+        // Apply Pump View UI
+        if (isPumpMode) {
+            display.style.display = 'none';
+            manualSection.style.display = 'none';
+            metaSection.style.display = 'none';
+            if (pumpSection) pumpSection.style.display = 'block';
+
+            btnSession.style.display = 'none';
+            btnBreak.style.display = 'none';
+            btnFinalize.style.display = 'none';
+            saveManualBtn.style.display = 'none';
+            if (btnStartPump) btnStartPump.style.display = 'block';
+
+            if (pumpEndTime > 0) {
+                // Running pump
+                info.textContent = '🌀 POMPA SÜRECİ';
+                if (btnStartPump) {
+                    btnStartPump.textContent = '⏹ Pompayı Durdur';
+                    btnStartPump.className = 'btn-danger';
+                }
+                card.className = card.className.replace(/mode-\w+/g, '');
+                card.classList.add('mode-pump');
+                
+                const remaining = pumpEndTime - Date.now();
+                if (remaining <= 0) {
+                    if (pumpDisplay) pumpDisplay.textContent = '00:00';
+                } else {
+                    const rs = Math.ceil(remaining / 1000);
+                    const rm = Math.floor(rs / 60);
+                    const rss = rs % 60;
+                    if (pumpDisplay) pumpDisplay.textContent = `${String(rm).padStart(2,'0')}:${String(rss).padStart(2,'0')}`;
+                }
+            } else {
+                // Stopped pump
+                info.textContent = '🌀 POMPA MODU';
+                if (btnStartPump) {
+                    btnStartPump.textContent = '▶ Pompayı Başlat';
+                    btnStartPump.className = 'btn-primary';
+                }
+                card.className = card.className.replace(/mode-\w+/g, '');
+                card.classList.add('mode-pump');
+                
+                const durationInput = document.getElementById('pumpDuration');
+                const d = durationInput ? (parseInt(durationInput.value) || 15) : 15;
+                if (pumpDisplay) pumpDisplay.textContent = `${String(d).padStart(2,'0')}:00`;
+            }
+            return;
+        } else {
+            if (pumpSection) pumpSection.style.display = 'none';
+            if (btnStartPump) btnStartPump.style.display = 'none';
+        }
 
         // Apply Manual View UI if idle
         if (isManualMode && state.mode === 'ready') {

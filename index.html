@@ -108,11 +108,16 @@
                     </div>
                 </div>
 
-                <!-- Seans Yönetimi (Zamanlayıcı + Manuel) -->
+                <!-- Seans Yönetimi (Zamanlayıcı + Manuel + Pompa) -->
                 <div class="card timer-card active-timer mode-ready" id="timerCard">
-                    <button id="btnToggleManual" class="btn-icon-toggle" title="Giriş Modunu Değiştir">
-                        <span class="material-symbols-outlined">edit_calendar</span>
-                    </button>
+                    <div class="timer-top-actions" style="position: absolute; top: 15px; right: 15px; display: flex; gap: 8px; z-index: 5;">
+                        <button id="btnTogglePump" class="btn-icon-toggle" style="position: relative; top: 0; right: 0;" title="Pompa Modunu Değiştir">
+                            <span class="material-symbols-outlined">mode_fan</span>
+                        </button>
+                        <button id="btnToggleManual" class="btn-icon-toggle" style="position: relative; top: 0; right: 0;" title="Giriş Modunu Değiştir">
+                            <span class="material-symbols-outlined">edit_calendar</span>
+                        </button>
+                    </div>
                     <div id="timerSessionInfo" class="timer-info">⏱️ SEANS YÖNETİMİ</div>
                     
                     <div id="timerDisplay" class="timer-display">00:00:00</div>
@@ -131,6 +136,19 @@
                                 </div>
                             </div>
                             <button class="btn-dual-stepper time-btn" data-delta="1">+</button>
+                        </div>
+                    </div>
+
+                    <!-- Pompa Sayaç Bölümü (Sadece Pompa Modunda) -->
+                    <div id="pumpSettingSection" style="display: none; margin-bottom: 20px; text-align: center;">
+                        <div class="timer-display" id="pumpTimerDisplay" style="font-size: 32px; margin-bottom: 15px;">15:00</div>
+                        <div class="input-group" style="align-items: center;">
+                            <label style="margin-bottom: 8px;">Pompa Süresi Ayarla (Dk)</label>
+                            <div class="modern-stepper-container" style="justify-content: center; width: 140px; margin: 0 auto;">
+                                <button class="btn-stepper" data-input="pumpDuration" data-delta="-1">−</button>
+                                <input type="number" id="pumpDuration" min="1" max="60" value="15" class="modern-stepper-input">
+                                <button class="btn-stepper" data-input="pumpDuration" data-delta="1">+</button>
+                            </div>
                         </div>
                     </div>
 
@@ -156,6 +174,7 @@
                         <button id="btnStartBreak" class="btn-secondary" style="flex: 1;">☕ Mola Başlat</button>
                         <button id="btnSaveManual" class="btn-primary" style="display: none; width: 100%;">💾 KAYDET</button>
                         <button id="btnFinalizeSession" class="btn-primary" style="display: none; width: 100%;">✅ Seansı Kaydet</button>
+                        <button id="btnStartPump" class="btn-primary" style="display: none; width: 100%;">🌀 Pompayı Başlat</button>
                     </div>
                 </div>
 
