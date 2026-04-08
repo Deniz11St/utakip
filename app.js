@@ -1532,7 +1532,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         reader.readAsText(file);
     });
 
-    // PWA Güncelleme (v1.8.1 - Ultra Aggressive)
+    // PWA Güncelleme (v1.8.2 - Ultra Aggressive)
     document.getElementById('btnUpdateApp')?.addEventListener('click', async () => {
         const btn = document.getElementById('btnUpdateApp');
         const originalText = btn.textContent;
@@ -1543,7 +1543,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             try {
                 const registration = await navigator.serviceWorker.getRegistration();
                 if (registration) {
-                    btn.textContent = "🚀 Güncelleniyor (v1.8.1)...";
+                    btn.textContent = "🚀 Güncelleniyor (v1.8.2)...";
                     await registration.update();
                     
                     if (registration.waiting) {
@@ -1623,7 +1623,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                         window.location.reload();
                     });
 
-                    btn.textContent = "🚀 Güncelleniyor (v1.8.1)...";
+                    btn.textContent = "🚀 Güncelleniyor (v1.8.2)...";
                     await registration.update();
                     
                     // If after 3 seconds still no reload, force it
@@ -2301,7 +2301,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                 const originalText = verText.textContent;
                 verText.style.color = '#2ecc71'; // Yeşil renk
                 verText.style.fontWeight = '700';
-                verText.textContent = '✅ Uygulamanız v1.8.1 sürümüne güncellendi!';
+                verText.textContent = '✅ Uygulamanız v1.8.2 sürümüne güncellendi!';
                 
                 setTimeout(() => {
                     verText.style.color = '';

@@ -971,11 +971,10 @@ input:checked + .slider:before {
 }
 
 .ruler-estimate-text {
-    font-size: 17px !important;
-    font-weight: 800 !important;
-    color: #a5d6ff !important;
-    opacity: 1 !important;
-    letter-spacing: 0.4px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    letter-spacing: 0.2px;
     display: block;
     margin-bottom: 6px;
     text-shadow: 0 2px 8px rgba(0,0,0,0.5);

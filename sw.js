@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v37-v1.8.1'; // v1.8.1: Manuel mod onarımı ve virgüllü veri düzeltmeleri
+const CACHE_NAME = 'utakip-v38-v1.8.2'; // v1.8.2: Arayüz ve renk düzenlemeleri
 const ASSETS = [
     './',
     './index.html',
