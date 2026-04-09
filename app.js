@@ -360,10 +360,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const tTick = document.createElement('div');
             tTick.className = `tick-number-pos ${isMajor ? 'major' : ''}`;
             
-            if (isCm) {
-                tTick.style.scrollSnapAlign = 'center';
-            }
-            
             // i=5 noktası gerçek başlangıç CM (startCm) değeridir.
             // Bu yüzden val ofsetli hesaplanır:
             let mmRelative = i - 5;
@@ -385,7 +381,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (i === 5) {
                 const flag = document.createElement('div');
                 flag.textContent = '🚩';
-                flag.className = 'ruler-target-flag'; // Aynı stil kullanılabilir
+                flag.className = 'ruler-target-flag';
                 flag.style.color = '#ff6b6b';
                 tTick.appendChild(flag);
             }
@@ -545,8 +541,9 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const viewport = document.getElementById('rulerViewport');
             if (viewport) {
-                // Scroll ofset: Stage başlangıcı + 5mm tampon
-                let scrollStageMm = (stage > 0 ? (stage - 1) * 10 : 0) + 5;
+                // Scroll ofset: Stage başlangıcı + başlangıç boşluğu payı
+                // +4mm vererek 5.mm'deki bayrağın solunda tam 1mm (bir küçük nokta) boşluk kalmasını sağlıyoruz
+                let scrollStageMm = (stage > 0 ? (stage - 1) * 10 : 0) + 4;
                 const scrollWidth = viewport.scrollWidth;
                 const pxPerMm = scrollWidth / totalMm;
                 
@@ -596,6 +593,39 @@ document.addEventListener('DOMContentLoaded', () => {
         updateChartView();
     }
     
+    // --- CETVEL SURUKLEME (DRAG TO SCROLL) MOUSE DESTEGI ---
+    const rulerViewport = document.getElementById('rulerViewport');
+    if (rulerViewport) {
+        let isDown = false;
+        let startX;
+        let scrollLeft;
+
+        rulerViewport.addEventListener('mousedown', (e) => {
+            isDown = true;
+            rulerViewport.classList.add('grabbing');
+            startX = e.pageX - rulerViewport.offsetLeft;
+            scrollLeft = rulerViewport.scrollLeft;
+        });
+
+        rulerViewport.addEventListener('mouseleave', () => {
+            isDown = false;
+            rulerViewport.classList.remove('grabbing');
+        });
+
+        rulerViewport.addEventListener('mouseup', () => {
+            isDown = false;
+            rulerViewport.classList.remove('grabbing');
+        });
+
+        rulerViewport.addEventListener('mousemove', (e) => {
+            if (!isDown) return;
+            e.preventDefault();
+            const x = e.pageX - rulerViewport.offsetLeft;
+            const walk = (x - startX) * 2; // Kaydırma hızı (2x)
+            rulerViewport.scrollLeft = scrollLeft - walk;
+        });
+    }
+
     function updateJournalView() {
         const today = new Date();
         const dateStr = today.toISOString().split('T')[0];
@@ -1984,8 +2014,10 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             
             manualSection.style.display = 'none';
             metaSection.style.display = 'block';
-            badge.textContent = 'Kayıt Bekliyor';
-            badge.className = 'timer-badge mode-review';
+            if (badge) {
+                badge.textContent = 'Kayıt Bekliyor';
+                badge.className = 'timer-badge mode-review';
+            }
             card.className = card.className.replace(/mode-\w+/g, '');
             card.classList.add('mode-review');
             return;
@@ -2003,9 +2035,11 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         
         if (state.mode === 'work') {
             metaSection.style.display = 'none'; // Çalışırken gizle
-            info.textContent = '⏱️ UZATICI ÇALIŞIYOR';
-            badge.textContent = 'Çalışma Modu';
-            badge.className = 'timer-badge mode-work';
+            info.textContent = '⏱️ SAYAÇ ÇALIŞIYOR';
+            if (badge) {
+                badge.textContent = 'Çalışma Modu';
+                badge.className = 'timer-badge mode-work';
+            }
             card.classList.add('mode-work');
             card.classList.remove('mode-break');
             btnSession.textContent = '⏹ Seansı Bitir';
@@ -2139,12 +2173,50 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         const state = dataManager.data.activeSessionState;
         const elapsedMs = Date.now() - state.startTime;
         
-        // Timer'ı durdur ve review moduna geç
         if (timerInterval) clearInterval(timerInterval);
-        state.frozenElapsed = elapsedMs;
-        state.mode = 'review';
-        dataManager.save();
-        updateTimerDisplay();
+        
+        const totalMins = Math.floor(elapsedMs / 60000);
+        const diffStr = document.getElementById('inputDifficulty').value;
+        const noteStr = document.getElementById('inputNote').value;
+
+        if (totalMins > 0) {
+            const today = new Date();
+            const offset = today.getTimezoneOffset() * 60000;
+            const localISOTime = (new Date(today - offset)).toISOString().split('T')[0];
+            
+            if (dataManager.addSession(localISOTime, totalMins, diffStr, noteStr)) {
+                showSuccessAchievement("Seans Kaydedildi", `${totalMins} dakika günlüğe eklendi.`, "✅");
+            }
+        }
+        
+        const card = document.getElementById('timerCard');
+        if(card) {
+            card.style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(10px)';
+        }
+
+        setTimeout(() => {
+            state.mode = 'ready';
+            state.frozenElapsed = 0;
+            dataManager.resetActiveSession();
+            
+            const noteEl = document.getElementById('inputNote');
+            if(noteEl) noteEl.value = '';
+            const diffEl = document.getElementById('inputDifficulty');
+            if(diffEl) diffEl.value = 'normal';
+            
+            dataManager.save();
+            updateTimerDisplay();
+            updateHomeView();
+            
+            if(card) {
+                card.style.opacity = '1';
+                card.style.transform = 'translateY(0)';
+            }
+        }, 500);
+        
+        releaseWakeLock();
     }
 
     document.getElementById('btnStartSession')?.addEventListener('click', () => {

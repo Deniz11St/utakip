@@ -640,6 +640,7 @@ input:checked + .slider:before {
     color: var(--primary-color);
     letter-spacing: 1.5px;
     margin-bottom: 12px;
+    align-self: flex-start;
 }
 
 .timer-display {
@@ -734,12 +735,16 @@ input:checked + .slider:before {
 .ruler-viewport {
     width: 100%;
     overflow-x: auto;
-    scroll-snap-type: x mandatory;
     scrollbar-width: none;
     -ms-overflow-style: none;
     margin: 0;
     padding: 10px 0 20px 0;
     touch-action: pan-x;
+    cursor: grab;
+}
+
+.ruler-viewport.grabbing {
+    cursor: grabbing;
 }
 
 .ruler-viewport::-webkit-scrollbar {
@@ -910,6 +915,8 @@ input:checked + .slider:before {
     position: absolute;
     bottom: 20px;
     font-size: 20px;
+    left: 50%;
+    transform: translateX(-3px);
     filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
 }
 
