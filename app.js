@@ -47,14 +47,15 @@ function initCloudSync() {
     }
 }
 
-function cloudSyncPush() {
-    if (!firebaseDb || !dataManager.data.cloudSyncEnabled) return;
+function cloudSyncPush(manualData) {
+    const data = manualData || (typeof dataManager !== 'undefined' ? dataManager.data : null);
+    if (!data || !firebaseDb || !data.cloudSyncEnabled) return;
     
     // Update timestamp before pushing
-    dataManager.data.lastSyncTimestamp = Date.now();
-    const syncRef = firebaseDb.ref('users/' + dataManager.data.firebaseSyncId);
+    data.lastSyncTimestamp = Date.now();
+    const syncRef = firebaseDb.ref('users/' + data.firebaseSyncId);
     
-    syncRef.set(dataManager.data)
+    syncRef.set(data)
         .then(() => console.log("Cloud Sync Push Successful"))
         .catch(e => console.error("Cloud Sync Push Error:", e));
 }
@@ -212,7 +213,7 @@ class TrackerData {
     save(skipCloud = false) {
         localStorage.setItem('uTakipData', JSON.stringify(this.data));
         if (this.data.cloudSyncEnabled && !skipCloud) {
-            cloudSyncPush(); // Global push function
+            cloudSyncPush(this.data); // Pass current data directly (v1.9.1 Fix)
         }
     }
 
@@ -430,6 +431,16 @@ document.addEventListener('DOMContentLoaded', () => {
             switchView(target);
         });
     });
+
+    // Failsafe: Eğer bir hata nedeniyle splashScreen 4 saniye içinde kapanmazsa zorla kapat (v1.9.1)
+    setTimeout(() => {
+        const splash = document.getElementById('splashScreen');
+        if (splash && !splash.classList.contains('hidden')) {
+            console.warn("Failsafe: Splash screen forced to close.");
+            splash.classList.add('hidden');
+            setTimeout(() => splash.remove(), 1000);
+        }
+    }, 4000);
 
     function switchView(target) {
         navBtns.forEach(b => b.classList.remove('active'));

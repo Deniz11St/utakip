@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v40-v1.9.0'; // v1.9.0: Bulut Senkronizasyonu ve Sayaç Kontrolleri
+const CACHE_NAME = 'utakip-v41-v1.9.1'; // v1.9.1: Race condition fix & failsafe boot
 const ASSETS = [
     './',
     './index.html',
