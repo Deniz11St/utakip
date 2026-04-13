@@ -1,3 +1,83 @@
+// --- CLOUD SYNC ENGINE (Firebase Runtime) ---
+let firebaseApp = null;
+let firebaseDb = null;
+
+function initCloudSync() {
+    const data = dataManager.data;
+    if (!data.firebaseApiKey || !data.firebaseDbUrl || !data.firebaseSyncId || !data.cloudSyncEnabled) {
+        console.log("Cloud Sync is disabled or missing config.");
+        return;
+    }
+
+    const firebaseConfig = {
+        apiKey: data.firebaseApiKey,
+        databaseURL: data.firebaseDbUrl
+    };
+
+    try {
+        if (!window.firebase) {
+            console.error("Firebase SDK not loaded.");
+            return;
+        }
+        if (!firebase.apps.length) {
+            firebaseApp = firebase.initializeApp(firebaseConfig);
+        } else {
+            firebaseApp = firebase.app();
+        }
+        firebaseDb = firebaseApp.database();
+        console.log("Firebase Initialized Successfully.");
+
+        // Real-time Listener
+        const syncRef = firebaseDb.ref('users/' + data.firebaseSyncId);
+        syncRef.on('value', (snapshot) => {
+            const remoteData = snapshot.val();
+            // Pull only if remote is newer
+            if (remoteData && remoteData.lastSyncTimestamp > dataManager.data.lastSyncTimestamp) {
+                console.log("Cloud data is newer, pulling...");
+                dataManager.data = remoteData;
+                dataManager.save(true); // Save locally without re-push loop
+                updateHomeView();
+                updateCalendarView();
+                updateTimerDisplay();
+                updateSettingsView();
+            }
+        });
+    } catch (e) {
+        console.error("Firebase Init Error:", e);
+    }
+}
+
+function cloudSyncPush() {
+    if (!firebaseDb || !dataManager.data.cloudSyncEnabled) return;
+    
+    // Update timestamp before pushing
+    dataManager.data.lastSyncTimestamp = Date.now();
+    const syncRef = firebaseDb.ref('users/' + dataManager.data.firebaseSyncId);
+    
+    syncRef.set(dataManager.data)
+        .then(() => console.log("Cloud Sync Push Successful"))
+        .catch(e => console.error("Cloud Sync Push Error:", e));
+}
+
+async function cloudSyncPullManual() {
+    if (!firebaseDb) return;
+    const syncRef = firebaseDb.ref('users/' + dataManager.data.firebaseSyncId);
+    try {
+        const snapshot = await syncRef.once('value');
+        const remoteData = snapshot.val();
+        if (remoteData) {
+            dataManager.data = remoteData;
+            dataManager.save(true);
+            updateHomeView();
+            updateSettingsView();
+            return true;
+        }
+    } catch (e) {
+        console.error("Manual Pull Error:", e);
+    }
+    return false;
+}
+
 // Başarı bildirimi (Achievement Pop-up)
 function showSuccessAchievement(title, message, icon = '🏆') {
     const el = document.createElement('div');
@@ -37,7 +117,9 @@ class TrackerData {
             notes: {}, // Format: "YYYY-MM-DD": "Bugün seans çok verimliydi."
             coachChat: [], // Format: [{role: 'user', text: '...'}, {role: 'coach', text: '...'}]
             geminiApiKey: '',
-            geminiModelName: 'gemini-3-flash-preview',
+            minimaxApiKey: '',
+            geminiModelName: 'gemini-1.5-flash',
+            aiProvider: 'gemini', // 'gemini' or 'minimax'
             dailyGoalHours: 6,
             timerSettings: {
                 count: 3,
@@ -46,6 +128,12 @@ class TrackerData {
                 sound: true,
                 vibrate: true
             },
+            dailyPump: {}, // Format: "YYYY-MM-DD": true
+            firebaseApiKey: '',
+            firebaseDbUrl: '',
+            firebaseSyncId: '',
+            cloudSyncEnabled: false,
+            lastSyncTimestamp: 0,
             activeSessionState: {
                 current: 1,
                 mode: 'ready', // 'ready', 'work', 'break'
@@ -71,17 +159,23 @@ class TrackerData {
         if (!this.data.notes) this.data.notes = {};
         if (!this.data.coachChat) this.data.coachChat = [];
         if (!this.data.geminiApiKey) this.data.geminiApiKey = '';
-        if (!this.data.geminiModelName) this.data.geminiModelName = 'gemini-3-flash-preview';
+        if (!this.data.minimaxApiKey) this.data.minimaxApiKey = '';
+        if (!this.data.aiProvider) this.data.aiProvider = 'gemini';
+        if (!this.data.dailyPump) this.data.dailyPump = {};
+        if (!this.data.geminiModelName || this.data.geminiModelName === 'gemini-3-flash-preview') {
+            this.data.geminiModelName = 'gemini-1.5-flash';
+        }
+        
         if (this.data.targetMonthlyGrowth === undefined) this.data.targetMonthlyGrowth = 2;
         if (this.data.dailyGoalHours === undefined) this.data.dailyGoalHours = 6;
-        if (this.data.timerStartTime === undefined) this.data.timerStartTime = 0;
-        
-        if (this.data.timerSettings === undefined) {
-            this.data.timerSettings = { count: 3, duration: 120, break: 30, sound: true, vibrate: true };
-        }
         if (this.data.activeSessionState === undefined) {
             this.data.activeSessionState = { current: 1, mode: 'ready', startTime: 0, lastModeChange: 0 };
         }
+        if (!this.data.firebaseApiKey) this.data.firebaseApiKey = '';
+        if (!this.data.firebaseDbUrl) this.data.firebaseDbUrl = '';
+        if (!this.data.firebaseSyncId) this.data.firebaseSyncId = '';
+        if (this.data.cloudSyncEnabled === undefined) this.data.cloudSyncEnabled = false;
+        if (this.data.lastSyncTimestamp === undefined) this.data.lastSyncTimestamp = 0;
         
         // MIGRATION: Eskiden sadece dakika tutulan arrayleri (number array), objeye {mins: X, diff: 'normal'} dönüştürür.
         if (this.data.sessions) {
@@ -115,12 +209,15 @@ class TrackerData {
         this.save();
     }
 
-    save() {
+    save(skipCloud = false) {
         localStorage.setItem('uTakipData', JSON.stringify(this.data));
+        if (this.data.cloudSyncEnabled && !skipCloud) {
+            cloudSyncPush(); // Global push function
+        }
     }
 
     // Setters
-    setBaseSettings(name, age, date, size, target, growthRate, apiKey = '', modelName = 'gemini-3-flash-preview', dailyGoal = 6) {
+    setBaseSettings(name, age, date, size, target, growthRate, apiKey = '', modelName = 'gemini-1.5-flash', dailyGoal = 6, aiProvider = 'gemini', minimaxKey = '', fbKey = '', fbUrl = '', fbId = '', fbEnabled = false) {
         this.data.name = name;
         this.data.age = parseInt(age) || 0;
         this.data.startDate = date;
@@ -133,10 +230,17 @@ class TrackerData {
             this.data.currentSize = this.data.startSize;
         }
 
+        this.data.aiProvider = aiProvider;
         this.data.geminiApiKey = apiKey.trim();
-        this.data.geminiModelName = modelName.trim() || 'gemini-3-flash-preview';
+        this.data.minimaxApiKey = minimaxKey.trim();
+        this.data.geminiModelName = modelName.trim() || 'gemini-1.5-flash';
         this.data.dailyGoalHours = parseFloat(dailyGoal) || 6;
         
+        this.data.firebaseApiKey = fbKey.trim();
+        this.data.firebaseDbUrl = fbUrl.trim();
+        this.data.firebaseSyncId = fbId.trim();
+        this.data.cloudSyncEnabled = !!fbEnabled;
+
         if(target && !isNaN(parseFloat(target))) {
             this.data.targetSize = parseFloat(target);
         }
@@ -144,6 +248,13 @@ class TrackerData {
             this.data.targetMonthlyGrowth = parseFloat(growthRate);
         }
         this.save();
+    }
+
+    toggleDailyPump(dateStr) {
+        if (!this.data.dailyPump) this.data.dailyPump = {};
+        this.data.dailyPump[dateStr] = !this.data.dailyPump[dateStr];
+        this.save();
+        return this.data.dailyPump[dateStr];
     }
 
     setCurrentData(size, tension) {
@@ -294,8 +405,20 @@ function vibrateDevice() {
 }
 
 // App Initialization and DOM interactions
+let dataManager;
+
 document.addEventListener('DOMContentLoaded', () => {
-    const dataManager = new TrackerData();
+    dataManager = new TrackerData();
+    initCloudSync();
+
+    // Hide Splash Screen with delay
+    setTimeout(() => {
+        const splash = document.getElementById('splashScreen');
+        if (splash) {
+            splash.classList.add('hidden');
+            setTimeout(() => splash.remove(), 1000); // Fully remove after transition
+        }
+    }, 1200);
 
     // Tab Navigation Switcher
     const navBtns = document.querySelectorAll('.nav-btn');
@@ -774,10 +897,26 @@ document.addEventListener('DOMContentLoaded', () => {
                     dayRow.className = 'day-row';
                     
                     const dateCol = document.createElement('div');
-                    dateCol.className = 'day-date';
-                    dateCol.style = "display: flex; align-items: center; gap: 4px;";
-                    dateCol.innerHTML = `<span>${i}</span>`;
+                    dateCol.className = 'day-date day-label-group';
                     
+                    const dayNumSpan = document.createElement('span');
+                    dayNumSpan.className = 'day-number';
+                    dayNumSpan.textContent = i;
+                    dateCol.appendChild(dayNumSpan);
+
+                    const pumpBtn = document.createElement('button');
+                    const isPumped = dataManager.data.dailyPump && dataManager.data.dailyPump[dateStr];
+                    pumpBtn.className = `btn-pump-toggle ${isPumped ? 'active' : ''}`;
+                    pumpBtn.title = 'Pompa Kullanıldı';
+                    pumpBtn.innerHTML = '<span class="material-symbols-outlined">mode_fan</span>';
+                    pumpBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        const newState = dataManager.toggleDailyPump(dateStr);
+                        pumpBtn.classList.toggle('active', newState);
+                        updateHomeView(); // Koç tavsiyesini anında güncelle
+                    };
+                    dateCol.appendChild(pumpBtn);
+
                     const editBtn = document.createElement('button');
                     editBtn.className = 'btn-day-edit';
                     editBtn.title = 'Yeni Seans Ekle';
@@ -1147,60 +1286,26 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 // GEMINI API Integration
-async function askGemini(userMessage) {
+async function askGemini(userMessage, context) {
     const apiKey = dataManager.data.geminiApiKey;
-    const model = dataManager.data.geminiModelName || 'gemini-3-flash-preview';
+    const model = dataManager.data.geminiModelName || 'gemini-1.5-flash';
     if (!apiKey) return null;
 
-    const totalGrowth = dataManager.getTotalGrowth().toFixed(1);
-    const stage = dataManager.getStage();
-    const name = dataManager.data.name || "Kullanıcı";
-    
-    // Ensure model string doesn't have "models/" prefix twice or illegal characters
     const cleanModel = model.replace('models/', '').trim();
     
-    // Son 7 günlük kullanıcı notlarını topla (Koç daha iyi yanıt verebilsin diye)
-    let recentNotes = [];
-    const today = new Date();
-    for(let i=0; i<7; i++) {
-        const d = new Date(today);
-        d.setDate(d.getDate() - i);
-        const dStr = d.toISOString().split('T')[0];
-        if(dataManager.data.notes[dStr]) {
-            recentNotes.push(`[${dStr}]: ${dataManager.data.notes[dStr].join(' | ')}`);
-        }
-    }
-    const notesContext = recentNotes.length > 0 ? `\nKullanıcının Son Notları:\n${recentNotes.join('\n')}` : "";
-
-    // System Prompt and Context (CHAT MODE: DIRECT & CONCISE)
-    const systemContext = `Sen UTakip uygulamasının uzman gelişim koçusun (SOHBET MODU). 
-    Kullanıcının adı: ${name}, Yaşı: ${dataManager.data.age}, Başlangıç Boyu: ${dataManager.data.startSize} cm, Güncel Boyu: ${dataManager.data.currentSize} cm.
-    Toplam gelişim: ${totalGrowth} mm (${stage}. aşama).${notesContext}
-    KRİTİK KURAL: Her yanıta kullanıcının istatistiklerini (yaş, mm gelişim vb.) veya genel tebrik mesajlarını sıralayarak BAŞLAMA. 
-    Doğrudan kullanıcının sorusuna cevap ver. İstatistikleri sadece soruyla doğrudan ilgiliyse (örneğin "ne kadar geliştim?" veya "yaşıma göre durumum ne?" diye sorulursa) kullan. 
-    Tıbbi doktor olmadığını ama süreç uzmanı olduğunu unutma. Yanıtların kısa, öz, profesyonel ve doğrudan olmalı.`;
-
     try {
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 contents: [{
-                    parts: [{ text: `CONTEXT: ${systemContext}\n\nUSER QUESTION: ${userMessage}` }]
+                    parts: [{ text: `CONTEXT: ${context}\n\nUSER QUESTION: ${userMessage}` }]
                 }]
             })
         });
 
         const data = await response.json();
-        
-        if (data.error) {
-            console.error("Gemini API Error Detail:", data.error);
-            if (data.error.status === "NOT_FOUND") {
-                return `❌ Model Bulunamadı: '${cleanModel}' bu API versiyonunda (v1beta) mevcut değil. Lütfen 'Modelleri Listele' butonuyla anahtarınızın desteklediği modelleri kontrol edin.`;
-            }
-            return `❌ Gemini Hatası: ${data.error.message || 'Bilinmeyen Hata'}`;
-        }
-
+        if (data.error) return `❌ Gemini Hatası: ${data.error.message}`;
         if (data.candidates && data.candidates[0].content.parts[0].text) {
             return data.candidates[0].content.parts[0].text;
         }
@@ -1230,22 +1335,28 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
 
     let answer = "";
     
-    // Check if we use Gemini or Local Search
-    if (dataManager.data.geminiApiKey) {
-        answer = await askGemini(text);
+    // Prepare Context for AI
+    const totalGrowth = dataManager.getTotalGrowth().toFixed(1);
+    const stage = dataManager.getStage();
+    const name = dataManager.data.name || "Kullanıcı";
+    
+    // Pump Data Context
+    const pumpCount = Object.values(dataManager.data.dailyPump || {}).filter(v => v).length;
+    const pumpStatus = dataManager.data.dailyPump[new Date().toISOString().split('T')[0]] ? "Bugün pompa yapıldı." : "Bugün pompa yapılmadı.";
+
+    const systemContext = `Sen UTakip uygulamasının uzman gelişim koçusun. 
+    Kullanıcı: ${name}, Yaş: ${dataManager.data.age}, Gelişim: ${totalGrowth} mm (Aşama ${stage}).
+    Pompa Verisi: Toplam ${pumpCount} gün pompa kullanıldı. ${pumpStatus}
+    Kural: Kısa ve öz cevap ver. Tıbbi tavsiye verme.`;
+
+    const provider = dataManager.data.aiProvider || 'gemini';
+    
+    if (provider === 'gemini' && dataManager.data.geminiApiKey) {
+        answer = await askGemini(text, systemContext);
+    } else if (provider === 'minimax' && dataManager.data.minimaxApiKey) {
+        answer = await askMiniMax(text, systemContext);
     } else {
         // Fallback to local search
-        const lowerText = text.toLowerCase();
-        answer = "Maalesef bu konuda spesifik bir bilgim yok. Ama kütüphaneye göz atabilir veya 'kremler', 'kullanım', 'güvenlik' gibi genel konuları sorabilirsin.";
-        let bestMatch = null;
-        let maxHits = 0;
-        coachKnowledgeBase.forEach(item => {
-            let hits = 0;
-            item.keys.forEach(k => { if (lowerText.includes(k)) hits++; });
-            if (hits > maxHits) { maxHits = hits; bestMatch = item; }
-        });
-        if (bestMatch) answer = bestMatch.a;
-    }
 
     // Save Coach Answer
     dataManager.data.coachChat.push({ role: 'coach', text: answer });
@@ -1435,6 +1546,18 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             }
         }
 
+        // Pompa Takip Analizi (v1.9.0)
+        const pumpedToday = dataManager.data.dailyPump && dataManager.data.dailyPump[todayStr];
+        const monthPumps = Object.keys(dataManager.data.dailyPump || {}).filter(k => k.startsWith(currentYYYYMM) && dataManager.data.dailyPump[k]).length;
+        
+        let pumpAdvice = "";
+        if (pumpedToday) {
+            pumpAdvice = `<br><br>🚀 <strong>Pompa Desteği:</strong> Bugün pompa kullanarak kan akışını artırmışsın. Bu, extender seansının verimini doku esnekliği açısından %30 artırabilir.`;
+        } else if (monthPumps > 10) {
+            pumpAdvice = `<br><br>🌀 <strong>Pompa Rutini:</strong> Bu ay ${monthPumps} gün pompa kullanmışsın. Oldukça istikrarlı bir destekçisin!`;
+        }
+        journalContext += pumpAdvice;
+
         let header = `Merhaba <strong>${name}</strong>,<br>`;
         
         if (workedToday) {
@@ -1452,9 +1575,15 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         document.getElementById('startSize').value = (dataManager.data.startSize !== undefined && !isNaN(dataManager.data.startSize)) ? dataManager.data.startSize : '';
         document.getElementById('targetSize').value = (dataManager.data.targetSize !== undefined && !isNaN(dataManager.data.targetSize)) ? dataManager.data.targetSize : '';
         document.getElementById('targetMonthlyGrowth').value = dataManager.data.targetMonthlyGrowth || 2;
-        document.getElementById('dailyGoalHours').value = dataManager.data.dailyGoalHours || 6;
+        document.getElementById('aiProvider').value = dataManager.data.aiProvider || 'gemini';
         document.getElementById('geminiApiKey').value = dataManager.data.geminiApiKey || '';
+        document.getElementById('minimaxApiKey').value = dataManager.data.minimaxApiKey || '';
         document.getElementById('geminiModelName').value = dataManager.data.geminiModelName || 'gemini-1.5-flash';
+        
+        // Toggle AI config visibility
+        const provider = dataManager.data.aiProvider || 'gemini';
+        document.getElementById('geminiConfig').style.display = provider === 'gemini' ? 'block' : 'none';
+        document.getElementById('minimaxConfig').style.display = provider === 'minimax' ? 'block' : 'none';
         
         if(dataManager.data.currentSize !== undefined && dataManager.data.currentSize !== null && !isNaN(dataManager.data.currentSize)) {
             document.getElementById('currentSize').value = dataManager.data.currentSize;
@@ -1478,6 +1607,12 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         document.getElementById('timerBreak').value = dataManager.data.timerSettings.break;
         document.getElementById('notifSound').checked = dataManager.data.timerSettings.sound;
         document.getElementById('notifVibrate').checked = dataManager.data.timerSettings.vibrate;
+
+        // Cloud Sync Fields
+        document.getElementById('firebaseApiKey').value = dataManager.data.firebaseApiKey || '';
+        document.getElementById('firebaseDbUrl').value = dataManager.data.firebaseDbUrl || '';
+        document.getElementById('firebaseSyncId').value = dataManager.data.firebaseSyncId || '';
+        document.getElementById('cloudSyncEnabled').checked = dataManager.data.cloudSyncEnabled || false;
     }
 
     // --- EVENTS ---
@@ -1489,12 +1624,25 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         const size = document.getElementById('startSize').value;
         const target = document.getElementById('targetSize').value;
         const growth = document.getElementById('targetMonthlyGrowth').value;
+        const aiProvider = document.getElementById('aiProvider').value;
         const apiKey = document.getElementById('geminiApiKey').value;
+        const minimaxKey = document.getElementById('minimaxApiKey').value;
         const modelName = document.getElementById('geminiModelName').value;
         const dailyGoal = document.getElementById('dailyGoalHours').value;
+        
+        const fbKey = document.getElementById('firebaseApiKey').value;
+        const fbUrl = document.getElementById('firebaseDbUrl').value;
+        const fbId = document.getElementById('firebaseSyncId').value;
+        const fbEnabled = document.getElementById('cloudSyncEnabled').checked;
+
         if(!date || !size) return alert("Başlangıç tarihi ve boyutunu girin.");
         
-        dataManager.setBaseSettings(name, age, date, size, target, growth, apiKey, modelName, dailyGoal);
+        dataManager.setBaseSettings(name, age, date, size, target, growth, apiKey, modelName, dailyGoal, aiProvider, minimaxKey, fbKey, fbUrl, fbId, fbEnabled);
+        
+        if (fbEnabled) {
+            initCloudSync();
+            setTimeout(() => cloudSyncPush(), 1000);
+        }
         
         // Timer Settings
         const tCount = document.getElementById('timerCount').value;
@@ -1507,6 +1655,12 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         alert("Tüm ayarlar başarıyla kaydedildi.");
         updateSettingsView();
         updateHomeView();
+    });
+
+    document.getElementById('aiProvider')?.addEventListener('change', (e) => {
+        const val = e.target.value;
+        document.getElementById('geminiConfig').style.display = val === 'gemini' ? 'block' : 'none';
+        document.getElementById('minimaxConfig').style.display = val === 'minimax' ? 'block' : 'none';
     });
 
     document.getElementById('btnRequestNotif')?.addEventListener('click', async () => {
@@ -1533,6 +1687,68 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         link.download = `uTakip_Yedek_${new Date().toISOString().split('T')[0]}.json`;
         link.click();
         URL.revokeObjectURL(url);
+    });
+
+    document.getElementById('btnTestCloud')?.addEventListener('click', async () => {
+        const btn = document.getElementById('btnTestCloud');
+        const originalText = btn.textContent;
+        btn.textContent = "⏳ Bağlanıyor...";
+        btn.disabled = true;
+
+        const fbKey = document.getElementById('firebaseApiKey').value;
+        const fbUrl = document.getElementById('firebaseDbUrl').value;
+        const fbId = document.getElementById('firebaseSyncId').value;
+
+        if (!fbKey || !fbUrl || !fbId) {
+            alert("Lütfen tüm Firebase alanlarını doldurun.");
+            btn.textContent = originalText;
+            btn.disabled = false;
+            return;
+        }
+
+        // Geçici olarak ayarları uygula
+        dataManager.data.firebaseApiKey = fbKey;
+        dataManager.data.firebaseDbUrl = fbUrl;
+        dataManager.data.firebaseSyncId = fbId;
+        dataManager.data.cloudSyncEnabled = true;
+
+        initCloudSync();
+        
+        setTimeout(async () => {
+             const success = await cloudSyncPullManual();
+             if (success) {
+                 showSuccessAchievement("Bağlantı Başarılı", "Veriler buluttan çekildi.", "☁️");
+                 btn.textContent = "✅ Bağlantı Hazır";
+             } else {
+                 try {
+                     cloudSyncPush();
+                     showSuccessAchievement("Bağlantı Başarılı", "Yeni bulut profili oluşturuldu.", "☁️");
+                     btn.textContent = "✅ Bağlantı Hazır";
+                 } catch (e) {
+                     alert("❌ Bağlantı Hatası: " + e.message);
+                     btn.textContent = originalText;
+                 }
+             }
+             btn.disabled = false;
+        }, 1500);
+    });
+
+    document.getElementById('btnCancelSession')?.addEventListener('click', () => {
+        if (confirm("Mevcut seansı kaydetmeden iptal etmek istediğinize emin misiniz?")) {
+            const state = dataManager.data.activeSessionState;
+            state.mode = 'ready';
+            state.frozenElapsed = 0;
+            dataManager.resetActiveSession();
+            
+            if (timerInterval) clearInterval(timerInterval);
+            
+            dataManager.save();
+            updateTimerDisplay();
+            updateHomeView();
+            releaseWakeLock();
+            
+            showSuccessAchievement("Seans İptal Edildi", "Süre kaydedilmedi.", "✖");
+        }
     });
 
     // Veri Yönetimi - Import
@@ -1608,32 +1824,41 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         }
     });
 
-    // Model Diagnostic Tool
+    // Model Diagnostic Tool (v1.9.0 - MultiProvider)
     document.getElementById('btnCheckModels')?.addEventListener('click', async () => {
-        const apiKey = document.getElementById('geminiApiKey').value.trim();
+        const provider = document.getElementById('aiProvider').value;
         const output = document.getElementById('modelListOutput');
-        
-        if (!apiKey) return alert("Önce API anahtarını girin.");
-        
         output.style.display = 'block';
         output.textContent = "Bağlantı test ediliyor...";
-        
-        try {
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
-            const data = await response.json();
-            
-            if (data.error) {
-                output.innerHTML = `<span style="color: #ff6b6b">❌ Hata: ${data.error.message}</span>`;
-            } else if (data.models) {
-                const names = data.models
-                    .filter(m => m.supportedGenerationMethods.includes('generateContent'))
-                    .map(m => m.name.replace('models/', ''));
-                
-                output.innerHTML = `<strong>Erişilebilir Modeller:</strong><br>` + names.join('<br>');
-                alert("Başarılı! Kullanabileceğiniz modeller aşağıda listelendi.");
-            }
-        } catch (e) {
-            output.textContent = "Hata: " + e.message;
+
+        if (provider === 'gemini') {
+            const apiKey = document.getElementById('geminiApiKey').value.trim();
+            if (!apiKey) return alert("Önce Gemini API anahtarını girin.");
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+                const data = await response.json();
+                if (data.error) {
+                    output.innerHTML = `<span style="color: #ff6b6b">❌ Hata: ${data.error.message}</span>`;
+                } else if (data.models) {
+                    const names = data.models
+                        .filter(m => m.supportedGenerationMethods.includes('generateContent'))
+                        .map(m => m.name.replace('models/', ''));
+                    output.innerHTML = `<strong>Gemini Modelleri:</strong><br>` + names.join('<br>');
+                }
+            } catch (e) { output.textContent = "Hata: " + e.message; }
+        } else {
+            const apiKey = document.getElementById('minimaxApiKey').value.trim();
+            if (!apiKey) return alert("Önce MiniMax API anahtarını girin.");
+            try {
+                // MiniMax model verification check (simple)
+                output.textContent = "MiniMax API anahtarı doğrulanıyor...";
+                const res = await askMiniMax("Merhaba, bağlantı testi.", "Bağlantı testi yapıyoruz.");
+                if (res && !res.includes("❌")) {
+                    output.innerHTML = `<span style="color: #2ecc71">✅ Bağlantı Başarılı (abab6.5s-chat)</span><br><small>${res.substring(0, 50)}...</small>`;
+                } else {
+                    output.innerHTML = `<span style="color: #ff6b6b">${res}</span>`;
+                }
+            } catch (e) { output.textContent = "Hata: " + e.message; }
         }
     });
 
@@ -1883,6 +2108,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         const btnBreak = document.getElementById('btnStartBreak');
         const btnManual = document.getElementById('btnAddTime');
         const btnFinalize = document.getElementById('btnFinalizeSession');
+        const btnCancel = document.getElementById('btnCancelSession');
         const info = document.getElementById('timerSessionInfo');
         const badge = document.getElementById('timerModeBadge');
         const card = document.getElementById('timerCard');
@@ -1911,6 +2137,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             btnBreak.style.display = 'none';
             btnFinalize.style.display = 'none';
             saveManualBtn.style.display = 'none';
+            if (btnCancel) btnCancel.style.display = 'none';
             if (btnStartPump) btnStartPump.style.display = 'block';
 
             if (pumpEndTime > 0) {
@@ -1988,6 +2215,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             btnBreak.className = 'btn-secondary';
             
             btnFinalize.style.display = 'none';
+            if (btnCancel) btnCancel.style.display = 'none';
             metaSection.style.display = 'block';
             
             info.textContent = '⏱️ UZATICI SEANSI';
@@ -2011,6 +2239,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             btnBreak.style.display = 'none';
             saveManualBtn.style.display = 'none';
             btnFinalize.style.display = 'block';
+            if (btnCancel) btnCancel.style.display = 'none';
             
             manualSection.style.display = 'none';
             metaSection.style.display = 'block';
@@ -2032,6 +2261,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         display.style.opacity = '1';
 
         btnFinalize.style.display = 'none';
+        if (btnCancel) btnCancel.style.display = 'block';
         
         if (state.mode === 'work') {
             metaSection.style.display = 'none'; // Çalışırken gizle

@@ -35,6 +35,15 @@
     </style>
 </head>
 <body>
+    <!-- Splash Screen (Premium v1.9.0) -->
+    <div id="splashScreen" class="splash-screen">
+        <div class="splash-content">
+            <span class="material-symbols-outlined splash-icon">smart_toy</span>
+            <h1 class="splash-title">UTakip</h1>
+            <div class="splash-loader"></div>
+        </div>
+    </div>
+
     <div class="app-container">
         <!-- Views -->
         <main class="content">
@@ -170,6 +179,7 @@
                     <div class="timer-controls">
                         <button id="btnStartSession" class="btn-primary" style="flex: 1;">▶ Seans Başlat</button>
                         <button id="btnStartBreak" class="btn-secondary" style="flex: 1;">☕ Mola Başlat</button>
+                        <button id="btnCancelSession" class="btn-danger" style="display: none; flex: 1;">✖ İptal Et</button>
                         <button id="btnSaveManual" class="btn-primary" style="display: none; width: 100%;">💾 KAYDET</button>
                         <button id="btnFinalizeSession" class="btn-primary" style="display: none; width: 100%;">✅ Seansı Kaydet</button>
                         <button id="btnStartPump" class="btn-primary" style="display: none; width: 100%;">🌀 Pompayı Başlat</button>
@@ -249,7 +259,7 @@
                 </div>
 
                 <h3 style="margin: 25px 0 15px 0; font-size: 16px; opacity: 0.8; display: flex; align-items: center; gap: 8px;">
-                    <span class="material-symbols-outlined">history</span> Geçmiş Günlükler
+                    <span class="material-symbols-outlined">history</span> Geçmiş Günlükler (v1.9.0)
                 </h3>
                 <div id="journalContainer" style="display: flex; flex-direction: column; gap: 15px; margin-bottom: 50px;"></div>
             </section>
@@ -390,19 +400,71 @@
                         </div>
                     </div>
 
-                    <div class="card settings-section gemini-card">
+                    <div class="card settings-section ai-config-card">
                         <h3><span class="material-symbols-outlined">psychology</span> Sanal Koç Zekası (AI)</h3>
                         <div class="input-group">
-                            <label for="geminiApiKey">Gemini API Anahtarı</label>
-                            <input type="password" id="geminiApiKey" placeholder="AI Studio anahtarınızı girin">
+                            <label for="aiProvider">AI Sağlayıcısı</label>
+                            <select id="aiProvider">
+                                <option value="gemini" selected>Google Gemini (Önerilen)</option>
+                                <option value="minimax">MiniMax M2.7 (Yeni & Güçlü)</option>
+                            </select>
                         </div>
+                        <div id="geminiConfig" class="ai-provider-config">
+                            <div class="input-group">
+                                <label for="geminiApiKey">Gemini API Anahtarı</label>
+                                <input type="password" id="geminiApiKey" placeholder="AI Studio anahtarınızı girin">
+                            </div>
+                            <div class="input-group">
+                                <label for="geminiModelName">Gemini Model Seçimi</label>
+                                <select id="geminiModelName">
+                                    <option value="gemini-1.5-flash" selected>Gemini 1.5 Flash (Hızlı)</option>
+                                    <option value="gemini-1.5-pro">Gemini 1.5 Pro (Zeki)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="minimaxConfig" class="ai-provider-config" style="display: none;">
+                            <div class="input-group">
+                                <label for="minimaxApiKey">MiniMax API Anahtarı</label>
+                                <input type="password" id="minimaxApiKey" placeholder="MiniMax API anahtarınızı girin">
+                            </div>
+                        </div>
+                        <div class="ai-diagnostic-row">
+                             <button id="btnCheckModels" class="btn-secondary btn-small">🛠 Bağlantıyı Test Et</button>
+                             <div id="modelListOutput" style="display:none; margin-top:10px; font-size:12px; padding:10px; background:rgba(0,0,0,0.2); border-radius:8px;"></div>
+                        </div>
+                    </div>
+
+                    <div class="card settings-section">
+                        <h3><span class="material-symbols-outlined">cloud_sync</span> Bulut Senkronizasyonu (Sync)</h3>
+                        <p class="hint" style="margin-bottom: 15px;">Cihazlar arası otomatik senkronizasyon için Firebase bilgilerinizi girin.</p>
+                        <div class="input-group">
+                            <label for="firebaseApiKey">Firebase API Key</label>
+                            <input type="password" id="firebaseApiKey" placeholder="AI Studio anahtarı değil, Firebase API Key">
+                        </div>
+                        <div class="input-group">
+                            <label for="firebaseDbUrl">Database URL</label>
+                            <input type="text" id="firebaseDbUrl" placeholder="https://projeniz.firebaseio.com">
+                        </div>
+                        <div class="input-group">
+                            <label for="firebaseSyncId">Senkronizasyon Kimliği (Sync ID)</label>
+                            <input type="text" id="firebaseSyncId" placeholder="Örn: deniz-12345 (Cihazlarda aynı olmalı)">
+                            <p class="hint">Bu ID, verilerinizin bulutta hangi isimle saklanacağını belirler.</p>
+                        </div>
+                        <div class="toggle-item" style="margin-top: 10px;">
+                            <span>Otomatik Senkronizasyon</span>
+                            <label class="switch">
+                                <input type="checkbox" id="cloudSyncEnabled">
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+                        <button id="btnTestCloud" class="btn-secondary btn-small" style="margin-top: 12px; width: 100%;">☁️ Buluta Bağlan ve Test Et</button>
                     </div>
 
                     <div class="card settings-section">
                         <h3><span class="material-symbols-outlined">database</span> Veri Yönetimi</h3>
                         <div class="data-actions-grid">
                             <button id="btnUpdateApp" class="btn-secondary">🚀 Güncellemeyi Denetle</button>
-                             <div class="version-text" id="appVersionText">Mevcut Sürüm: v1.8.3</div>
+                             <div class="version-text" id="appVersionText">Mevcut Sürüm: v1.9.0</div>
                             <div class="import-export-row">
                                 <button id="btnExportData" class="btn-secondary">📤 Dışa Aktar</button>
                                 <button id="btnImportData" class="btn-secondary">📥 İçe Aktar</button>
@@ -564,6 +626,10 @@
         </div>
     </div>
     
-    <script src="app.js?v=39"></script>
+    <!-- Firebase SDK Compat (v8 style for easy integration) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+    <script src="app.js?v=40"></script>
 </body>
 </html>

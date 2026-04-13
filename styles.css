@@ -1,21 +1,23 @@
 :root {
-    /* Renk Paleti - Modern & Sade */
-    --bg-color: #0d1117;
-    --surface-color: #161b22;
-    --text-primary: #e6edf3;
+    /* Premium Renk Paleti - HSL Tabanlı */
+    --bg-color: #0b0e14;
+    --surface-color: rgba(22, 27, 34, 0.7);
+    --glass-bg: rgba(22, 27, 34, 0.5);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --text-primary: #f0f6fc;
     --text-secondary: #8b949e;
-    --card-border: rgba(48, 54, 61, 0.4);
-    --primary-color: #2f81f7;
-    --primary-hover: #4b91f7;
-    --success-color: #238636;
-    --danger-color: #da3633;
-    --accent-glow: rgba(47, 129, 247, 0.15);
+    --primary-color: #388bfd;
+    --primary-glow: rgba(56, 139, 253, 0.3);
+    --success-color: #3fb950;
+    --danger-color: #f85149;
+    --pump-active: #58a6ff;
     
-    /* Spacing & Radius */
-    --card-radius: 16px;
-    --btn-radius: 12px;
-    --input-radius: 10px;
-    --nav-height: 75px;
+    /* Effects */
+    --card-radius: 20px;
+    --btn-radius: 14px;
+    --input-radius: 12px;
+    --nav-height: 80px;
+    --glass-blur: blur(16px);
 }
 
 * {
@@ -28,11 +30,82 @@
 
 body {
     background-color: #010409;
+    background-image: radial-gradient(circle at 50% -20%, #1e2631 0%, #010409 100%);
     color: var(--text-primary);
     -webkit-font-smoothing: antialiased;
     overflow: hidden;
     display: flex;
     justify-content: center;
+}
+
+/* Splash Screen Style */
+.splash-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--bg-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.8s;
+}
+
+.splash-content {
+    text-align: center;
+    animation: splashPop 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes splashPop {
+    0% { transform: scale(0.8); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.splash-icon {
+    font-size: 80px !important;
+    color: var(--primary-color);
+    margin-bottom: 15px;
+    filter: drop-shadow(0 0 20px var(--primary-glow));
+}
+
+.splash-title {
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    margin-bottom: 25px;
+}
+
+.splash-loader {
+    width: 40px;
+    height: 4px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 2px;
+    margin: 0 auto;
+    position: relative;
+    overflow: hidden;
+}
+
+.splash-loader::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: var(--primary-color);
+    animation: splashLoad 1.5s infinite;
+}
+
+@keyframes splashLoad {
+    0% { left: -100%; }
+    100% { left: 100%; }
+}
+
+.splash-screen.hidden {
+    opacity: 0;
+    visibility: hidden;
 }
 
 .app-container {
@@ -91,14 +164,21 @@ body {
     margin-top: 4px;
 }
 
-/* Cards - Modern & Simplified */
+/* Cards - Glassmorphism Refresh */
 .card {
     background: var(--surface-color);
-    border: 1px solid var(--card-border);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
     border-radius: var(--card-radius);
-    padding: 20px;
+    padding: 22px;
     margin-bottom: 20px;
-    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s;
+}
+
+.card:hover {
+    border-color: rgba(255,255,255,0.15);
 }
 
 .card h3 {
@@ -129,13 +209,14 @@ body {
 }
 
 .btn-primary {
-    background-color: var(--primary-color);
+    background: linear-gradient(135deg, #388bfd 0%, #1f6feb 100%);
     color: #fff;
+    box-shadow: 0 4px 15px var(--primary-glow);
 }
 
 .btn-primary:active {
-    background-color: var(--primary-hover);
-    transform: scale(0.98);
+    transform: scale(0.97);
+    filter: brightness(1.1);
 }
 
 .btn-secondary {
@@ -395,17 +476,17 @@ input:focus, select:focus, textarea:focus {
     border-radius: 0 18px 18px 0;
 }
 
-/* Bottom Nav - Sleek Glassmorphism */
+/* Bottom Nav - Premium Glassmorphism */
 .bottom-nav {
     position: absolute;
     bottom: 0;
     left: 0;
     width: 100%;
     height: var(--nav-height);
-    background: rgba(13, 17, 23, 0.85);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-top: 1px solid var(--card-border);
+    background: rgba(13, 17, 23, 0.7);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border-top: 1px solid var(--glass-border);
     display: flex;
     justify-content: space-around;
     align-items: center;
@@ -616,8 +697,27 @@ input:checked + .slider:before {
 /* Mod degistirme butonu sadece Ready, Work ve Break modlarinda gorunur (Review'da gizli) */
 /* Varsayılan görünür */
 .btn-icon-toggle { display: flex !important; }
-.timer-card.mode-review #btnToggleManual {
+.timer-card.mode-review #btnToggleManual,
+.timer-card.mode-review #btnTogglePump {
     display: none !important;
+}
+
+/* Modlara Göre Buton Kontrolü (v1.8.3) */
+#btnCancelSession { display: none; }
+
+.timer-card.mode-work #btnStartSession,
+.timer-card.mode-break #btnStartBreak {
+    display: block !important;
+}
+
+.timer-card.mode-work #btnCancelSession,
+.timer-card.mode-break #btnCancelSession {
+    display: block !important;
+}
+
+.timer-card.mode-work #btnStartBreak,
+.timer-card.mode-break #btnStartSession {
+    display: block !important;
 }
 
 /* ---------------------------------------- */
@@ -1434,4 +1534,96 @@ input:checked + .slider:before {
 
 .btn-day-edit span {
     font-size: 16px;
+}
+
+/* --- CALENDAR PUMP TOGGLE STYLES (v1.9.0) --- */
+.day-label-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 75px;
+}
+
+.day-number {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--text-primary);
+    min-width: 26px;
+}
+
+.btn-pump-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-pump-toggle span {
+    font-size: 18px !important;
+}
+
+.btn-pump-toggle.active {
+    background: rgba(56, 139, 253, 0.15);
+    border-color: var(--primary-color);
+    color: var(--pump-active);
+    box-shadow: 0 0 12px rgba(56, 139, 253, 0.2);
+    transform: rotate(90deg);
+}
+
+.btn-pump-toggle:active {
+    transform: scale(0.8) rotate(180deg);
+}
+
+/* Glassmorphism Input Focus Override */
+input:focus, select:focus, textarea:focus {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 4px var(--primary-glow);
+}
+
+/* --- ANIMATIONS --- */
+@keyframes pulseGlow {
+    0% { box-shadow: 0 0 5px var(--primary-glow); }
+    50% { box-shadow: 0 0 20px var(--primary-glow); }
+    100% { box-shadow: 0 0 5px var(--primary-glow); }
+}
+
+.premium-glow {
+    animation: pulseGlow 3s infinite;
+}
+/* Firebase Cloud Settings (v1.9.0) */
+#cloudConfig .input-group {
+    margin-bottom: 15px;
+}
+
+#cloudConfig h3 {
+    color: #58a6ff;
+    text-shadow: 0 0 10px rgba(88, 166, 255, 0.3);
+}
+
+.cloud-status-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    margin-bottom: 10px;
+}
+
+.cloud-status-indicator.online {
+    color: #2ecc71;
+    background: rgba(46, 204, 113, 0.1);
+}
+
+.cloud-status-indicator.offline {
+    color: var(--text-secondary);
 }
