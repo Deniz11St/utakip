@@ -1367,7 +1367,8 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
     } else if (provider === 'minimax' && dataManager.data.minimaxApiKey) {
         answer = await askMiniMax(text, systemContext);
     } else {
-        // Fallback to local search
+        answer = "Lütfen Ayarlar sekmesinden bir AI sağlayıcısı (Gemini/MiniMax) ve API anahtarı seçin.";
+    }
 
     // Save Coach Answer
     dataManager.data.coachChat.push({ role: 'coach', text: answer });
