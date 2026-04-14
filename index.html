@@ -338,6 +338,33 @@
                         </div>
                     </div>
 
+                    <div class="card settings-section" style="margin-top: 15px;">
+                        <h3><span class="material-symbols-outlined">restart_alt</span> Antrenman Döngüsü (Smart Cycle)</h3>
+                        <p class="hint" style="margin-bottom: 12px;">Doku onarımı için çalışma sonrası dinlenme önerisi mantığını ayarlar. (Öneri: 5-2 veya 6-1)</p>
+                        <div class="input-group-row">
+                            <div class="input-group">
+                                <label for="workCycleDays">Çalışma Günü</label>
+                                <div class="modern-stepper-container">
+                                    <input type="number" id="workCycleDays" min="1" max="30" value="5" class="modern-stepper-input">
+                                    <div class="modern-stepper-controls">
+                                        <button class="btn-stepper" data-input="workCycleDays" data-delta="-1">−</button>
+                                        <button class="btn-stepper" data-input="workCycleDays" data-delta="1">+</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="input-group">
+                                <label for="restCycleDays">Dinlenme Günü</label>
+                                <div class="modern-stepper-container">
+                                    <input type="number" id="restCycleDays" min="1" max="7" value="1" class="modern-stepper-input">
+                                    <div class="modern-stepper-controls">
+                                        <button class="btn-stepper" data-input="restCycleDays" data-delta="-1">−</button>
+                                        <button class="btn-stepper" data-input="restCycleDays" data-delta="1">+</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="card settings-section">
                         <h3><span class="material-symbols-outlined">notifications_active</span> Zamanlayıcı & Bildirimler</h3>
                         
@@ -460,11 +487,17 @@
                         <button id="btnTestCloud" class="btn-secondary btn-small" style="margin-top: 12px; width: 100%;">☁️ Buluta Bağlan ve Test Et</button>
                     </div>
 
+                    <div style="margin: 20px 0;">
+                        <button id="btnSaveBaseSettings" class="btn-primary" style="width: 100%; font-size: 16px; padding: 15px; border-radius: 12px; font-weight: bold; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);">
+                            <span class="material-symbols-outlined">save</span> DEĞİŞİKLİKLERİ KAYDET
+                        </button>
+                    </div>
+
                     <div class="card settings-section">
                         <h3><span class="material-symbols-outlined">database</span> Veri Yönetimi</h3>
                         <div class="data-actions-grid">
                             <button id="btnUpdateApp" class="btn-secondary">🚀 Güncellemeyi Denetle</button>
-                             <div class="version-text" id="appVersionText">Mevcut Sürüm: v1.9.2</div>
+                             <div class="version-text" id="appVersionText">Mevcut Sürüm: v1.9.3</div>
                             <div class="import-export-row">
                                 <button id="btnExportData" class="btn-secondary">📤 Dışa Aktar</button>
                                 <button id="btnImportData" class="btn-secondary">📥 İçe Aktar</button>
@@ -602,19 +635,19 @@
             
             <div class="modal-body">
                 <div class="dual-stepper-container" style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1);">
-                    <button class="btn-dual-stepper edit-stepper-btn" data-delta="-1">−</button>
+                    <button class="modal-stepper-btn" data-modal-dir="-1" style="width: 44px; height: 44px; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 20px; cursor: pointer;">−</button>
                     <div class="dual-stepper-inner">
-                        <div class="dual-box active" data-target="editHours">
+                        <div class="dual-box active" data-modal-target="h_edit">
                             <div class="dual-label">SAAT</div>
-                            <input type="number" id="editHours" value="0" readonly>
+                            <input type="number" id="h_edit" value="0" readonly>
                         </div>
                         <div class="dual-divider">:</div>
-                        <div class="dual-box" data-target="editMinutes">
+                        <div class="dual-box" data-modal-target="m_edit">
                             <div class="dual-label">DAKİKA</div>
-                            <input type="number" id="editMinutes" value="0" readonly>
+                            <input type="number" id="m_edit" value="0" readonly>
                         </div>
                     </div>
-                    <button class="btn-dual-stepper edit-stepper-btn" data-delta="1">+</button>
+                    <button class="modal-stepper-btn" data-modal-dir="1" style="width: 44px; height: 44px; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 20px; cursor: pointer;">+</button>
                 </div>
                 <div class="modal-hint">Toplam: <span id="editTotalMinsLabel">0</span> dk</div>
             </div>
@@ -630,6 +663,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
-    <script src="app.js?v=42"></script>
+    <script src="app.js?v=46"></script>
 </body>
 </html>

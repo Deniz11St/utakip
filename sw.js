@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v42-v1.9.2'; // v1.9.2: Syntax error fix & coach logic repair
+const CACHE_NAME = 'utakip-v46-v1.9.3'; // v1.9.3: Modal Stepper Isolation & Settings Save Fix
 const ASSETS = [
     './',
     './index.html',

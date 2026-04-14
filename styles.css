@@ -1540,16 +1540,77 @@ input:checked + .slider:before {
 .day-label-group {
     display: flex;
     align-items: center;
-    gap: 8px;
-    flex: 0 0 75px;
+    gap: 10px;
+    flex: 0 0 85px;
 }
 
 .day-number {
-    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    font-size: 15px;
     font-weight: 800;
     color: var(--text-primary);
-    min-width: 26px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px; /* Squircle appearance */
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    user-select: none;
+    position: relative;
 }
+
+.day-number:active {
+    transform: scale(0.9);
+}
+
+/* Status: Active (Green) */
+.day-number.status-active {
+    background: linear-gradient(135deg, rgba(46, 204, 113, 0.2), rgba(35, 134, 54, 0.4));
+    border-color: rgba(46, 204, 113, 0.5);
+    color: #2ecc71;
+    box-shadow: 0 4px 12px rgba(46, 204, 113, 0.15);
+}
+
+/* Status: Rest (Purple) */
+.day-number.status-rest {
+    background: linear-gradient(135deg, rgba(187, 134, 252, 0.2), rgba(111, 66, 193, 0.4));
+    border-color: rgba(187, 134, 252, 0.5);
+    color: #bb86fc;
+    box-shadow: 0 4px 12px rgba(187, 134, 252, 0.15);
+}
+
+.day-number.status-rest::after {
+    content: '☕';
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    font-size: 10px;
+    filter: drop-shadow(0 0 2px rgba(0,0,0,0.5));
+}
+
+/* Status: Missed (Red) */
+.day-number.status-missed {
+    background: rgba(248, 81, 73, 0.05);
+    border: 1px dashed rgba(248, 81, 73, 0.4);
+    color: rgba(248, 81, 73, 0.7);
+}
+
+/* Status: Suggested Rest (AI Recommendation) */
+.day-number.status-suggested {
+    border-color: #bb86fc;
+    box-shadow: 0 0 15px rgba(187, 134, 252, 0.3);
+    animation: pulseSuggested 2s infinite;
+}
+
+@keyframes pulseSuggested {
+    0% { border-color: rgba(187, 134, 252, 0.4); box-shadow: 0 0 5px rgba(187, 134, 252, 0.2); }
+    50% { border-color: rgba(187, 134, 252, 1); box-shadow: 0 0 15px rgba(187, 134, 252, 0.5); }
+    100% { border-color: rgba(187, 134, 252, 0.4); box-shadow: 0 0 5px rgba(187, 134, 252, 0.2); }
+}
+
 
 .btn-pump-toggle {
     display: flex;

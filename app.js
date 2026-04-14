@@ -140,7 +140,10 @@ class TrackerData {
                 mode: 'ready', // 'ready', 'work', 'break'
                 startTime: 0,
                 lastModeChange: 0
-            }
+            },
+            restDays: {}, // Format: "YYYY-MM-DD": true
+            workCycleDays: 5,
+            restCycleDays: 1
         };
         const raw = localStorage.getItem('uTakipData');
         try {
@@ -177,6 +180,10 @@ class TrackerData {
         if (!this.data.firebaseSyncId) this.data.firebaseSyncId = '';
         if (this.data.cloudSyncEnabled === undefined) this.data.cloudSyncEnabled = false;
         if (this.data.lastSyncTimestamp === undefined) this.data.lastSyncTimestamp = 0;
+        
+        if (!this.data.restDays) this.data.restDays = {};
+        if (this.data.workCycleDays === undefined) this.data.workCycleDays = 5;
+        if (this.data.restCycleDays === undefined) this.data.restCycleDays = 1;
         
         // MIGRATION: Eskiden sadece dakika tutulan arrayleri (number array), objeye {mins: X, diff: 'normal'} dönüştürür.
         if (this.data.sessions) {
@@ -218,7 +225,7 @@ class TrackerData {
     }
 
     // Setters
-    setBaseSettings(name, age, date, size, target, growthRate, apiKey = '', modelName = 'gemini-1.5-flash', dailyGoal = 6, aiProvider = 'gemini', minimaxKey = '', fbKey = '', fbUrl = '', fbId = '', fbEnabled = false) {
+    setBaseSettings(name, age, date, size, target, growthRate, apiKey = '', modelName = 'gemini-1.5-flash', dailyGoal = 6, aiProvider = 'gemini', minimaxKey = '', fbKey = '', fbUrl = '', fbId = '', fbEnabled = false, workCycle = 5, restCycle = 1) {
         this.data.name = name;
         this.data.age = parseInt(age) || 0;
         this.data.startDate = date;
@@ -242,6 +249,9 @@ class TrackerData {
         this.data.firebaseSyncId = fbId.trim();
         this.data.cloudSyncEnabled = !!fbEnabled;
 
+        this.data.workCycleDays = parseInt(workCycle) || 5;
+        this.data.restCycleDays = parseInt(restCycle) || 1;
+
         if(target && !isNaN(parseFloat(target))) {
             this.data.targetSize = parseFloat(target);
         }
@@ -249,6 +259,15 @@ class TrackerData {
             this.data.targetMonthlyGrowth = parseFloat(growthRate);
         }
         this.save();
+    }
+
+    toggleRestDay(dateStr) {
+        if (!this.data.restDays) this.data.restDays = {};
+        this.data.restDays[dateStr] = !this.data.restDays[dateStr];
+        // Eğer o gün seans varsa ve dinlenme olarak işaretlenirse seansları silme kararı kullanıcıya bırakılabilir 
+        // ancak şu anki mantıkta hem seans hem dinlenme teknik olarak olabilir (ama renklendirmede dinlenme öncelikli olabilir).
+        this.save();
+        return this.data.restDays[dateStr];
     }
 
     toggleDailyPump(dateStr) {
@@ -297,6 +316,25 @@ class TrackerData {
         }
         this.save();
         return true;
+    }
+
+    getConsecutiveWorkDays(dateStr) {
+        let count = 0;
+        let d = new Date(dateStr);
+        // Geriye doğru 30 gün kontrol et (yeterli bir sınır)
+        // Check starting from YESTERDAY to see current consecutive count before today
+        for (let i = 1; i < 30; i++) {
+            const checkDate = new Date(d);
+            checkDate.setDate(d.getDate() - i);
+            const k = checkDate.toISOString().split('T')[0];
+            const sessions = this.data.sessions[k] || [];
+            if (sessions.length > 0) {
+                count++;
+            } else {
+                break;
+            }
+        }
+        return count;
     }
 
     addJournalNote(dateStr, noteObj) {
@@ -866,6 +904,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const monthSet = new Set();
         const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
         const currentYYYYMM = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
         monthSet.add(currentYYYYMM);
 
@@ -899,8 +938,9 @@ document.addEventListener('DOMContentLoaded', () => {
             for (let i = 1; i <= daysInMonth; i++) {
                 const dateStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
                 const sessions = dataManager.data.sessions[dateStr] || [];
+                const isRestDay = dataManager.data.restDays && dataManager.data.restDays[dateStr];
                 
-                // Show empty days only for the current month. Past months show recorded days only.
+                // Sadece bugün ve geçmişi, veya seansı olan günleri göster (Eski mantık korundu + renklendirme eklendi)
                 if (sessions.length > 0 || yearMonth === currentYYYYMM) {
                     let dailyTotalMins = 0;
                     
@@ -913,6 +953,42 @@ document.addEventListener('DOMContentLoaded', () => {
                     const dayNumSpan = document.createElement('span');
                     dayNumSpan.className = 'day-number';
                     dayNumSpan.textContent = i;
+                    
+                    // DURUM RENKLENDİRMESİ (Sadece bugün ve geçmiş için)
+                    if (dateStr <= todayStr) {
+                        if (isRestDay) {
+                            dayNumSpan.classList.add('status-rest');
+                        } else if (sessions.length > 0) {
+                            dayNumSpan.classList.add('status-active');
+                        } else {
+                            // Dinlenme değil ve seans yoksa...
+                            // Önce akıllı öneri kontrolü (5 gün üst üste çalışma vs)
+                            const consecutive = dataManager.getConsecutiveWorkDays(dateStr);
+                            const workTarget = dataManager.data.workCycleDays || 5;
+                            
+                            if (consecutive >= workTarget) {
+                                dayNumSpan.classList.add('status-suggested');
+                            } else {
+                                // Sadece geçmiş günler kırmızı olur, bugün (henüz dolmadıysa) normal kalabilir 
+                                // ama kullanıcı "bugün renklendirilsin" dediği için bugün seans yoksa kırmızı olabilir (henüz yapılmadı).
+                                // Ancak bugün hala vakit olduğu için bugünü kırmızı yapmak moral bozabilir.
+                                // Karar: Bugün seans yoksa ve dinlenme değilse "normal" kalsın, geçmişse "kaçırılan" (red) olsun.
+                                if (dateStr < todayStr) {
+                                    dayNumSpan.classList.add('status-missed');
+                                }
+                            }
+                        }
+                    }
+
+                    // Tıklama ile Dinlenme Günü Toggle
+                    dayNumSpan.title = "Dinlenme Günü Olarak İşaretle / Kaldır";
+                    dayNumSpan.onclick = (e) => {
+                        e.stopPropagation();
+                        dataManager.toggleRestDay(dateStr);
+                        updateCalendarView();
+                        updateHomeView();
+                    };
+
                     dateCol.appendChild(dayNumSpan);
 
                     const pumpBtn = document.createElement('button');
@@ -1625,11 +1701,15 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         document.getElementById('firebaseDbUrl').value = dataManager.data.firebaseDbUrl || '';
         document.getElementById('firebaseSyncId').value = dataManager.data.firebaseSyncId || '';
         document.getElementById('cloudSyncEnabled').checked = dataManager.data.cloudSyncEnabled || false;
+
+        // Smart Cycle Settings
+        document.getElementById('workCycleDays').value = dataManager.data.workCycleDays || 5;
+        document.getElementById('restCycleDays').value = dataManager.data.restCycleDays || 1;
     }
 
     // --- EVENTS ---
 
-    document.getElementById('btnSaveBaseSettings').addEventListener('click', () => {
+    document.getElementById('btnSaveBaseSettings')?.addEventListener('click', () => {
         const name = document.getElementById('userName').value;
         const age = document.getElementById('userAge').value;
         const date = document.getElementById('startDate').value;
@@ -1647,9 +1727,12 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         const fbId = document.getElementById('firebaseSyncId').value;
         const fbEnabled = document.getElementById('cloudSyncEnabled').checked;
 
+        const workCycle = document.getElementById('workCycleDays').value;
+        const restCycle = document.getElementById('restCycleDays').value;
+
         if(!date || !size) return alert("Başlangıç tarihi ve boyutunu girin.");
         
-        dataManager.setBaseSettings(name, age, date, size, target, growth, apiKey, modelName, dailyGoal, aiProvider, minimaxKey, fbKey, fbUrl, fbId, fbEnabled);
+        dataManager.setBaseSettings(name, age, date, size, target, growth, apiKey, modelName, dailyGoal, aiProvider, minimaxKey, fbKey, fbUrl, fbId, fbEnabled, workCycle, restCycle);
         
         if (fbEnabled) {
             initCloudSync();
@@ -1664,10 +1747,11 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         const tVib = document.getElementById('notifVibrate').checked;
         dataManager.setTimerSettings(tCount, tDur, tBreak, tSound, tVib);
 
-        alert("Tüm ayarlar başarıyla kaydedildi.");
+        showSuccessAchievement("Başarılı", "Tüm ayarlar kaydedildi.", "💾");
         updateSettingsView();
         updateHomeView();
     });
+
 
     document.getElementById('aiProvider')?.addEventListener('change', (e) => {
         const val = e.target.value;
@@ -2329,23 +2413,18 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         updateTimerDisplay();
     }
 
-    /* --- EDIT MODAL LOGIC (v1.7.9) --- */
+    /* --- EDIT MODAL LOGIC (Nuclear Fix) --- */
     let currentEditDate = null;
     const editModal = document.getElementById('editModalOverlay');
-    const editHoursInput = document.getElementById('editHours');
-    const editMinutesInput = document.getElementById('editMinutes');
-    const editTotalLabel = document.getElementById('editTotalMinsLabel');
 
     function openEditModal(dateStr) {
         currentEditDate = dateStr;
-        // Yeni ekleneceği için 0'dan başlıyoruz
-        editHoursInput.value = 0;
-        editMinutesInput.value = 0;
-        updateEditModalTotal();
+        document.getElementById('h_edit').value = 0;
+        document.getElementById('m_edit').value = 0;
+        document.getElementById('editTotalMinsLabel').textContent = 0;
         
         const dateObj = new Date(dateStr);
         document.getElementById('editModalTargetDate').textContent = dateObj.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' });
-        
         editModal.classList.add('show');
     }
 
@@ -2354,31 +2433,36 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         currentEditDate = null;
     }
 
-    function updateEditModalTotal() {
-        const h = parseInt(editHoursInput.value) || 0;
-        const m = parseInt(editMinutesInput.value) || 0;
-        editTotalLabel.textContent = (h * 60) + m;
-    }
-
-    document.querySelectorAll('.edit-stepper-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const delta = parseInt(btn.getAttribute('data-delta'));
+    document.querySelectorAll('.modal-stepper-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            
+            const dir = parseInt(btn.getAttribute('data-modal-dir')) || 0;
             const activeBox = document.querySelector('.edit-modal .dual-box.active');
             if(!activeBox) return;
             
-            const inputId = activeBox.getAttribute('data-target');
-            const input = document.getElementById(inputId);
-            let val = parseInt(input.value) || 0;
-            val += delta;
-            if (val < 0) val = 0;
-            if (inputId === 'editMinutes' && val > 59) val = 59;
+            const targetId = activeBox.getAttribute('data-modal-target');
+            const inputField = document.getElementById(targetId);
+            if (!inputField) return;
+
+            let currentVal = parseInt(inputField.value) || 0;
+            const stepSize = (targetId === 'm_edit') ? 5 : 1;
             
-            input.value = val;
-            updateEditModalTotal();
+            currentVal += (dir * stepSize);
+            
+            if (currentVal < 0) currentVal = 0;
+            if (targetId === 'm_edit' && currentVal > 59) currentVal = 55;
+            if (targetId === 'h_edit' && currentVal > 23) currentVal = 23;
+            
+            inputField.value = currentVal;
+            
+            const hVal = parseInt(document.getElementById('h_edit').value) || 0;
+            const mVal = parseInt(document.getElementById('m_edit').value) || 0;
+            document.getElementById('editTotalMinsLabel').textContent = (hVal * 60) + mVal;
         });
     });
 
-    // Modal içindeki kutucuk seçimi
     document.querySelectorAll('.edit-modal .dual-box').forEach(box => {
         box.addEventListener('click', () => {
             document.querySelectorAll('.edit-modal .dual-box').forEach(b => b.classList.remove('active'));
@@ -2393,17 +2477,12 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
 
     document.getElementById('btnSaveEditModal')?.addEventListener('click', () => {
         if(!currentEditDate) return;
-        
-        const h = parseInt(editHoursInput.value) || 0;
-        const m = parseInt(editMinutesInput.value) || 0;
+        const h = parseInt(document.getElementById('h_edit').value) || 0;
+        const m = parseInt(document.getElementById('m_edit').value) || 0;
         const totalMins = (h * 60) + m;
 
-        if (totalMins <= 0) {
-            return alert('Lütfen eklenecek geçerli bir süre girin.');
-        }
-
-        const success = dataManager.addSession(currentEditDate, totalMins, 'normal', 'Geçmişe dönük (manuel) seans eklendi.');
-        if (success) {
+        if (totalMins <= 0) return alert('Lütfen eklenecek geçerli bir süre girin.');
+        if (dataManager.addSession(currentEditDate, totalMins, 'normal', 'Geçmişe dönük seans eklendi.')) {
             closeEditModal();
             updateCalendarView();
             updateHomeView();
@@ -2579,7 +2658,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             val += delta;
 
             // Constraints
-            if (val < 1 && inputId !== 'timerBreak' && inputId !== 'inputHours' && inputId !== 'inputMinutes') val = 1;
+            if (val < 1 && !['timerBreak', 'inputHours', 'inputMinutes', 'editHours', 'editMinutes'].includes(inputId)) val = 1;
             if (val < 0) val = 0;
             if (inputId === 'timerCount' && val > 10) val = 10;
             
