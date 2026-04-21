@@ -130,6 +130,7 @@ class TrackerData {
                 vibrate: true
             },
             dailyPump: {}, // Format: "YYYY-MM-DD": true
+            dailyScrewSize: {}, // Format: "YYYY-MM-DD": 14 (mm cinsinden vida boyutu)
             firebaseApiKey: '',
             firebaseDbUrl: '',
             firebaseSyncId: '',
@@ -184,6 +185,7 @@ class TrackerData {
         if (!this.data.restDays) this.data.restDays = {};
         if (this.data.workCycleDays === undefined) this.data.workCycleDays = 5;
         if (this.data.restCycleDays === undefined) this.data.restCycleDays = 1;
+        if (!this.data.dailyScrewSize) this.data.dailyScrewSize = {};
         
         // MIGRATION: Eskiden sadece dakika tutulan arrayleri (number array), objeye {mins: X, diff: 'normal'} dönüştürür.
         if (this.data.sessions) {
@@ -1013,6 +1015,45 @@ document.addEventListener('DOMContentLoaded', () => {
                         openEditModal(dateStr);
                     };
                     dateCol.appendChild(editBtn);
+
+                    // Vida boyutu (mm) mini input
+                    const screwWrapper = document.createElement('div');
+                    screwWrapper.className = 'screw-input-wrapper';
+                    screwWrapper.title = 'O gün kullanılan vida boyutu (mm)';
+
+                    const screwInput = document.createElement('input');
+                    screwInput.type = 'number';
+                    screwInput.className = 'screw-size-input';
+                    screwInput.placeholder = 'mm';
+                    screwInput.min = 0;
+                    screwInput.max = 99;
+                    const savedScrew = dataManager.data.dailyScrewSize && dataManager.data.dailyScrewSize[dateStr];
+                    if (savedScrew !== undefined && savedScrew !== null) {
+                        screwInput.value = savedScrew;
+                    } else {
+                        // Varsayılan: ayarlardaki son vida boyutu
+                        const tensionKeys = Object.keys(dataManager.data.monthlyTension || {}).sort().reverse();
+                        if (tensionKeys.length > 0) {
+                            const defaultScrew = dataManager.data.monthlyTension[tensionKeys[0]];
+                            if (defaultScrew !== undefined && defaultScrew !== null) screwInput.value = defaultScrew;
+                        }
+                    }
+
+                    screwInput.addEventListener('change', (e) => {
+                        e.stopPropagation();
+                        const val = parseInt(screwInput.value);
+                        if (!isNaN(val) && val >= 0) {
+                            if (!dataManager.data.dailyScrewSize) dataManager.data.dailyScrewSize = {};
+                            dataManager.data.dailyScrewSize[dateStr] = val;
+                            dataManager.save();
+                        }
+                    });
+
+                    screwInput.addEventListener('click', (e) => e.stopPropagation());
+
+                    screwWrapper.appendChild(screwInput);
+                    dateCol.appendChild(screwWrapper);
+
                     dayRow.appendChild(dateCol);
                     
                     const sessionsCol = document.createElement('div');
@@ -1098,8 +1139,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
                 ${tension ? `
                 <div class="stat-box">
-                    <span class="stat-label">Aylık Gerginlik</span>
-                    <strong class="stat-value" style="color: #d2a8ff;">${tension.toFixed(1)} cm</strong>
+                    <span class="stat-label">Aylık Vida Boyutu</span>
+                    <strong class="stat-value" style="color: #d2a8ff;">${tension} mm</strong>
                 </div>
                 ` : ''}
                 ${monthlySize ? `
@@ -1632,6 +1673,17 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                 else if (lastNote.note) journalContext += `notlarını (<em>"${lastNote.note.substring(0, 30)}..."</em>) hafızama kaydettim. `;
                 journalContext += `Seninle gelişimini takip etmeye devam ediyorum.`;
             }
+
+            // Vida boyutu bağlamı (takvimden)
+            const screwHistory = Object.entries(dataManager.data.dailyScrewSize || {})
+                .filter(([k, v]) => v !== undefined && v !== null)
+                .sort(([a], [b]) => b.localeCompare(a))
+                .slice(0, 7);
+            if (screwHistory.length > 0) {
+                const latestScrew = screwHistory[0][1];
+                const avgScrew = Math.round(screwHistory.reduce((s, [, v]) => s + v, 0) / screwHistory.length);
+                journalContext += `<br>🔩 <strong>Vida Boyutu:</strong> Son kullanımda <strong>${latestScrew} mm</strong> vida boyutunda çalışmışsın. Son ${screwHistory.length} günün ortalaması ${avgScrew} mm. `;
+            }
         }
 
         // Pompa Takip Analizi (v1.9.0)
@@ -1974,7 +2026,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                         window.location.reload();
                     });
 
-                    btn.textContent = "🚀 Güncelleniyor (v1.8.2)...";
+                    btn.textContent = "🚀 Güncelleniyor (v1.9.4)...";
                     await registration.update();
                     
                     // If after 3 seconds still no reload, force it
@@ -2002,9 +2054,10 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         if(!cs && !ct) return alert("Lütfen en az bir veriyi doldurun.");
         
         dataManager.setCurrentData(cs, ct);
-        alert("Aylık güncel verileriniz yapay zeka hafızasına kaydedildi.");
+        alert("Verileriniz kaydedildi. Takvimde varsayılan vida boyutu güncellendi.");
         updateSettingsView();
         updateHomeView();
+        updateCalendarView();
     });
 
     document.getElementById('btnToggleManual')?.addEventListener('click', () => {
@@ -2694,7 +2747,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                 const originalText = verText.textContent;
                 verText.style.color = '#2ecc71'; // Yeşil renk
                 verText.style.fontWeight = '700';
-                verText.textContent = '✅ Uygulamanız v1.8.2 sürümüne güncellendi!';
+                verText.textContent = '✅ Uygulamanız v1.9.4 sürümüne güncellendi!';
                 
                 setTimeout(() => {
                     verText.style.color = '';

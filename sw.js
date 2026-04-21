@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v46-v1.9.3'; // v1.9.3: Modal Stepper Isolation & Settings Save Fix
+const CACHE_NAME = 'utakip-v47-v1.9.4'; // v1.9.4: Version update and GitHub push
 const ASSETS = [
     './',
     './index.html',

@@ -497,7 +497,7 @@
                         <h3><span class="material-symbols-outlined">database</span> Veri Yönetimi</h3>
                         <div class="data-actions-grid">
                             <button id="btnUpdateApp" class="btn-secondary">🚀 Güncellemeyi Denetle</button>
-                             <div class="version-text" id="appVersionText">Mevcut Sürüm: v1.9.3</div>
+                             <div class="version-text" id="appVersionText">Mevcut Sürüm: v1.9.4</div>
                             <div class="import-export-row">
                                 <button id="btnExportData" class="btn-secondary">📤 Dışa Aktar</button>
                                 <button id="btnImportData" class="btn-secondary">📥 İçe Aktar</button>
@@ -524,12 +524,12 @@
                             </div>
                         </div>
                         <div class="input-group" style="flex: 1;">
-                            <label for="currentTension">Cihaz Gerginliği (cm)</label>
+                            <label for="currentTension">Vida Boyutu (mm)</label>
                             <div class="modern-stepper-container">
-                                <input type="number" id="currentTension" step="0.1" placeholder="Mil" class="modern-stepper-input">
+                                <input type="number" id="currentTension" step="1" placeholder="Örn: 14" class="modern-stepper-input">
                                 <div class="modern-stepper-controls">
-                                    <button class="btn-stepper" data-input="currentTension" data-delta="-0.1">−</button>
-                                    <button class="btn-stepper" data-input="currentTension" data-delta="0.1">+</button>
+                                    <button class="btn-stepper" data-input="currentTension" data-delta="-1">−</button>
+                                    <button class="btn-stepper" data-input="currentTension" data-delta="1">+</button>
                                 </div>
                             </div>
                         </div>

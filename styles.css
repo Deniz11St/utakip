@@ -1540,8 +1540,42 @@ input:checked + .slider:before {
 .day-label-group {
     display: flex;
     align-items: center;
-    gap: 10px;
-    flex: 0 0 85px;
+    gap: 5px;
+    flex: 0 0 160px;
+    overflow: hidden;
+}
+
+/* Vida Boyutu Input (Takvim Satırı) */
+.screw-input-wrapper {
+    display: flex;
+    align-items: center;
+}
+
+.screw-size-input {
+    width: 38px !important;
+    height: 30px !important;
+    padding: 0 4px !important;
+    text-align: center !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    background: rgba(255, 255, 255, 0.03) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 10px !important;
+    color: var(--text-secondary) !important;
+    box-shadow: none !important;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.screw-size-input:focus {
+    background: rgba(255, 255, 255, 0.07) !important;
+    border-color: rgba(255, 255, 255, 0.25) !important;
+    box-shadow: none !important;
+    outline: none;
+}
+
+.screw-size-input::placeholder {
+    color: rgba(255, 255, 255, 0.15);
+    font-size: 10px;
 }
 
 .day-number {
