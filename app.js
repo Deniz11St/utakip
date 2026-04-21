@@ -1059,6 +1059,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     const sessionsCol = document.createElement('div');
                     sessionsCol.className = 'day-sessions';
                     
+                    // Mouse Wheel ile Yatay Kaydırma Desteği (Desktop için)
+                    sessionsCol.addEventListener('wheel', (e) => {
+                        if (e.deltaY !== 0) {
+                            e.preventDefault();
+                            sessionsCol.scrollLeft += e.deltaY;
+                        }
+                    }, { passive: false });
+                    
                     for(let s=0; s<5; s++) {
                         if (s < sessions.length) {
                             const sessionObj = sessions[s];
@@ -1105,7 +1113,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             sessionsCol.appendChild(box);
                         } else {
                             const empty = document.createElement('div');
-                            empty.className = 'session-box';
+                            empty.className = 'session-box session-empty';
                             empty.style.opacity = '0.3';
                             empty.style.borderStyle = 'dashed';
                             empty.style.background = 'transparent';
@@ -1118,7 +1126,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     const totalCol = document.createElement('div');
                     totalCol.className = 'day-total';
+                    totalCol.title = 'Seansları Genişlet / Kapat';
                     totalCol.textContent = dailyTotalMins > 0 ? formatMinutes(dailyTotalMins) : '0 dk';
+                    
+                    // Seans Genişletme Özelliği (v1.9.5)
+                    totalCol.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        // Diğer genişlemiş satırları kapat (opsiyonel ama daha temiz olur)
+                        document.querySelectorAll('.day-row.is-expanded').forEach(row => {
+                            if (row !== dayRow) row.classList.remove('is-expanded');
+                        });
+                        dayRow.classList.toggle('is-expanded');
+                    });
+
                     dayRow.appendChild(totalCol);
                     
                     daysHTMLArray.push(dayRow);

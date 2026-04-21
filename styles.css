@@ -1179,8 +1179,74 @@ input:checked + .slider:before {
     border-radius: 8px;
     font-size: 14px;
     font-weight: 700;
-    min-width: 60px;
+    min-width: 65px;
     text-align: center;
+    cursor: pointer;
+    position: relative;
+    z-index: 105;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    user-select: none;
+    margin-left: auto;
+}
+
+/* --- CALENDAR SEANS GENİŞLEME (v1.9.7) --- */
+.day-sessions {
+    display: none !important; /* Normal görünümde gizle */
+}
+
+.day-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    transition: all 0.3s ease;
+    overflow: hidden;
+    min-height: 58px;
+}
+
+.day-row.is-expanded {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.day-row.is-expanded .day-total {
+    background: #238636;
+    color: #fff;
+    box-shadow: -5px 0 15px rgba(0, 0, 0, 0.3);
+}
+
+.day-row.is-expanded .day-sessions {
+    position: absolute;
+    top: 0; left: 0; bottom: 0; 
+    right: 85px; 
+    z-index: 100;
+    background: var(--bg-color); /* Yeşil zemin kaldırıldı, tema rengi eklendi */
+    display: flex !important; /* Genişleyince göster */
+    align-items: center;
+    padding: 0 15px;
+    overflow-x: auto;
+    animation: slideInFromRight 0.3s forwards;
+    gap: 8px;
+}
+
+.day-row.is-expanded .day-sessions::-webkit-scrollbar { display: none; }
+
+.day-row.is-expanded .day-sessions .session-box {
+    background: rgba(88, 166, 255, 0.1);
+    border: 1px solid rgba(88, 166, 255, 0.2);
+    color: #58a6ff;
+    padding: 8px 14px;
+    font-size: 13px;
+    border-radius: 10px;
+}
+
+.day-row.is-expanded .day-sessions .session-empty { display: none; }
+
+.day-row.is-expanded .day-label-group {
+    opacity: 0;
+}
+
+@keyframes slideInFromRight {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
 }
 
 /* ============================================
