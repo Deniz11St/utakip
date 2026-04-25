@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v47-v1.9.4'; // v1.9.4: Version update and GitHub push
+const CACHE_NAME = 'utakip-v51-v2.0.0'; // v2.0.0: Dual pump, decimal screw, dynamic colors
 const ASSETS = [
     './',
     './index.html',

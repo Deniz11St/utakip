@@ -1172,9 +1172,6 @@ input:checked + .slider:before {
 }
 
 .day-total {
-    background: rgba(35, 134, 54, 0.15);
-    border: 1px solid rgba(35, 134, 54, 0.3);
-    color: #3fb950;
     padding: 6px 12px;
     border-radius: 8px;
     font-size: 14px;
@@ -1187,6 +1184,24 @@ input:checked + .slider:before {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     user-select: none;
     margin-left: auto;
+}
+
+.day-total.total-low {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-secondary);
+}
+
+.day-total.total-good {
+    background: rgba(35, 134, 54, 0.15);
+    border: 1px solid rgba(35, 134, 54, 0.3);
+    color: #3fb950;
+}
+
+.day-total.total-excellent {
+    background: rgba(187, 134, 252, 0.15);
+    border: 1px solid rgba(187, 134, 252, 0.3);
+    color: #bb86fc;
 }
 
 /* --- CALENDAR SEANS GENİŞLEME (v1.9.7) --- */
@@ -1208,9 +1223,20 @@ input:checked + .slider:before {
 }
 
 .day-row.is-expanded .day-total {
-    background: #238636;
     color: #fff;
     box-shadow: -5px 0 15px rgba(0, 0, 0, 0.3);
+}
+
+.day-row.is-expanded .day-total.total-low {
+    background: #30363d;
+}
+
+.day-row.is-expanded .day-total.total-good {
+    background: #238636;
+}
+
+.day-row.is-expanded .day-total.total-excellent {
+    background: #8957e5;
 }
 
 .day-row.is-expanded .day-sessions {
@@ -1598,7 +1624,7 @@ input:checked + .slider:before {
     border-color: var(--primary-color);
 }
 
-.btn-day-edit span {
+.btn-day-edit span, .btn-day-pump span, .btn-note-toggle span {
     font-size: 16px;
 }
 
@@ -1606,9 +1632,60 @@ input:checked + .slider:before {
 .day-label-group {
     display: flex;
     align-items: center;
-    gap: 5px;
-    flex: 0 0 160px;
+    gap: 4px;
+    flex: 0 0 190px;
     overflow: hidden;
+}
+
+/* Takvim Satırı Butonları (Pompa & Not) */
+.btn-pump-toggle, .btn-note-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-pump-toggle.state-warmup {
+    background: rgba(0, 191, 255, 0.15);
+    color: #00bfff;
+    border-color: rgba(0, 191, 255, 0.4);
+    box-shadow: 0 0 10px rgba(0, 191, 255, 0.2);
+}
+
+.btn-pump-toggle.state-bloodflow {
+    background: rgba(187, 134, 252, 0.15);
+    color: #bb86fc;
+    border-color: rgba(187, 134, 252, 0.4);
+    box-shadow: 0 0 10px rgba(187, 134, 252, 0.2);
+}
+
+@keyframes pumpPop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+.btn-pump-toggle.state-warmup,
+.btn-pump-toggle.state-bloodflow {
+    animation: pumpPop 0.3s ease-out;
+}
+
+.btn-note-toggle:hover {
+    background: rgba(241, 196, 15, 0.3);
+    color: #f1c40f;
+}
+
+.btn-note-toggle.active {
+    background: rgba(241, 196, 15, 0.2);
+    color: #f1c40f;
+    border-color: rgba(241, 196, 15, 0.5);
 }
 
 /* Vida Boyutu Input (Takvim Satırı) */
@@ -1618,7 +1695,7 @@ input:checked + .slider:before {
 }
 
 .screw-size-input {
-    width: 38px !important;
+    width: 44px !important;
     height: 30px !important;
     padding: 0 4px !important;
     text-align: center !important;
@@ -1712,34 +1789,9 @@ input:checked + .slider:before {
 }
 
 
-.btn-pump-toggle {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    color: var(--text-secondary);
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.btn-pump-toggle span {
-    font-size: 18px !important;
-}
-
-.btn-pump-toggle.active {
-    background: rgba(56, 139, 253, 0.15);
-    border-color: var(--primary-color);
-    color: var(--pump-active);
-    box-shadow: 0 0 12px rgba(56, 139, 253, 0.2);
-    transform: rotate(90deg);
-}
 
 .btn-pump-toggle:active {
-    transform: scale(0.8) rotate(180deg);
+    transform: scale(0.8);
 }
 
 /* Glassmorphism Input Focus Override */

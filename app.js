@@ -272,11 +272,24 @@ class TrackerData {
         return this.data.restDays[dateStr];
     }
 
-    toggleDailyPump(dateStr) {
+    toggleDailyPump(dateStr, type = 'warmup') {
         if (!this.data.dailyPump) this.data.dailyPump = {};
-        this.data.dailyPump[dateStr] = !this.data.dailyPump[dateStr];
+        let entry = this.data.dailyPump[dateStr];
+        
+        // Migration & Initialization
+        if (!entry || typeof entry !== 'object') {
+            let w = false;
+            let b = false;
+            if (entry === true || entry === 1) w = true;
+            if (entry === 2) b = true;
+            if (entry === 3) { w = true; b = true; }
+            entry = { warmup: w, bloodflow: b };
+        }
+        
+        entry[type] = !entry[type];
+        this.data.dailyPump[dateStr] = entry;
         this.save();
-        return this.data.dailyPump[dateStr];
+        return entry[type];
     }
 
     setCurrentData(size, tension) {
@@ -343,15 +356,41 @@ class TrackerData {
         if (!this.data.notes) this.data.notes = {};
         if (!this.data.notes[dateStr]) this.data.notes[dateStr] = [];
         
-        // Eğer noteObj bir string ise objeye çevir
         const structuredNote = typeof noteObj === 'string' ? { note: noteObj } : noteObj;
         
-        // Aynı günün verisi varsa üzerine yazmak yerine listeye ekle (veya günün tek bir ana günlüğü varsa güncelle)
-        // Kullanıcı deneyimi için günlük notları listeleniyor.
         this.data.notes[dateStr].push({
             timestamp: Date.now(),
             ...structuredNote
         });
+        this.save();
+    }
+
+    getDailyNote(dateStr) {
+        if (!this.data.notes || !this.data.notes[dateStr]) return null;
+        const notes = this.data.notes[dateStr];
+        // En güncel (son) not objesini veya string'i döndür
+        const lastEntry = notes[notes.length - 1];
+        return typeof lastEntry === 'string' ? { note: lastEntry } : lastEntry;
+    }
+
+    saveDailyNote(dateStr, noteData) {
+        if (!this.data.notes) this.data.notes = {};
+        if (!this.data.notes[dateStr]) this.data.notes[dateStr] = [];
+        
+        // Eğer o gün hiç not yoksa yeni ekle, varsa sonuncuyu GÜNCELLE (Düzenleme mantığı)
+        if (this.data.notes[dateStr].length === 0) {
+            this.data.notes[dateStr].push({
+                timestamp: Date.now(),
+                ...noteData
+            });
+        } else {
+            const lastIdx = this.data.notes[dateStr].length - 1;
+            this.data.notes[dateStr][lastIdx] = {
+                ...this.data.notes[dateStr][lastIdx],
+                ...noteData,
+                timestamp: Date.now() // Güncellendiği zamanı tut
+            };
+        }
         this.save();
     }
     
@@ -993,18 +1032,44 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     dateCol.appendChild(dayNumSpan);
 
-                    const pumpBtn = document.createElement('button');
-                    const isPumped = dataManager.data.dailyPump && dataManager.data.dailyPump[dateStr];
-                    pumpBtn.className = `btn-pump-toggle ${isPumped ? 'active' : ''}`;
-                    pumpBtn.title = 'Pompa Kullanıldı';
-                    pumpBtn.innerHTML = '<span class="material-symbols-outlined">mode_fan</span>';
-                    pumpBtn.onclick = (e) => {
+                    // Pompa Verilerini Hazırla
+                    const pumpData = dataManager.data.dailyPump && dataManager.data.dailyPump[dateStr];
+                    let isWarmup = false;
+                    let isBloodflow = false;
+                    if (typeof pumpData === 'object') {
+                        isWarmup = !!pumpData.warmup;
+                        isBloodflow = !!pumpData.bloodflow;
+                    } else if (pumpData) {
+                        // Migration fallback
+                        if (pumpData === true || pumpData === 1 || pumpData === 3) isWarmup = true;
+                        if (pumpData === 2 || pumpData === 3) isBloodflow = true;
+                    }
+
+                    // 1. Isınma Pompası (Mavi)
+                    const warmupBtn = document.createElement('button');
+                    warmupBtn.className = `btn-pump-toggle ${isWarmup ? 'state-warmup' : ''}`;
+                    warmupBtn.title = 'Isınma Pompası (Başlangıç)';
+                    warmupBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px">mode_fan</span>';
+                    warmupBtn.onclick = (e) => {
                         e.stopPropagation();
-                        const newState = dataManager.toggleDailyPump(dateStr);
-                        pumpBtn.classList.toggle('active', newState);
-                        updateHomeView(); // Koç tavsiyesini anında güncelle
+                        dataManager.toggleDailyPump(dateStr, 'warmup');
+                        updateCalendarView();
+                        updateHomeView();
                     };
-                    dateCol.appendChild(pumpBtn);
+                    dateCol.appendChild(warmupBtn);
+
+                    // 2. Kan Akışı Pompası (Mor)
+                    const bloodflowBtn = document.createElement('button');
+                    bloodflowBtn.className = `btn-pump-toggle ${isBloodflow ? 'state-bloodflow' : ''}`;
+                    bloodflowBtn.title = 'Kan Akışı Pompası (Seans Sonu)';
+                    bloodflowBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px">mode_fan</span>';
+                    bloodflowBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        dataManager.toggleDailyPump(dateStr, 'bloodflow');
+                        updateCalendarView();
+                        updateHomeView();
+                    };
+                    dateCol.appendChild(bloodflowBtn);
 
                     const editBtn = document.createElement('button');
                     editBtn.className = 'btn-day-edit';
@@ -1016,6 +1081,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     };
                     dateCol.appendChild(editBtn);
 
+                    const noteBtn = document.createElement('button');
+                    const hasNote = dataManager.data.notes && dataManager.data.notes[dateStr] && dataManager.data.notes[dateStr].length > 0;
+                    noteBtn.className = `btn-note-toggle ${hasNote ? 'active' : ''}`;
+                    noteBtn.title = 'Günlük Notları Düzenle';
+                    noteBtn.innerHTML = '<span class="material-symbols-outlined">edit_note</span>';
+                    noteBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        openNoteModal(dateStr);
+                    };
+                    dateCol.appendChild(noteBtn);
+
                     // Vida boyutu (mm) mini input
                     const screwWrapper = document.createElement('div');
                     screwWrapper.className = 'screw-input-wrapper';
@@ -1023,7 +1099,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     const screwInput = document.createElement('input');
                     screwInput.type = 'number';
+                    screwInput.step = '0.1';
                     screwInput.className = 'screw-size-input';
+                    screwInput.style.width = '44px';
                     screwInput.placeholder = 'mm';
                     screwInput.min = 0;
                     screwInput.max = 99;
@@ -1041,7 +1119,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     screwInput.addEventListener('change', (e) => {
                         e.stopPropagation();
-                        const val = parseInt(screwInput.value);
+                        const val = parseFloat(screwInput.value.replace(',', '.'));
                         if (!isNaN(val) && val >= 0) {
                             if (!dataManager.data.dailyScrewSize) dataManager.data.dailyScrewSize = {};
                             dataManager.data.dailyScrewSize[dateStr] = val;
@@ -1126,6 +1204,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     const totalCol = document.createElement('div');
                     totalCol.className = 'day-total';
+                    
+                    // Renklendirme mantığı (v2.0.0) - Uzman önerisi: 4 saat (240 dk)
+                    if (dailyTotalMins >= 360) { // 6 saat ve üstü
+                        totalCol.classList.add('total-excellent');
+                    } else if (dailyTotalMins >= 240) { // 4-6 saat arası
+                        totalCol.classList.add('total-good');
+                    } else { // 4 saat altı
+                        totalCol.classList.add('total-low');
+                    }
                     totalCol.title = 'Seansları Genişlet / Kapat';
                     totalCol.textContent = dailyTotalMins > 0 ? formatMinutes(dailyTotalMins) : '0 dk';
                     
@@ -1211,7 +1298,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     noteDiv.style = "font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px; border-left: 2px solid #a5d6ff;";
                     const dNum = n.date.split('-')[2];
                     const noteMonthName = new Intl.DateTimeFormat('tr-TR', { month: 'long' }).format(new Date(y, m));
-                    noteDiv.innerHTML = `<small style="display:block; opacity:0.6; margin-bottom:2px;">${dNum} ${noteMonthName}:</small> ${n.text.join(' | ')}`;
+                    
+                    // Not içeriğini güvenli şekilde render et
+                    const noteTexts = n.text.map(t => typeof t === 'string' ? t : (t.note || ''));
+                    noteDiv.innerHTML = `<small style="display:block; opacity:0.6; margin-bottom:2px;">${dNum} ${noteMonthName}:</small> ${noteTexts.join(' | ')}`;
                     bodyDiv.appendChild(noteDiv);
                 });
             }
@@ -2505,6 +2595,67 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         editModal.classList.remove('show');
         currentEditDate = null;
     }
+
+    /* --- NOTE MODAL LOGIC (v1.9.5) --- */
+    let currentNoteDate = null;
+    const noteModal = document.getElementById('noteModalOverlay');
+    let selectedNotePain = 0;
+
+    function openNoteModal(dateStr) {
+        currentNoteDate = dateStr;
+        const noteData = dataManager.getDailyNote(dateStr);
+        
+        document.getElementById('noteModalText').value = noteData ? (noteData.note || "") : "";
+        document.getElementById('noteModalPump').checked = noteData ? (!!noteData.pump) : false;
+        document.getElementById('noteModalMast').checked = noteData ? (!!noteData.mast) : false;
+        
+        selectedNotePain = noteData ? (noteData.pain || 0) : 0;
+        document.querySelectorAll('#noteModalPain .btn-pain').forEach(btn => {
+            btn.classList.toggle('active', parseInt(btn.getAttribute('data-val')) === selectedNotePain);
+        });
+
+        const dateObj = new Date(dateStr);
+        document.getElementById('noteModalTargetDate').textContent = dateObj.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' });
+        noteModal.classList.add('show');
+    }
+
+    function closeNoteModal() {
+        noteModal.classList.remove('show');
+        currentNoteDate = null;
+    }
+
+    document.querySelectorAll('#noteModalPain .btn-pain').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('#noteModalPain .btn-pain').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            selectedNotePain = parseInt(btn.getAttribute('data-val'));
+        });
+    });
+
+    document.getElementById('btnCancelNote')?.addEventListener('click', closeNoteModal);
+    noteModal.addEventListener('click', (e) => {
+        if(e.target === noteModal) closeNoteModal();
+    });
+
+    document.getElementById('btnSaveNote')?.addEventListener('click', () => {
+        if(!currentNoteDate) return;
+        
+        const noteText = document.getElementById('noteModalText').value;
+        const notePump = document.getElementById('noteModalPump').checked;
+        const noteMast = document.getElementById('noteModalMast').checked;
+
+        dataManager.saveDailyNote(currentNoteDate, {
+            note: noteText,
+            pump: notePump,
+            mast: noteMast,
+            pain: selectedNotePain
+        });
+
+        closeNoteModal();
+        updateCalendarView();
+        updateHomeView();
+        showSuccessAchievement("Not Kaydedildi", "Günlük notun başarıyla güncellendi.", "📝");
+    });
 
     document.querySelectorAll('.modal-stepper-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
