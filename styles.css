@@ -277,6 +277,11 @@ input:focus, select:focus, textarea:focus {
     outline: none;
 }
 
+select option {
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+}
+
 /* --- MODERN COMPONENT REVISIONS (v1.6.0) --- */
 
 /* Modern Stepper (v1.6.0) */
@@ -359,7 +364,7 @@ input:focus, select:focus, textarea:focus {
     transition: all 0.2s;
 }
 
-.dual-box.active {
+.dual-box:hover, .dual-box.is-interacting {
     background: var(--accent-glow);
     box-shadow: inset 0 0 0 1px rgba(47, 129, 247, 0.3);
 }
@@ -1391,7 +1396,11 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 
 .day-total {
-    padding: 6px 12px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 12px;
     border-radius: 8px;
     font-size: 14px;
     font-weight: 700;
@@ -1826,8 +1835,8 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 34px;
-    height: 34px;
+    width: 36px;
+    height: 36px;
     border-radius: 10px;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -1861,8 +1870,8 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 34px;
-    height: 34px;
+    width: 36px;
+    height: 36px;
     border-radius: 10px;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -2099,4 +2108,16 @@ input:focus, select:focus, textarea:focus {
 
 .cloud-status-indicator.offline {
     color: var(--text-secondary);
+}
+
+.input-group-row {
+    display: flex;
+    gap: 15px;
+    width: 100%;
+    margin-bottom: 20px;
+}
+
+.input-group-row .input-group {
+    flex: 1;
+    margin-bottom: 0;
 }

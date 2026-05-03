@@ -521,7 +521,49 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }, 4000);
 
+    function saveSettingsUI() {
+        const nameEl = document.getElementById('userName');
+        if (!nameEl) return;
+
+        const name = nameEl.value;
+        const age = document.getElementById('userAge').value;
+        const date = document.getElementById('startDate').value;
+        const size = document.getElementById('startSize').value;
+        const target = document.getElementById('targetSize').value;
+        const growth = document.getElementById('targetMonthlyGrowth').value;
+        const aiProvider = document.getElementById('aiProvider').value;
+        const apiKey = document.getElementById('geminiApiKey').value;
+        const minimaxKey = document.getElementById('minimaxApiKey').value;
+        const modelName = document.getElementById('geminiModelName').value;
+        const dailyGoal = document.getElementById('dailyGoalHours').value;
+        
+        const fbKey = document.getElementById('firebaseApiKey').value;
+        const fbUrl = document.getElementById('firebaseDbUrl').value;
+        const fbId = document.getElementById('firebaseSyncId').value;
+        const fbEnabled = document.getElementById('cloudSyncEnabled').checked;
+
+        const workCycle = document.getElementById('workCycleDays').value;
+        const restCycle = document.getElementById('restCycleDays').value;
+
+        // Save Base Settings
+        dataManager.setBaseSettings(name, age, date, size, target, growth, apiKey, modelName, dailyGoal, aiProvider, minimaxKey, fbKey, fbUrl, fbId, fbEnabled, workCycle, restCycle);
+        
+        // Timer Settings
+        const tCount = document.getElementById('timerCount').value;
+        const tDur = document.getElementById('timerDuration').value;
+        const tBreak = document.getElementById('timerBreak').value;
+        const tSound = document.getElementById('notifSound').checked;
+        const tVib = document.getElementById('notifVibrate').checked;
+        dataManager.setTimerSettings(tCount, tDur, tBreak, tSound, tVib);
+    }
+
     function switchView(target) {
+        // Auto-save settings before leaving settings view (v2.0.5)
+        const settingsView = document.getElementById('settings');
+        if (settingsView && settingsView.classList.contains('active') && target !== 'settings') {
+            saveSettingsUI();
+        }
+
         navBtns.forEach(b => b.classList.remove('active'));
         views.forEach(v => v.classList.remove('active'));
 
@@ -536,6 +578,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if(target === 'calendar') updateCalendarView();
         if(target === 'journal') updateJournalView();
         if(target === 'coach') updateCoachSectionView();
+        if(target === 'settings') updateSettingsView();
     }
 
     // Home Page Journal Button
@@ -1084,46 +1127,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         openNoteModal(dateStr);
                     };
                     dateCol.appendChild(noteBtn);
-
-                    // Vida boyutu (mm) mini input
-                    const screwWrapper = document.createElement('div');
-                    screwWrapper.className = 'screw-input-wrapper';
-                    screwWrapper.title = 'O gün kullanılan vida boyutu (mm)';
-
-                    const screwInput = document.createElement('input');
-                    screwInput.type = 'number';
-                    screwInput.step = '0.1';
-                    screwInput.className = 'screw-size-input';
-                    screwInput.style.width = '44px';
-                    screwInput.placeholder = 'mm';
-                    screwInput.min = 0;
-                    screwInput.max = 99;
-                    const savedScrew = dataManager.data.dailyScrewSize && dataManager.data.dailyScrewSize[dateStr];
-                    if (savedScrew !== undefined && savedScrew !== null) {
-                        screwInput.value = savedScrew;
-                    } else {
-                        // Varsayılan: ayarlardaki son vida boyutu
-                        const tensionKeys = Object.keys(dataManager.data.monthlyTension || {}).sort().reverse();
-                        if (tensionKeys.length > 0) {
-                            const defaultScrew = dataManager.data.monthlyTension[tensionKeys[0]];
-                            if (defaultScrew !== undefined && defaultScrew !== null) screwInput.value = defaultScrew;
-                        }
-                    }
-
-                    screwInput.addEventListener('change', (e) => {
-                        e.stopPropagation();
-                        const val = parseFloat(screwInput.value.replace(',', '.'));
-                        if (!isNaN(val) && val >= 0) {
-                            if (!dataManager.data.dailyScrewSize) dataManager.data.dailyScrewSize = {};
-                            dataManager.data.dailyScrewSize[dateStr] = val;
-                            dataManager.save();
-                        }
-                    });
-
-                    screwInput.addEventListener('click', (e) => e.stopPropagation());
-
-                    screwWrapper.appendChild(screwInput);
-                    dateCol.appendChild(screwWrapper);
 
                     dayRow.appendChild(dateCol);
                     
@@ -1898,9 +1901,67 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         // Smart Cycle Settings
         document.getElementById('workCycleDays').value = dataManager.data.workCycleDays || 5;
         document.getElementById('restCycleDays').value = dataManager.data.restCycleDays || 1;
+
+        // Trigger Dependent UI Updates (v2.0.2)
+        setTimeout(() => {
+            // Re-initialize sliders (updates ranges if startSize changed)
+            if (typeof initSmartCycleSliders === 'function') initSmartCycleSliders();
+
+            // Update feedback boxes
+            if (typeof updateTargetFeedback === 'function') updateTargetFeedback();
+            if (typeof updateGrowthFeedback === 'function') updateGrowthFeedback();
+            if (typeof updateGoalFeedback === 'function') updateGoalFeedback();
+            if (typeof updateCycleFeedback === 'function') updateCycleFeedback();
+            if (typeof updateTimerFeedback === 'function') updateTimerFeedback();
+
+            // Refresh all smart sliders to match hidden inputs
+            document.querySelectorAll('.smart-slider').forEach(slider => {
+                if (typeof slider.refreshSlider === 'function') slider.refreshSlider();
+            });
+            
+            // Force deactivate button to counter any automated change events on load
+            setTimeout(() => { if(typeof deactivateSaveButton === 'function') deactivateSaveButton(); }, 100);
+        }, 50);
     }
 
     // --- EVENTS ---
+
+    // --- SETTINGS SAVE BUTTON LOGIC ---
+    const settingsContainer = document.getElementById('settings');
+    const saveBtn = document.getElementById('btnSaveBaseSettings');
+    
+    function activateSaveButton() {
+        if (!saveBtn) return;
+        saveBtn.style.pointerEvents = 'auto';
+        saveBtn.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+        saveBtn.style.color = 'white';
+        saveBtn.style.boxShadow = '0 4px 15px rgba(16, 185, 129, 0.3)';
+        saveBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size: 18px;">save</span> DEĞİŞİKLİKLERİ KAYDET';
+    }
+
+    function deactivateSaveButton() {
+        if (!saveBtn) return;
+        saveBtn.style.pointerEvents = 'none';
+        saveBtn.style.background = 'rgba(16, 185, 129, 0.2)';
+        saveBtn.style.color = '#10b981';
+        saveBtn.style.boxShadow = 'none';
+        saveBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size: 18px;">save</span> DEĞİŞİKLİK YOK';
+    }
+
+    if (settingsContainer) {
+        settingsContainer.addEventListener('input', (e) => {
+            if(e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') activateSaveButton();
+            if(e.target.id === 'timerDuration' || e.target.id === 'timerBreak') {
+                if (typeof updateTimerFeedback === 'function') updateTimerFeedback();
+            }
+        });
+        settingsContainer.addEventListener('change', (e) => {
+            if(e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') activateSaveButton();
+            if(e.target.id === 'timerDuration' || e.target.id === 'timerBreak') {
+                if (typeof updateTimerFeedback === 'function') updateTimerFeedback();
+            }
+        });
+    }
 
     document.getElementById('btnSaveBaseSettings')?.addEventListener('click', () => {
         const name = document.getElementById('userName').value;
@@ -1923,7 +1984,9 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         const workCycle = document.getElementById('workCycleDays').value;
         const restCycle = document.getElementById('restCycleDays').value;
 
-        if(!date || !size) return alert("Başlangıç tarihi ve boyutunu girin.");
+        if(!date || !size) {
+            alert("Uyarı: Başlangıç tarihi ve boyutu girmediniz. Bu veriler uygulamanın analizi için önemlidir. Ancak diğer verileriniz yine de kaydedildi.");
+        }
         
         dataManager.setBaseSettings(name, age, date, size, target, growth, apiKey, modelName, dailyGoal, aiProvider, minimaxKey, fbKey, fbUrl, fbId, fbEnabled, workCycle, restCycle);
         
@@ -1943,8 +2006,8 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         showSuccessAchievement("Başarılı", "Tüm ayarlar kaydedildi.", "💾");
         updateSettingsView();
         updateHomeView();
+        deactivateSaveButton();
     });
-
 
     document.getElementById('aiProvider')?.addEventListener('change', (e) => {
         const val = e.target.value;
@@ -2078,7 +2141,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             try {
                 const registration = await navigator.serviceWorker.getRegistration();
                 if (registration) {
-                    btn.textContent = "🚀 Güncelleniyor (v1.8.2)...";
+                    btn.textContent = "🚀 Güncelleniyor (v2.0.5)...";
                     await registration.update();
                     
                     if (registration.waiting) {
@@ -2167,7 +2230,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                         window.location.reload();
                     });
 
-                    btn.textContent = "🚀 Güncelleniyor (v1.9.4)...";
+                    btn.textContent = "🚀 Güncelleniyor (v2.0.5)...";
                     await registration.update();
                     
                     // If after 3 seconds still no reload, force it
@@ -2953,7 +3016,6 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                     slider.classList.remove('disabled');
                 } else {
                     slider.classList.add('disabled');
-                    return; // Başlangıç girilmediyse çizme
                 }
             }
 
@@ -2961,6 +3023,9 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             const thumb = slider.querySelector('.slider-thumb');
             const valueSpan = document.getElementById(`val-${targetId}`);
             const hiddenInput = document.getElementById(targetId);
+
+            // Listener check (v2.0.2)
+            const hasListeners = slider.dataset.initialized === "true";
 
             // Generate Points
             pointsContainer.innerHTML = '';
@@ -3039,26 +3104,33 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                 dataManager.save();
             }
 
-            // Drag/Swipe Support
-            let isDragging = false;
-            const handleDrag = (e) => {
-                const rect = slider.getBoundingClientRect();
-                const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
-                const percent = Math.max(0, Math.min(100, (x / rect.width) * 100));
-                const val = min + (percent / 100) * (max - min);
-                updateValue(val);
-            };
+            if (!hasListeners) {
+                // Drag/Swipe Support
+                let isDragging = false;
+                const handleDrag = (e) => {
+                    const rect = slider.getBoundingClientRect();
+                    const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+                    const percent = Math.max(0, Math.min(100, (x / rect.width) * 100));
+                    const val = min + (percent / 100) * (max - min);
+                    updateValue(val);
+                };
 
-            slider.addEventListener('mousedown', (e) => { isDragging = true; handleDrag(e); });
-            window.addEventListener('mousemove', (e) => { if (isDragging) handleDrag(e); });
-            window.addEventListener('mouseup', () => { isDragging = false; });
-            
-            slider.addEventListener('touchstart', (e) => { isDragging = true; handleDrag(e); }, {passive: false});
-            slider.addEventListener('touchmove', (e) => { if (isDragging) { e.preventDefault(); handleDrag(e); } }, {passive: false});
-            slider.addEventListener('touchend', () => { isDragging = false; });
+                slider.addEventListener('mousedown', (e) => { isDragging = true; handleDrag(e); });
+                window.addEventListener('mousemove', (e) => { if (isDragging) handleDrag(e); });
+                window.addEventListener('mouseup', () => { isDragging = false; });
+                
+                slider.addEventListener('touchstart', (e) => { isDragging = true; handleDrag(e); }, {passive: false});
+                slider.addEventListener('touchmove', (e) => { if (isDragging) { e.preventDefault(); handleDrag(e); } }, {passive: false});
+                slider.addEventListener('touchend', () => { isDragging = false; });
+
+                slider.dataset.initialized = "true";
+            }
+
+            // Global Access for refreshing (v2.0.2)
+            slider.refreshSlider = () => updateValue(parseFloat(hiddenInput.value) || min);
 
             // Initial Sync
-            setTimeout(() => updateValue(parseFloat(hiddenInput.value) || min), 100);
+            slider.refreshSlider();
         });
     }
 
@@ -3245,6 +3317,43 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         }
     }
 
+    function updateTimerFeedback() {
+        const dur = parseInt(document.getElementById('timerDuration')?.value) || 120;
+        const brk = parseInt(document.getElementById('timerBreak')?.value) || 30;
+        const feedbackText = document.getElementById('timerFeedbackText');
+        const feedbackIcon = document.getElementById('timerFeedbackIcon');
+        if (!feedbackText || !feedbackIcon) return;
+
+        let msg = "";
+        let icon = "info";
+
+        // Seans Süresi Kontrolü
+        if (dur < 60) {
+            msg += "<strong>Yetersiz Seans:</strong> " + dur + " dakikalık süre kalıcı esneme (plastik deformasyon) için çok kısadır. Etki görmek için en az 60 dk (tercihen 120+ dk) önerilir.<br><br>";
+            icon = "warning";
+        } else if (dur >= 60 && dur <= 180) {
+            msg += "<strong>İdeal Seans:</strong> " + dur + " dakikalık süre hücre bölünmesi tetiklemek için altın standarttır.<br><br>";
+            if (icon !== "warning") icon = "check_circle";
+        } else {
+            msg += "<strong>Tehlikeli Seans:</strong> " + dur + " dakikalık aralıksız süre çok uzun! Doku hasarı, su toplaması ve kan dolaşımı sorunları (iskemi) riski çok yüksektir.<br><br>";
+            icon = "report_problem";
+        }
+
+        // Mola Süresi Kontrolü
+        if (brk < 15) {
+            msg += "<strong>Kısa Mola:</strong> " + brk + " dk mola, kan akışının normale dönmesi için yetersiz olabilir. En az 15 dk önerilir.";
+            if (icon !== "report_problem") icon = "warning";
+        } else if (brk >= 15 && brk <= 45) {
+            msg += "<strong>Sağlıklı Mola:</strong> " + brk + " dk mola, doku onarımı ve taze kan akışı için mükemmeldir.";
+        } else {
+            msg += "<strong>Uzun Mola:</strong> " + brk + " dk mola uzun. Dokular soğuyarak esnekliğini kaybedebilir, sonraki seansa başlarken zorlanabilirsiniz.";
+            if (icon !== "report_problem") icon = "warning";
+        }
+
+        feedbackText.innerHTML = msg;
+        feedbackIcon.textContent = icon;
+    }
+
     // Initialize Smart Cycle Sliders
     initSmartCycleSliders();
 
@@ -3345,15 +3454,15 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
     function checkUpdateStatus() {
         if (sessionStorage.getItem('app_just_updated') === 'true') {
             sessionStorage.removeItem('app_just_updated');
-            // Ayarlar sekmesine tıkla (navBtns[3])
-            if (navBtns[3]) navBtns[3].click();
+            // Ayarlar sekmesine geç
+            if (typeof switchView === 'function') switchView('settings');
 
             const verText = document.getElementById('appVersionText');
             if (verText) {
                 const originalText = verText.textContent;
                 verText.style.color = '#2ecc71'; // Yeşil renk
                 verText.style.fontWeight = '700';
-                verText.textContent = '✅ Uygulamanız v1.9.4 sürümüne güncellendi!';
+                verText.textContent = '✅ Uygulamanız v2.0.5 sürümüne güncellendi!';
                 
                 setTimeout(() => {
                     verText.style.color = '';
@@ -3385,35 +3494,59 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
 
     // --- MANUEL SAYAÇ: SWIPE, WHEEL & TAP ETKİLEŞİMİ ---
     (function initManualStepperSwipe() {
-        const boxes = document.querySelectorAll('#timeEntryDualStepper .dual-box[data-target]');
+        const boxes = document.querySelectorAll('.dual-box[data-target]');
 
         boxes.forEach(box => {
             const inputId = box.getAttribute('data-target');
             const input = document.getElementById(inputId);
             if (!input) return;
 
-            const isMinutes = inputId === 'inputMinutes';
-            const maxVal = isMinutes ? 55 : 12;
-            const step = isMinutes ? 5 : 1;
+            // Dinamik sınırlar ve adımlar
+            let maxVal = parseFloat(input.getAttribute('max')) || 999;
+            let step = parseFloat(input.getAttribute('step')) || 1;
+            
+            // Özel Kurallar
+            if (inputId === 'inputMinutes' || inputId === 'editMinutes') { maxVal = 55; step = 5; }
+            if (inputId === 'inputHours' || inputId === 'editHours') { maxVal = 12; step = 1; }
+            if (inputId === 'timerCount') { maxVal = 10; step = 1; }
+            if (inputId === 'timerDuration') { maxVal = 360; step = 5; }
+            if (inputId === 'timerBreak') { maxVal = 120; step = 5; }
+
             const PX_PER_STEP = 15; // Hassasiyet: Her 15px harekette bir adım
-
             let startY = 0, lastY = 0, isDragging = false, accumulated = 0;
+            let interactionTimer = null;
 
-            function clamp(val) {
-                // Saat 0-12, Dakika 0-55 (5'erli)
-                let v = Math.max(0, Math.min(maxVal, val));
-                if (isMinutes) v = Math.round(v / 5) * 5; // 5'e yuvarla
-                return v;
+            function setInteracting() {
+                box.classList.add('is-interacting');
+                if (interactionTimer) clearTimeout(interactionTimer);
             }
 
-            function changeBy(delta) {
-                const current = parseInt(input.value) || 0;
-                input.value = Math.max(0, Math.min(maxVal, current + delta));
+            function clearInteracting() {
+                interactionTimer = setTimeout(() => box.classList.remove('is-interacting'), 300);
+            }
+
+            function changeBy(delta, wrap = false) {
+                const current = parseFloat(input.value) || 0;
+                let v = current + delta;
+                
+                let minVal = (inputId === 'timerCount' || inputId === 'timerDuration' || inputId === 'timerBreak') ? 1 : 0;
+                
+                if (wrap) {
+                    if (v > maxVal) v = minVal;
+                    else if (v < minVal) v = maxVal;
+                } else {
+                    v = Math.max(minVal, Math.min(maxVal, v));
+                }
+                
+                input.value = v;
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                input.dispatchEvent(new Event('change', { bubbles: true }));
             }
 
             function onStart(y) {
                 startY = y; lastY = y;
                 isDragging = false; accumulated = 0;
+                setInteracting();
             }
 
             function onMove(y) {
@@ -3422,6 +3555,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                 if (Math.abs(y - startY) > 5) isDragging = true;
                 if (!isDragging) return;
 
+                setInteracting();
                 accumulated += dy;
                 while (accumulated >= PX_PER_STEP)  { changeBy(step);  accumulated -= PX_PER_STEP; }
                 while (accumulated <= -PX_PER_STEP) { changeBy(-step); accumulated += PX_PER_STEP; }
@@ -3429,12 +3563,11 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
 
             function onEnd() {
                 if (!isDragging) {
-                    // Tıklayınca birer birer artsın (Hata payı bırakmamak için her zaman +1)
-                    let v = (parseInt(input.value) || 0) + 1;
-                    if (v > maxVal) v = 0;
-                    input.value = v;
+                    // Tıklayınca wrap (başa dönme) aktif olsun
+                    changeBy(step, true);
                 }
                 isDragging = false; accumulated = 0;
+                clearInteracting();
             }
 
             // Dokunmatik (Mobil)
@@ -3442,16 +3575,19 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             box.addEventListener('touchmove',  e => { e.preventDefault(); onMove(e.touches[0].clientY); },  { passive: false });
             box.addEventListener('touchend',   e => { e.preventDefault(); onEnd(); },                       { passive: false });
 
-            // Masaüstü: Tıklama = +1
+            // Masaüstü: Tıklama = +step
             box.addEventListener('click', e => {
                 e.preventDefault();
+                setInteracting();
                 onEnd(); 
             });
 
-            // Masaüstü: Tekerlek = ±Step
+            // Masaüstü: Tekerlek = ±step
             box.addEventListener('wheel', e => {
                 e.preventDefault();
+                setInteracting();
                 changeBy(e.deltaY < 0 ? step : -step);
+                clearInteracting();
             }, { passive: false });
         });
     })();
@@ -3501,4 +3637,16 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             if (!isDragging) changeBy(1); 
         }, { passive: false });
     })();
+
+    // Desktop Scroll Delegation (v2.0.5)
+    // Allows desktop users to scroll the app even when hovering outside the 480px container
+    window.addEventListener('wheel', (e) => {
+        // If hovered directly over the body/html background (the dark empty space)
+        if (e.target === document.body || e.target === document.documentElement) {
+            const content = document.querySelector('.view.active')?.closest('.content') || document.querySelector('.content');
+            if (content) {
+                content.scrollTop += e.deltaY;
+            }
+        }
+    }, { passive: true });
 });
