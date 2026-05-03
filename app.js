@@ -558,7 +558,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function switchView(target) {
-        // Auto-save settings before leaving settings view (v2.0.9)
+        // Auto-save settings before leaving settings view (v2.1.0)
         const settingsView = document.getElementById('settings');
         if (settingsView && settingsView.classList.contains('active') && target !== 'settings') {
             saveSettingsUI();
@@ -1876,7 +1876,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         }
         
         // Let's get the latest available tension, regardless of the month, so the input doesn't incorrectly seem 'cleared'
-        let lastTension = 80; // Default 80mm (v2.0.9)
+        let lastTension = 8.0; // Default 8.0cm (v2.1.0)
         if (dataManager.data.monthlyTension) {
             const tensionKeys = Object.keys(dataManager.data.monthlyTension).sort().reverse();
             if (tensionKeys.length > 0) {
@@ -2141,7 +2141,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             try {
                 const registration = await navigator.serviceWorker.getRegistration();
                 if (registration) {
-                    btn.textContent = "🚀 Güncelleniyor (v2.0.9)...";
+                    btn.textContent = "🚀 Güncelleniyor (v2.1.0)...";
                     await registration.update();
                     
                     if (registration.waiting) {
@@ -2230,7 +2230,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                         window.location.reload();
                     });
 
-                    btn.textContent = "🚀 Güncelleniyor (v2.0.9)...";
+                    btn.textContent = "🚀 Güncelleniyor (v2.1.0)...";
                     await registration.update();
                     
                     // If after 3 seconds still no reload, force it
@@ -3462,7 +3462,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                 const originalText = verText.textContent;
                 verText.style.color = '#2ecc71'; // Yeşil renk
                 verText.style.fontWeight = '700';
-                verText.textContent = '✅ Uygulamanız v2.0.9 sürümüne güncellendi!';
+                verText.textContent = '✅ Uygulamanız v2.1.0 sürümüne güncellendi!';
                 
                 setTimeout(() => {
                     verText.style.color = '';
@@ -3537,6 +3537,9 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                 } else {
                     v = Math.max(minVal, Math.min(maxVal, v));
                 }
+                
+                // Hassas küsurat düzeltme (örn: 10.5 + 0.1 = 10.6)
+                if (step < 1) v = Math.round(v * 10) / 10;
                 
                 input.value = v;
                 input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -3668,7 +3671,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         });
     })();
 
-    // Desktop Scroll Delegation (v2.0.9)
+    // Desktop Scroll Delegation (v2.1.0)
     // Allows desktop users to scroll the app even when hovering outside the 480px container
     window.addEventListener('wheel', (e) => {
         // If hovered directly over the body/html background (the dark empty space)
