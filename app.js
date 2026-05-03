@@ -558,7 +558,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function switchView(target) {
-        // Auto-save settings before leaving settings view (v2.1.6)
+        // Auto-save settings before leaving settings view (v2.1.7)
         const settingsView = document.getElementById('settings');
         if (settingsView && settingsView.classList.contains('active') && target !== 'settings') {
             saveSettingsUI();
@@ -732,24 +732,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const dateOpts = { day: '2-digit', month: 'long', year: 'numeric' };
 
-        // Bir sonraki iki hedefi hesaplayan fonksiyon (Kullanıcının isteği: Aylık hedefe göre dinamik hesaplama)
+        // Bir sonraki iki hedefi hesaplayan fonksiyon (Kullanıcının isteği: 0.5 cm'lik ana durakları baz al)
         function updateDefaultEstimates() {
             const rawRate = dataManager.data.targetMonthlyGrowth || 2; // mm cinsinden (örn: 1.5mm)
-            const rate = rawRate / 10; // cm cinsinden (örn: 0.15cm)
             const currentSize = parseFloat(dataManager.data.currentSize) || parseFloat(dataManager.data.startSize);
             
-            // Sıradaki hedef: 30 gün sonrası (1 aylık gelişim)
+            // Sıradaki 0.5'lik durak (Beyaz Noktalar)
+            // Örn: 15.3 ise 15.5'e, 15.5 ise 16.0'a hedefler.
+            let next1Cm = (Math.floor(currentSize * 2) + 1) / 2;
+            let next2Cm = next1Cm + 0.5;
+
+            const dateOpts = { day: '2-digit', month: 'long', year: 'numeric' };
+
+            // İlk Hedef Tarihi
+            const mmDiff1 = Math.max(0, (next1Cm - currentSize) * 10);
+            const daysNeeded1 = (mmDiff1 / rawRate) * 30.4375;
             const date1 = new Date();
-            date1.setDate(date1.getDate() + 30);
-            const next1Cm = currentSize + rate;
-            
-            // Sonraki hedef: 60 gün sonrası (2 aylık gelişim)
+            date1.setDate(date1.getDate() + daysNeeded1);
+
+            // İkinci Hedef Tarihi
+            const mmDiff2 = Math.max(0, (next2Cm - currentSize) * 10);
+            const daysNeeded2 = (mmDiff2 / rawRate) * 30.4375;
             const date2 = new Date();
-            date2.setDate(date2.getDate() + 60);
-            const next2Cm = currentSize + (rate * 2);
+            date2.setDate(date2.getDate() + daysNeeded2);
             
-            estMidEl.innerHTML = `🎯 Sıradaki Hedef (<b>${next1Cm.toFixed(2)} cm</b>): ${date1.toLocaleDateString('tr-TR', dateOpts)}`;
-            estEndEl.innerHTML = `🏆 Sonraki Hedef (<b>${next2Cm.toFixed(2)} cm</b>): ${date2.toLocaleDateString('tr-TR', dateOpts)}`;
+            estMidEl.innerHTML = `🎯 Sıradaki Hedef (<b>${next1Cm.toFixed(1)} cm</b>): ${date1.toLocaleDateString('tr-TR', dateOpts)}`;
+            estEndEl.innerHTML = `🏆 Sonraki Hedef (<b>${next2Cm.toFixed(1)} cm</b>): ${date2.toLocaleDateString('tr-TR', dateOpts)}`;
         }
 
         // Tıklama yapıldığında geçici süreyle o noktanın bilgisini gösterir
@@ -1879,7 +1887,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         }
         
         // Let's get the latest available tension, regardless of the month, so the input doesn't incorrectly seem 'cleared'
-        let lastTension = 8.0; // Default 8.0cm (v2.1.6)
+        let lastTension = 8.0; // Default 8.0cm (v2.1.7)
         if (dataManager.data.monthlyTension) {
             const tensionKeys = Object.keys(dataManager.data.monthlyTension).sort().reverse();
             if (tensionKeys.length > 0) {
@@ -1932,7 +1940,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
 
     // --- SETTINGS SAVE BUTTON LOGIC ---
     const settingsContainer = document.getElementById('settings');
-    // --- EVRENSEL OTOMATİK KAYIT: TÜM AYARLAR (v2.1.6) ---
+    // --- EVRENSEL OTOMATİK KAYIT: TÜM AYARLAR (v2.1.7) ---
     let settingsAutoSaveTimer = null;
     function triggerSettingsAutoSave() {
         if (settingsAutoSaveTimer) clearTimeout(settingsAutoSaveTimer);
@@ -2123,7 +2131,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             try {
                 const registration = await navigator.serviceWorker.getRegistration();
                 if (registration) {
-                    btn.textContent = "🚀 Güncelleniyor (v2.1.6)...";
+                    btn.textContent = "🚀 Güncelleniyor (v2.1.7)...";
                     await registration.update();
                     
                     if (registration.waiting) {
@@ -2212,7 +2220,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                         window.location.reload();
                     });
 
-                    btn.textContent = "🚀 Güncelleniyor (v2.1.6)...";
+                    btn.textContent = "🚀 Güncelleniyor (v2.1.7)...";
                     await registration.update();
                     
                     // If after 3 seconds still no reload, force it
@@ -2234,7 +2242,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         }
     });
 
-    // --- OTOMATİK KAYIT: GÜNCEL VERİLER (v2.1.6) ---
+    // --- OTOMATİK KAYIT: GÜNCEL VERİLER (v2.1.7) ---
     let autoSaveCurrentTimer = null;
     function triggerAutoSaveCurrent() {
         if (autoSaveCurrentTimer) clearTimeout(autoSaveCurrentTimer);
@@ -3477,7 +3485,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                 const originalText = verText.textContent;
                 verText.style.color = '#2ecc71'; // Yeşil renk
                 verText.style.fontWeight = '700';
-                verText.textContent = '✅ Uygulamanız v2.1.6 sürümüne güncellendi!';
+                verText.textContent = '✅ Uygulamanız v2.1.7 sürümüne güncellendi!';
                 
                 setTimeout(() => {
                     verText.style.color = '';
@@ -3615,7 +3623,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                 clearInteracting();
             }, { passive: false });
 
-            // Input'un kendi scroll davranışını kapat (v2.1.6)
+            // Input'un kendi scroll davranışını kapat (v2.1.7)
             input.addEventListener('wheel', e => e.preventDefault(), { passive: false });
         });
     })();
@@ -3696,7 +3704,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         });
     })();
 
-    // Desktop Scroll Delegation (v2.1.6)
+    // Desktop Scroll Delegation (v2.1.7)
     // Allows desktop users to scroll the app even when hovering outside the 480px container
     window.addEventListener('wheel', (e) => {
         // If hovered directly over the body/html background (the dark empty space)
