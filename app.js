@@ -558,7 +558,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function switchView(target) {
-        // Auto-save settings before leaving settings view (v2.1.1)
+        // Auto-save settings before leaving settings view (v2.1.2)
         const settingsView = document.getElementById('settings');
         if (settingsView && settingsView.classList.contains('active') && target !== 'settings') {
             saveSettingsUI();
@@ -1876,7 +1876,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         }
         
         // Let's get the latest available tension, regardless of the month, so the input doesn't incorrectly seem 'cleared'
-        let lastTension = 8.0; // Default 8.0cm (v2.1.1)
+        let lastTension = 8.0; // Default 8.0cm (v2.1.2)
         if (dataManager.data.monthlyTension) {
             const tensionKeys = Object.keys(dataManager.data.monthlyTension).sort().reverse();
             if (tensionKeys.length > 0) {
@@ -2141,7 +2141,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             try {
                 const registration = await navigator.serviceWorker.getRegistration();
                 if (registration) {
-                    btn.textContent = "🚀 Güncelleniyor (v2.1.1)...";
+                    btn.textContent = "🚀 Güncelleniyor (v2.1.2)...";
                     await registration.update();
                     
                     if (registration.waiting) {
@@ -2230,7 +2230,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                         window.location.reload();
                     });
 
-                    btn.textContent = "🚀 Güncelleniyor (v2.1.1)...";
+                    btn.textContent = "🚀 Güncelleniyor (v2.1.2)...";
                     await registration.update();
                     
                     // If after 3 seconds still no reload, force it
@@ -2252,17 +2252,24 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         }
     });
 
-    document.getElementById('btnSaveCurrentData').addEventListener('click', () => {
-        const cs = document.getElementById('currentSize').value;
-        const ct = document.getElementById('currentTension').value;
-        if(!cs && !ct) return alert("Lütfen en az bir veriyi doldurun.");
-        
-        dataManager.setCurrentData(cs, ct);
-        alert("Verileriniz kaydedildi. Takvimde varsayılan vida boyutu güncellendi.");
-        updateSettingsView();
-        updateHomeView();
-        updateCalendarView();
-    });
+    // --- OTOMATİK KAYIT: GÜNCEL VERİLER (v2.1.2) ---
+    let autoSaveCurrentTimer = null;
+    function triggerAutoSaveCurrent() {
+        if (autoSaveCurrentTimer) clearTimeout(autoSaveCurrentTimer);
+        autoSaveCurrentTimer = setTimeout(() => {
+            const cs = document.getElementById('currentSize').value;
+            const ct = document.getElementById('currentTension').value;
+            if(!cs && !ct) return;
+            
+            dataManager.setCurrentData(cs, ct);
+            // Sessiz kayıt (alert yok), görünümleri güncelle
+            updateHomeView();
+            updateCalendarView();
+        }, 800);
+    }
+
+    document.getElementById('currentSize')?.addEventListener('input', triggerAutoSaveCurrent);
+    document.getElementById('currentTension')?.addEventListener('input', triggerAutoSaveCurrent);
 
     document.getElementById('btnToggleManual')?.addEventListener('click', () => {
         const card = document.getElementById('timerCard');
@@ -3462,7 +3469,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                 const originalText = verText.textContent;
                 verText.style.color = '#2ecc71'; // Yeşil renk
                 verText.style.fontWeight = '700';
-                verText.textContent = '✅ Uygulamanız v2.1.1 sürümüne güncellendi!';
+                verText.textContent = '✅ Uygulamanız v2.1.2 sürümüne güncellendi!';
                 
                 setTimeout(() => {
                     verText.style.color = '';
@@ -3600,7 +3607,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                 clearInteracting();
             }, { passive: false });
 
-            // Input'un kendi scroll davranışını kapat (v2.1.1)
+            // Input'un kendi scroll davranışını kapat (v2.1.2)
             input.addEventListener('wheel', e => e.preventDefault(), { passive: false });
         });
     })();
@@ -3681,7 +3688,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         });
     })();
 
-    // Desktop Scroll Delegation (v2.1.1)
+    // Desktop Scroll Delegation (v2.1.2)
     // Allows desktop users to scroll the app even when hovering outside the 480px container
     window.addEventListener('wheel', (e) => {
         // If hovered directly over the body/html background (the dark empty space)
