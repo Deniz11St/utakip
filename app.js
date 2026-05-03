@@ -558,7 +558,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function switchView(target) {
-        // Auto-save settings before leaving settings view (v2.1.3)
+        // Auto-save settings before leaving settings view (v2.1.4)
         const settingsView = document.getElementById('settings');
         if (settingsView && settingsView.classList.contains('active') && target !== 'settings') {
             saveSettingsUI();
@@ -1876,7 +1876,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         }
         
         // Let's get the latest available tension, regardless of the month, so the input doesn't incorrectly seem 'cleared'
-        let lastTension = 8.0; // Default 8.0cm (v2.1.3)
+        let lastTension = 8.0; // Default 8.0cm (v2.1.4)
         if (dataManager.data.monthlyTension) {
             const tensionKeys = Object.keys(dataManager.data.monthlyTension).sort().reverse();
             if (tensionKeys.length > 0) {
@@ -1899,6 +1899,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         document.getElementById('cloudSyncEnabled').checked = dataManager.data.cloudSyncEnabled || false;
 
         // Smart Cycle Settings
+        document.getElementById('dailyGoalHours').value = dataManager.data.dailyGoalHours || 6;
         document.getElementById('workCycleDays').value = dataManager.data.workCycleDays || 5;
         document.getElementById('restCycleDays').value = dataManager.data.restCycleDays || 1;
 
@@ -1928,7 +1929,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
 
     // --- SETTINGS SAVE BUTTON LOGIC ---
     const settingsContainer = document.getElementById('settings');
-    // --- EVRENSEL OTOMATİK KAYIT: TÜM AYARLAR (v2.1.3) ---
+    // --- EVRENSEL OTOMATİK KAYIT: TÜM AYARLAR (v2.1.4) ---
     let settingsAutoSaveTimer = null;
     function triggerSettingsAutoSave() {
         if (settingsAutoSaveTimer) clearTimeout(settingsAutoSaveTimer);
@@ -2119,7 +2120,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             try {
                 const registration = await navigator.serviceWorker.getRegistration();
                 if (registration) {
-                    btn.textContent = "🚀 Güncelleniyor (v2.1.3)...";
+                    btn.textContent = "🚀 Güncelleniyor (v2.1.4)...";
                     await registration.update();
                     
                     if (registration.waiting) {
@@ -2208,7 +2209,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                         window.location.reload();
                     });
 
-                    btn.textContent = "🚀 Güncelleniyor (v2.1.3)...";
+                    btn.textContent = "🚀 Güncelleniyor (v2.1.4)...";
                     await registration.update();
                     
                     // If after 3 seconds still no reload, force it
@@ -2230,7 +2231,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         }
     });
 
-    // --- OTOMATİK KAYIT: GÜNCEL VERİLER (v2.1.3) ---
+    // --- OTOMATİK KAYIT: GÜNCEL VERİLER (v2.1.4) ---
     let autoSaveCurrentTimer = null;
     function triggerAutoSaveCurrent() {
         if (autoSaveCurrentTimer) clearTimeout(autoSaveCurrentTimer);
@@ -3070,6 +3071,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                 if (valueSpan) valueSpan.textContent = val.toFixed((targetId === 'targetMonthlyGrowth' || targetId === 'targetSize') ? 1 : 0);
                 if (hiddenInput) {
                     hiddenInput.value = val;
+                    hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
                     hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
                 }
 
@@ -3447,7 +3449,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                 const originalText = verText.textContent;
                 verText.style.color = '#2ecc71'; // Yeşil renk
                 verText.style.fontWeight = '700';
-                verText.textContent = '✅ Uygulamanız v2.1.3 sürümüne güncellendi!';
+                verText.textContent = '✅ Uygulamanız v2.1.4 sürümüne güncellendi!';
                 
                 setTimeout(() => {
                     verText.style.color = '';
@@ -3585,7 +3587,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                 clearInteracting();
             }, { passive: false });
 
-            // Input'un kendi scroll davranışını kapat (v2.1.3)
+            // Input'un kendi scroll davranışını kapat (v2.1.4)
             input.addEventListener('wheel', e => e.preventDefault(), { passive: false });
         });
     })();
@@ -3666,7 +3668,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         });
     })();
 
-    // Desktop Scroll Delegation (v2.1.3)
+    // Desktop Scroll Delegation (v2.1.4)
     // Allows desktop users to scroll the app even when hovering outside the 480px container
     window.addEventListener('wheel', (e) => {
         // If hovered directly over the body/html background (the dark empty space)
