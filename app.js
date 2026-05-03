@@ -558,7 +558,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function switchView(target) {
-        // Auto-save settings before leaving settings view (v2.1.4)
+        // Auto-save settings before leaving settings view (v2.1.5)
         const settingsView = document.getElementById('settings');
         if (settingsView && settingsView.classList.contains('active') && target !== 'settings') {
             saveSettingsUI();
@@ -1876,7 +1876,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         }
         
         // Let's get the latest available tension, regardless of the month, so the input doesn't incorrectly seem 'cleared'
-        let lastTension = 8.0; // Default 8.0cm (v2.1.4)
+        let lastTension = 8.0; // Default 8.0cm (v2.1.5)
         if (dataManager.data.monthlyTension) {
             const tensionKeys = Object.keys(dataManager.data.monthlyTension).sort().reverse();
             if (tensionKeys.length > 0) {
@@ -1929,7 +1929,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
 
     // --- SETTINGS SAVE BUTTON LOGIC ---
     const settingsContainer = document.getElementById('settings');
-    // --- EVRENSEL OTOMATİK KAYIT: TÜM AYARLAR (v2.1.4) ---
+    // --- EVRENSEL OTOMATİK KAYIT: TÜM AYARLAR (v2.1.5) ---
     let settingsAutoSaveTimer = null;
     function triggerSettingsAutoSave() {
         if (settingsAutoSaveTimer) clearTimeout(settingsAutoSaveTimer);
@@ -2120,7 +2120,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             try {
                 const registration = await navigator.serviceWorker.getRegistration();
                 if (registration) {
-                    btn.textContent = "🚀 Güncelleniyor (v2.1.4)...";
+                    btn.textContent = "🚀 Güncelleniyor (v2.1.5)...";
                     await registration.update();
                     
                     if (registration.waiting) {
@@ -2209,7 +2209,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                         window.location.reload();
                     });
 
-                    btn.textContent = "🚀 Güncelleniyor (v2.1.4)...";
+                    btn.textContent = "🚀 Güncelleniyor (v2.1.5)...";
                     await registration.update();
                     
                     // If after 3 seconds still no reload, force it
@@ -2231,7 +2231,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         }
     });
 
-    // --- OTOMATİK KAYIT: GÜNCEL VERİLER (v2.1.4) ---
+    // --- OTOMATİK KAYIT: GÜNCEL VERİLER (v2.1.5) ---
     let autoSaveCurrentTimer = null;
     function triggerAutoSaveCurrent() {
         if (autoSaveCurrentTimer) clearTimeout(autoSaveCurrentTimer);
@@ -3203,31 +3203,56 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         }
         
         updateTargetFeedback();
+        updateGrowthFeedback();
     });
 
     function updateGrowthFeedback() {
         const mm = parseFloat(document.getElementById('targetMonthlyGrowth').value) || 2;
+        const age = parseInt(document.getElementById('userAge').value) || 30;
         const feedbackText = document.getElementById('growthFeedbackText');
         if (!feedbackText) return;
 
         let msg = "";
         let icon = "insights";
+        
+        // Yaş Grubu Tanımı
+        let ageGroup = "genç";
+        if (age > 40) ageGroup = "orta";
+        if (age > 55) ageGroup = "olgun";
 
-        if (mm <= 1.5) {
-            msg = "<strong>Muhafazakar Hedef:</strong> Ayda " + mm + " mm gelişim, istikrarlı ve sürdürülebilir bir ilerleme için idealdir. Moral bozmaz, disiplin sağlar.";
+        // Yaşa Göre İdeal Aralığı Belirle
+        let idealMin = 2.0;
+        let idealMax = 3.0;
+        let ageAdvice = "";
+        
+        if (ageGroup === "genç") {
+            idealMin = 2.0; idealMax = 3.0;
+            ageAdvice = "Hücre yenilenme hızınız yüksek, ayda 2-3 mm arası gelişim oldukça gerçekçidir.";
+        } else if (ageGroup === "orta") {
+            idealMin = 1.5; idealMax = 2.5;
+            ageAdvice = "Doku elastikiyeti dengelidir, ayda 1.5-2.5 mm arası istikrarlı bir ilerleme hedeflenmelidir.";
+        } else {
+            idealMin = 1.0; idealMax = 2.0;
+            ageAdvice = "Doku onarımı daha fazla sabır gerektirir, ayda 1-2 mm arası gelişim sizin yaş grubunuz için mükemmel bir başarıdır.";
+        }
+
+        let agePrefix = `<div style="margin-bottom: 8px; font-size: 0.9em; color: var(--accent-color); font-weight: bold; display: flex; align-items: center; gap: 5px;"><span class="material-symbols-outlined" style="font-size: 16px;">biotech</span> Yaş Analizi (${age} Yaş)</div>`;
+
+        if (mm < idealMin) {
+            msg = `<strong>Muhafazakar Yaklaşım:</strong> Ayda ${mm} mm gelişim seçildi. Bu hız, yaşınıza göre oldukça güvenli ve sürdürülebilir bir tempodur. Dokuların yorulmasını önler.`;
             icon = "trending_up";
-        } else if (mm >= 2.0 && mm <= 3.0) {
-            msg = "<strong>İdeal Aralık:</strong> Çoğu klinik çalışma ve disiplinli kullanıcının ayda " + mm + " mm civarında gelişim kaydettiğini göstermektedir. Verimli bölge.";
+        } else if (mm >= idealMin && mm <= idealMax) {
+            msg = `<strong>İdeal Hedef:</strong> ${mm} mm gelişim, ${age} yaş grubu için en verimli ve sağlıklı aralıktır. ${ageAdvice}`;
             icon = "check_circle";
-        } else if (mm >= 3.5 && mm <= 4.5) {
-            msg = "<strong>Zorlayıcı Hedef:</strong> Ayda " + mm + " mm gelişim oldukça hırslıdır. Genetik yatkınlık ve kusursuz bir çalışma disiplini gerektirebilir.";
+        } else if (mm > idealMax && mm <= idealMax + 1.5) {
+            msg = `<strong>Zorlayıcı Hedef:</strong> Ayda ${mm} mm gelişim, yaşınıza göre yüksek bir beklentidir. Bu hıza ulaşmak için seans sürelerini artırmanız ve beslenmenize (protein/kolajen) dikkat etmeniz gerekir.`;
             icon = "bolt";
         } else {
-            msg = "<strong>ÜTOPİK HEDEF:</strong> Ayda 5 mm (yarım cm) gelişim bilimsel olarak çok nadirdir. Beklentiyi biraz düşürmek motivasyon için daha sağlıklı olabilir.";
+            msg = `<strong>Ütopik Beklenti:</strong> Ayda ${mm} mm gelişim bilimsel sınırların oldukça üzerindedir. Motivasyonunuzun kırılmaması için hedefi biraz daha makul seviyelere (örn: ${idealMax} mm) çekmenizi öneririm.`;
             icon = "auto_awesome";
         }
 
-        feedbackText.innerHTML = msg;
+        feedbackText.innerHTML = agePrefix + msg;
         const box = document.getElementById('growthFeedback');
         if (box) {
             const iconEl = box.querySelector('.material-symbols-outlined');
@@ -3449,7 +3474,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                 const originalText = verText.textContent;
                 verText.style.color = '#2ecc71'; // Yeşil renk
                 verText.style.fontWeight = '700';
-                verText.textContent = '✅ Uygulamanız v2.1.4 sürümüne güncellendi!';
+                verText.textContent = '✅ Uygulamanız v2.1.5 sürümüne güncellendi!';
                 
                 setTimeout(() => {
                     verText.style.color = '';
@@ -3587,7 +3612,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                 clearInteracting();
             }, { passive: false });
 
-            // Input'un kendi scroll davranışını kapat (v2.1.4)
+            // Input'un kendi scroll davranışını kapat (v2.1.5)
             input.addEventListener('wheel', e => e.preventDefault(), { passive: false });
         });
     })();
@@ -3668,7 +3693,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         });
     })();
 
-    // Desktop Scroll Delegation (v2.1.4)
+    // Desktop Scroll Delegation (v2.1.5)
     // Allows desktop users to scroll the app even when hovering outside the 480px container
     window.addEventListener('wheel', (e) => {
         // If hovered directly over the body/html background (the dark empty space)
