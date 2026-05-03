@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v51-v2.0.0'; // v2.0.0: Dual pump, decimal screw, dynamic colors
+const CACHE_NAME = 'utakip-v52-v2.0.1'; // v2.0.1: Version bump for mobile review
 const ASSETS = [
     './',
     './index.html',

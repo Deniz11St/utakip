@@ -9,7 +9,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>UTakip - Extender Tracker</title>
-    <link rel="stylesheet" href="styles.css?v=51">
+    <link rel="stylesheet" href="styles.css?v=52">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -38,7 +38,7 @@
     <!-- Splash Screen (Premium v1.9.0) -->
     <div id="splashScreen" class="splash-screen">
         <div class="splash-content">
-            <span class="material-symbols-outlined splash-icon">smart_toy</span>
+            <img src="icon.png" class="splash-icon-img" alt="UTakip Logo">
             <h1 class="splash-title">UTakip</h1>
             <div class="splash-loader"></div>
         </div>
@@ -49,19 +49,26 @@
         <main class="content">
             <!-- Home View -->
             <section id="home" class="view active">
-                <header class="view-header">
-                    <h2>Anasayfa</h2>
-                    <p class="subtitle">Başlangıç: <span id="displayStartDate">Ayarlanmadı</span></p>
-                    <p class="subtitle" id="displayTargetInfo" style="color: #a5d6ff; margin-top: 5px; display: none;">
-                        🎯 Hedef: <strong id="displayTargetSize">18.0</strong> cm <span style="opacity:0.8; font-size: 0.9em;">(Tahmini Bitiş: <span id="displayEstimate">-</span>)</span>
-                    </p>
+                <header class="view-header" style="display: flex; align-items: center; justify-content: space-between; gap: 15px;">
+                    <div>
+                        <h2 style="display: flex; align-items: center; gap: 10px;">
+                            <img src="icon.png" style="width: 28px; height: 28px; object-fit: contain;" alt="Logo">
+                            UTakip
+                        </h2>
+                        <p class="subtitle">Başlangıç: <span id="displayStartDate">Ayarlanmadı</span></p>
+                    </div>
+                    <div id="displayTargetInfo" style="text-align: right; background: rgba(165, 214, 255, 0.1); padding: 8px 12px; border-radius: 12px; border: 1px solid rgba(165, 214, 255, 0.2); display: none;">
+                        <div style="font-size: 11px; color: #a5d6ff; text-transform: uppercase; font-weight: 700; margin-bottom: 2px;">🎯 Hedef</div>
+                        <div style="font-size: 16px; font-weight: 800;"><strong id="displayTargetSize">18.0</strong> cm</div>
+                        <div id="displayEstimate" style="font-size: 10px; opacity: 0.7; margin-top: 2px; font-weight: 600;">-</div>
+                    </div>
                 </header>
 
                 <!-- Koç Özet -->
                 <div class="card coach-summary-card">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                         <h3 style="margin-bottom: 0;">
-                            <span class="material-symbols-outlined">smart_toy</span> UTakip Sanal Koç
+                            <span class="material-symbols-outlined" style="color: var(--primary-color);">auto_awesome</span> Sanal Koç
                         </h3>
                         <button class="btn-secondary btn-small" id="btnHomeOpenJournal">
                             <span class="material-symbols-outlined" style="font-size: 16px;">edit_note</span> Günlük
@@ -125,38 +132,30 @@
                             <span class="material-symbols-outlined">edit_calendar</span>
                         </button>
                     </div>
-                    <div id="timerSessionInfo" class="timer-info">⏱️ SEANS YÖNETİMİ</div>
+                    <div id="timerSessionInfo" class="timer-info">⏱️ SEANS MODU</div>
                     
                     <div id="timerDisplay" class="timer-display">00:00:00</div>
 
                     <!-- Manuel Süre Giriş Bölümü (Sadece Hazır Modda) -->
-                    <div id="manualTimeSection" class="input-group" style="margin-bottom: 20px;">
+                    <div id="manualTimeSection" class="input-group" style="margin-bottom: 20px; display: none;">
                         <div class="dual-stepper-container time-stepper-full" id="timeEntryDualStepper">
-                            <button class="btn-dual-stepper time-btn" data-delta="-1">−</button>
                             <div class="dual-stepper-inner">
-                                <div class="dual-box active" data-target="inputHours">
+                                <div class="dual-box" data-target="inputHours">
                                     <input type="number" id="inputHours" value="0" readonly>
                                 </div>
-                                <div class="dual-divider" style="opacity: 0.8; font-size: 32px; font-weight: 800; color: #58a6ff; margin: 0 10px;">:</div>
+                                <div class="dual-divider" style="opacity: 0.8; font-size: 40px; font-weight: 800; color: #58a6ff; margin: 0 10px;">:</div>
                                 <div class="dual-box" data-target="inputMinutes">
                                     <input type="number" id="inputMinutes" value="0" readonly>
                                 </div>
                             </div>
-                            <button class="btn-dual-stepper time-btn" data-delta="1">+</button>
                         </div>
                     </div>
 
                     <!-- Pompa Sayaç Bölümü (Sadece Pompa Modunda) -->
                     <div id="pumpSettingSection" style="display: none; margin-bottom: 20px; text-align: center;">
-                        <div class="timer-display" id="pumpTimerDisplay" style="font-size: 32px; margin-bottom: 15px;">15:00</div>
-                        <div class="input-group" style="align-items: center;">
-                            <label style="margin-bottom: 8px;">Pompa Süresi Ayarla (Dk)</label>
-                            <div class="modern-stepper-container" style="justify-content: center; width: 140px; margin: 0 auto;">
-                                <button class="btn-stepper" data-input="pumpDuration" data-delta="-1">−</button>
-                                <input type="number" id="pumpDuration" min="1" max="60" value="15" class="modern-stepper-input">
-                                <button class="btn-stepper" data-input="pumpDuration" data-delta="1">+</button>
-                            </div>
-                        </div>
+                        <div class="pump-display-interactive" id="pumpTimerDisplay">15:00</div>
+                        <div id="pumpEditHint">↕ süreyi ayarla</div>
+                        <input type="number" id="pumpDuration" min="1" max="60" value="15" style="display:none;">
                     </div>
 
                     <!-- Seans Detayları (Gerginlik & Not) -->
@@ -271,97 +270,128 @@
                 </header>
 
                 <div class="card settings-card">
-                    <h3 style="margin-top: 0;">Kişisel Özellikler</h3>
-                    
-                    <div class="input-group-row">
+                    <div class="card settings-section">
+                        <h3><span class="material-symbols-outlined">person</span> Kişisel Özellikler</h3>
                         <div class="input-group">
                             <label for="userName">İsim / Rumuz</label>
-                            <input type="text" id="userName" placeholder="Örn: Efe">
-                            <small class="hint">Koç size böyle seslenecek</small>
-                        </div>
-                        <div class="input-group">
-                            <label for="userAge">Yaşınız</label>
-                            <div class="modern-stepper-container">
-                                <input type="number" id="userAge" placeholder="30" class="modern-stepper-input">
-                                <div class="modern-stepper-controls">
-                                    <button class="btn-stepper" data-input="userAge" data-delta="-1">−</button>
-                                    <button class="btn-stepper" data-input="userAge" data-delta="1">+</button>
-                                </div>
-                            </div>
-                            <small class="hint">Hücre analiz faktörü</small>
+                            <input type="text" id="userName" placeholder="İsminiz..." class="premium-input">
+                            <p class="hint">Koç size böyle seslenecek</p>
                         </div>
                     </div>
 
-                    <h3 style="margin-top: 15px;">Temel Ayarlar</h3>
-                    <div class="input-group">
-                        <label for="startDate">Başlangıç Tarihi</label>
-                        <input type="date" id="startDate">
-                    </div>
-                    <div class="input-group">
-                        <label for="startSize">Başlangıç Boyutu (cm)</label>
-                        <div class="modern-stepper-container">
-                            <input type="number" id="startSize" step="0.1" placeholder="15.0" class="modern-stepper-input">
-                            <div class="modern-stepper-controls">
-                                <button class="btn-stepper" data-input="startSize" data-delta="-0.1">−</button>
-                                <button class="btn-stepper" data-input="startSize" data-delta="0.1">+</button>
+                    <div class="card settings-section" style="margin-top: 15px;">
+                        <h3><span class="material-symbols-outlined">settings_suggest</span> Temel Ayarlar</h3>
+                        
+                        <div class="input-group-row">
+                            <div class="input-group">
+                                <label for="startDate">Başlangıç Tarihi</label>
+                                <input type="date" id="startDate">
+                            </div>
+                            <div class="input-group">
+                                <label for="userAge">Yaşınız</label>
+                                <div class="modern-stepper-container">
+                                    <input type="number" id="userAge" min="18" max="80" value="30" class="modern-stepper-input">
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="input-group">
-                        <label for="targetSize">Hedef Boyut (cm)</label>
-                        <div class="modern-stepper-container">
-                            <input type="number" id="targetSize" step="0.1" placeholder="18.0" class="modern-stepper-input">
-                            <div class="modern-stepper-controls">
-                                <button class="btn-stepper" data-input="targetSize" data-delta="-0.1">−</button>
-                                <button class="btn-stepper" data-input="targetSize" data-delta="0.1">+</button>
+
+                        <!-- Boyut Girişleri -->
+                        <div class="input-group" style="margin-bottom: 25px;">
+                            <label for="startSize">Başlangıç Boyutu (cm)</label>
+                            <div class="modern-stepper-container">
+                                <input type="number" id="startSize" step="0.1" value="5.0" placeholder="5.0" class="modern-stepper-input">
                             </div>
                         </div>
-                    </div>
-                    <div class="input-group">
-                        <label for="targetMonthlyGrowth">Aylık Büyüme Beklentisi (mm)</label>
-                        <div class="modern-stepper-container">
-                            <input type="number" id="targetMonthlyGrowth" step="0.5" min="0.5" max="10" placeholder="2" class="modern-stepper-input">
-                            <div class="modern-stepper-controls">
-                                <button class="btn-stepper" data-input="targetMonthlyGrowth" data-delta="-0.5">−</button>
-                                <button class="btn-stepper" data-input="targetMonthlyGrowth" data-delta="0.5">+</button>
+
+                        <!-- Akıllı Hedef Slider -->
+                        <div class="input-group" style="margin-bottom: 30px;">
+                            <div class="cycle-slider-header">
+                                <label>Hedef Boyut: <span id="val-targetSize">18.0</span> cm</label>
                             </div>
+                            <div class="smart-slider" id="slider-targetSize" data-min="10" data-max="25" data-step="0.5" data-value="18.0">
+                                <div class="slider-track"></div>
+                                <div class="slider-points" id="points-targetSize"></div>
+                                <div class="slider-thumb"></div>
+                            </div>
+                            <div id="targetFeedback" class="cycle-feedback-box" style="margin-top: 25px;">
+                                <span class="material-symbols-outlined">psychology</span>
+                                <p id="targetFeedbackText">Başlangıç boyutu girilince hedef analizi burada görünecek.</p>
+                            </div>
+                            <input type="hidden" id="targetSize" value="18.0">
                         </div>
-                    </div>
-                    <div class="input-group">
-                        <label for="dailyGoalHours">Günlük Toplam Hedef (Saat)</label>
-                        <div class="modern-stepper-container">
-                            <input type="number" id="dailyGoalHours" min="1" max="24" placeholder="6" class="modern-stepper-input">
-                            <div class="modern-stepper-controls">
-                                <button class="btn-stepper" data-input="dailyGoalHours" data-delta="-1">−</button>
-                                <button class="btn-stepper" data-input="dailyGoalHours" data-delta="1">+</button>
+
+                        <!-- Aylık Beklenti - Tam Genişlik -->
+                        <div class="input-group" style="margin-bottom: 30px;">
+                            <div class="cycle-slider-header">
+                                <label>Aylık Büyüme Beklentisi: <span id="val-targetMonthlyGrowth">2.0</span> mm</label>
                             </div>
+                            <div class="smart-slider" id="slider-targetMonthlyGrowth" data-min="0.5" data-max="5" data-step="0.5" data-value="2.0">
+                                <div class="slider-track"></div>
+                                <div class="slider-points" id="points-targetMonthlyGrowth"></div>
+                                <div class="slider-thumb"></div>
+                            </div>
+                            <div id="growthFeedback" class="cycle-feedback-box" style="margin-top: 25px;">
+                                <span class="material-symbols-outlined">insights</span>
+                                <p id="growthFeedbackText">Gerçekçi hedef. Ayda 2 mm gelişim, bilimsel çalışmaların işaret ettiği en sürdürülebilir orandır.</p>
+                            </div>
+                            <input type="hidden" id="targetMonthlyGrowth" value="2.0">
+                        </div>
+
+                        <!-- Günlük Hedef - Tam Genişlik -->
+                        <div class="input-group">
+                            <div class="cycle-slider-header">
+                                <label>Günlük Toplam Hedef: <span id="val-dailyGoalHours">6</span> Saat</label>
+                            </div>
+                            <div class="smart-slider" id="slider-dailyGoalHours" data-min="1" data-max="12" data-value="6">
+                                <div class="slider-track"></div>
+                                <div class="slider-points" id="points-dailyGoalHours"></div>
+                                <div class="slider-thumb"></div>
+                            </div>
+                            <div id="goalFeedback" class="cycle-feedback-box" style="margin-top: 25px;">
+                                <span class="material-symbols-outlined">analytics</span>
+                                <p id="goalFeedbackText">İdeal hedef seçildi. Günde 6 saatlik kullanım, istikrarlı gelişim için en verimli süredir.</p>
+                            </div>
+                            <input type="hidden" id="dailyGoalHours" value="6">
                         </div>
                     </div>
 
                     <div class="card settings-section" style="margin-top: 15px;">
                         <h3><span class="material-symbols-outlined">restart_alt</span> Antrenman Döngüsü (Smart Cycle)</h3>
                         <p class="hint" style="margin-bottom: 12px;">Doku onarımı için çalışma sonrası dinlenme önerisi mantığını ayarlar. (Öneri: 5-2 veya 6-1)</p>
-                        <div class="input-group-row">
-                            <div class="input-group">
-                                <label for="workCycleDays">Çalışma Günü</label>
-                                <div class="modern-stepper-container">
-                                    <input type="number" id="workCycleDays" min="1" max="30" value="5" class="modern-stepper-input">
-                                    <div class="modern-stepper-controls">
-                                        <button class="btn-stepper" data-input="workCycleDays" data-delta="-1">−</button>
-                                        <button class="btn-stepper" data-input="workCycleDays" data-delta="1">+</button>
-                                    </div>
+                        <div class="cycle-sliders-container">
+                            <!-- Çalışma Günü Slider -->
+                            <div class="cycle-slider-group">
+                                <div class="cycle-slider-header">
+                                    <label>Çalışma Günü: <span id="val-workCycleDays">5</span> Gün</label>
+                                </div>
+                                <div class="smart-slider" id="slider-workCycleDays" data-min="1" data-max="10" data-value="5">
+                                    <div class="slider-track"></div>
+                                    <div class="slider-points" id="points-workCycleDays"></div>
+                                    <div class="slider-thumb"></div>
                                 </div>
                             </div>
-                            <div class="input-group">
-                                <label for="restCycleDays">Dinlenme Günü</label>
-                                <div class="modern-stepper-container">
-                                    <input type="number" id="restCycleDays" min="1" max="7" value="1" class="modern-stepper-input">
-                                    <div class="modern-stepper-controls">
-                                        <button class="btn-stepper" data-input="restCycleDays" data-delta="-1">−</button>
-                                        <button class="btn-stepper" data-input="restCycleDays" data-delta="1">+</button>
-                                    </div>
+
+                            <!-- Dinlenme Günü Slider -->
+                            <div class="cycle-slider-group">
+                                <div class="cycle-slider-header">
+                                    <label>Dinlenme Günü: <span id="val-restCycleDays">2</span> Gün</label>
+                                </div>
+                                <div class="smart-slider compact" id="slider-restCycleDays" data-min="1" data-max="2" data-value="2">
+                                    <div class="slider-track"></div>
+                                    <div class="slider-points" id="points-restCycleDays"></div>
+                                    <div class="slider-thumb"></div>
                                 </div>
                             </div>
+
+                            <!-- Koç Geri Bildirim Kutusu -->
+                            <div id="cycleFeedback" class="cycle-feedback-box">
+                                <span class="material-symbols-outlined">info</span>
+                                <p id="cycleFeedbackText">İdeal döngü ayarlandı. Doku onarımı ve gelişim dengeli ilerleyecektir.</p>
+                            </div>
+
+                            <!-- Hidden inputs for compatibility with existing save logic -->
+                            <input type="hidden" id="workCycleDays" value="5">
+                            <input type="hidden" id="restCycleDays" value="2">
                         </div>
                     </div>
 
@@ -374,17 +404,13 @@
                                 <div class="dual-stepper-inner">
                                     <div class="dual-box active" data-target="timerCount">
                                         <span class="dual-label">Sayı</span>
-                                        <input type="number" id="timerCount" value="3" readonly>
+                                        <input type="number" id="timerCount" value="3" class="modern-stepper-input" step="1" readonly>
                                     </div>
                                     <div class="dual-divider">x</div>
                                     <div class="dual-box" data-target="timerDuration">
                                         <span class="dual-label">Süre</span>
-                                        <input type="number" id="timerDuration" value="120" readonly>
+                                        <input type="number" id="timerDuration" value="120" class="modern-stepper-input" step="10" readonly>
                                     </div>
-                                </div>
-                                <div class="dual-controls">
-                                    <button class="btn-dual-stepper" data-delta="-1">−</button>
-                                    <button class="btn-dual-stepper" data-delta="1">+</button>
                                 </div>
                             </div>
                         </div>
@@ -394,13 +420,9 @@
                             <div class="dual-stepper-container single">
                                 <div class="dual-stepper-inner">
                                     <div class="dual-box active" data-target="timerBreak" style="flex-direction: row; gap: 10px; justify-content: center;">
-                                        <input type="number" id="timerBreak" value="30" style="width: 50px;" readonly>
+                                        <input type="number" id="timerBreak" value="30" style="width: 50px;" class="modern-stepper-input" step="5" readonly>
                                         <span class="hint" style="margin-top: 0;">Dakika</span>
                                     </div>
-                                </div>
-                                <div class="dual-controls">
-                                    <button class="btn-dual-stepper" data-delta="-5">−</button>
-                                    <button class="btn-dual-stepper" data-delta="5">+</button>
                                 </div>
                             </div>
                         </div>
@@ -497,7 +519,7 @@
                         <h3><span class="material-symbols-outlined">database</span> Veri Yönetimi</h3>
                         <div class="data-actions-grid">
                             <button id="btnUpdateApp" class="btn-secondary">🚀 Güncellemeyi Denetle</button>
-                             <div class="version-text" id="appVersionText">Mevcut Sürüm: v2.0.0</div>
+                             <div class="version-text" id="appVersionText">Mevcut Sürüm: v2.0.1</div>
                             <div class="import-export-row">
                                 <button id="btnExportData" class="btn-secondary">📤 Dışa Aktar</button>
                                 <button id="btnImportData" class="btn-secondary">📥 İçe Aktar</button>
@@ -511,26 +533,18 @@
                 </div>
 
                 <div class="card settings-card highlight-card">
-                    <h3>Aylık Güncel Durumunuz</h3>
+                    <h3><span class="material-symbols-outlined">analytics</span> Aylık Güncel Durumunuz</h3>
                     <div class="input-group-row" style="display: flex; gap: 15px;">
                         <div class="input-group" style="flex: 1;">
                             <label for="currentSize">Güncel Boyut (cm)</label>
                             <div class="modern-stepper-container">
                                 <input type="number" id="currentSize" step="0.1" placeholder="15.3" class="modern-stepper-input">
-                                <div class="modern-stepper-controls">
-                                    <button class="btn-stepper" data-input="currentSize" data-delta="-0.1">−</button>
-                                    <button class="btn-stepper" data-input="currentSize" data-delta="0.1">+</button>
-                                </div>
                             </div>
                         </div>
                         <div class="input-group" style="flex: 1;">
                             <label for="currentTension">Vida Boyutu (mm)</label>
                             <div class="modern-stepper-container">
                                 <input type="number" id="currentTension" step="1" placeholder="Örn: 14" class="modern-stepper-input">
-                                <div class="modern-stepper-controls">
-                                    <button class="btn-stepper" data-input="currentTension" data-delta="-1">−</button>
-                                    <button class="btn-stepper" data-input="currentTension" data-delta="1">+</button>
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -541,7 +555,10 @@
             <!-- Coach View -->
             <section id="coach" class="view">
                 <header class="view-header">
-                    <h2>Sanal Koç</h2>
+                    <h2 style="display: flex; align-items: center; gap: 10px;">
+                        <span class="material-symbols-outlined" style="font-size: 32px; color: var(--primary-color);">auto_awesome</span> 
+                        Sanal Koç
+                    </h2>
                     <p class="sub-header">AI destekli gelişim asistanınız.</p>
                 </header>
                 <div class="card coach-full-card">
@@ -608,16 +625,16 @@
         <!-- Navigation -->
         <nav class="bottom-nav">
             <button class="nav-btn active" data-target="home">
-                <span class="material-symbols-outlined nav-icon">home</span>
+                <span class="material-symbols-outlined nav-icon">house</span>
             </button>
             <button class="nav-btn" data-target="calendar">
                 <span class="material-symbols-outlined nav-icon">calendar_month</span>
             </button>
             <button class="nav-btn" data-target="encyclopedia">
-                <span class="material-symbols-outlined nav-icon">library_books</span>
+                <span class="material-symbols-outlined nav-icon">book_2</span>
             </button>
             <button class="nav-btn" data-target="coach">
-                <span class="material-symbols-outlined nav-icon">smart_toy</span>
+                <span class="material-symbols-outlined nav-icon">auto_awesome</span>
             </button>
             <button class="nav-btn" data-target="settings">
                 <span class="material-symbols-outlined nav-icon">settings</span>
@@ -706,6 +723,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
-    <script src="app.js?v=51"></script>
+    <script src="app.js?v=52"></script>
 </body>
 </html>

@@ -63,11 +63,12 @@ body {
     100% { transform: scale(1); opacity: 1; }
 }
 
-.splash-icon {
-    font-size: 80px !important;
-    color: var(--primary-color);
+.splash-icon-img {
+    width: 80px;
+    height: 80px;
     margin-bottom: 15px;
     filter: drop-shadow(0 0 20px var(--primary-glow));
+    object-fit: contain;
 }
 
 .splash-title {
@@ -316,12 +317,19 @@ input:focus, select:focus, textarea:focus {
     font-size: 18px;
     color: var(--text-primary);
     transition: all 0.2s;
+    opacity: 0;
 }
 
-.btn-stepper:active {
-    background: var(--primary-color);
-    transform: scale(0.9);
+.modern-stepper-container:hover {
+    border-color: rgba(88, 166, 255, 0.4);
+    background: rgba(255, 255, 255, 0.05);
 }
+
+.modern-stepper-input {
+    cursor: ns-resize;
+}
+
+/* .btn-stepper styles kept for any legacy usage but not active in new design */
 
 /* Dual Stepper (v1.6.0) */
 .dual-stepper-container {
@@ -381,10 +389,15 @@ input:focus, select:focus, textarea:focus {
 }
 
 .dual-controls {
-    display: flex;
-    gap: 8px;
-    padding-left: 12px;
-    border-left: 1px solid var(--card-border);
+    display: none;
+}
+
+.dual-stepper-container:hover {
+    border-color: rgba(88, 166, 255, 0.3);
+}
+
+.dual-box input {
+    cursor: ns-resize;
 }
 
 .btn-dual-stepper {
@@ -410,27 +423,37 @@ input:focus, select:focus, textarea:focus {
 
 .time-stepper-full .dual-stepper-inner {
     background: rgba(255, 255, 255, 0.03);
-    padding: 10px;
-    border-radius: 20px;
+    padding: 2px 6px;
+    border-radius: 16px;
     border: 1px solid rgba(255, 255, 255, 0.05);
     justify-content: center;
 }
 
 .time-stepper-full .dual-box {
-    flex: 0 0 80px;
-    padding: 10px 0;
+    flex: 0 0 85px; /* Further increased for ample space */
+    padding: 0px 0;
     background: none;
+    cursor: ns-resize;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.time-stepper-full .dual-box.active {
+.time-stepper-full .dual-box:hover {
     background: rgba(88, 166, 255, 0.1) !important;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    border-radius: 15px;
+    border-radius: 12px;
 }
 
 .time-stepper-full .dual-box input {
-    font-size: 42px !important;
+    font-size: 40px !important;
+    font-weight: 800 !important;
+    font-family: 'JetBrains Mono', 'Courier New', monospace !important;
     text-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+    line-height: 1.1;
+    margin: 0;
+    height: 48px; /* Fixed height tight to font size */
 }
 
 .time-stepper-full .btn-dual-stepper.time-btn {
@@ -445,6 +468,21 @@ input:focus, select:focus, textarea:focus {
 .time-stepper-full .btn-dual-stepper.time-btn:active {
     background: var(--primary-color);
     border-color: var(--primary-color);
+}
+
+/* Swipe/Tap hint arrow */
+.stepper-hint {
+    font-size: 12px;
+    opacity: 0.3;
+    margin-top: 4px;
+    letter-spacing: -2px;
+    pointer-events: none;
+    transition: opacity 0.2s;
+}
+
+.dual-box:active .stepper-hint,
+.dual-box.active .stepper-hint {
+    opacity: 0.7;
 }
 
 .btn-dual-stepper:active {
@@ -510,12 +548,14 @@ input:focus, select:focus, textarea:focus {
     font-size: 32px !important;
     color: var(--text-secondary);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
 }
 
 .nav-btn.active .nav-icon {
     color: var(--primary-color);
     transform: translateY(-5px);
     text-shadow: 0 5px 15px var(--accent-glow);
+    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
 }
 
 /* --- OTHER COMPONENTS --- */
@@ -744,7 +784,7 @@ input:checked + .slider:before {
 }
 
 .timer-display {
-    font-size: 52px;
+    font-size: 40px;
     font-weight: 800;
     font-family: 'JetBrains Mono', 'Courier New', monospace;
     letter-spacing: -1px;
@@ -798,10 +838,189 @@ input:checked + .slider:before {
 }
 
 
+/* --- SMART CYCLE SLIDER (v2.0.0) --- */
+.cycle-sliders-container {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding: 10px 0;
+}
+
+.cycle-slider-group {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 10px;
+}
+
+.cycle-slider-header label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 5px;
+}
+
+.cycle-slider-header span {
+    color: var(--primary-color);
+    font-weight: 800;
+}
+
+.smart-slider {
+    position: relative;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    touch-action: none;
+    user-select: none;
+    margin-bottom: 15px;
+}
+
+.smart-slider.compact {
+    max-width: 140px;
+}
+
+.slider-track {
+    position: absolute;
+    width: 100%;
+    height: 2px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 2px;
+}
+
+.slider-points {
+    position: absolute;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    z-index: 2;
+    padding: 0 4px;
+}
+
+.slider-point {
+    width: 10px;
+    width: 12px;
+    height: 12px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    position: relative;
+    z-index: 2;
+}
+
+.slider-point.active {
+    background: #fff;
+    transform: scale(1.8);
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+}
+
+/* Nokta altı etiketleri kaldırıldı (v2.1.0) */
+.slider-point::after {
+    display: none;
+}
+
+/* Renk Kodları ve Aktif Durum */
+.slider-point.status-low { background: #f1c40f; }
+.slider-point.status-ideal { background: #2ecc71; }
+.slider-point.status-high { background: #e67e22; }
+.slider-point.status-danger { background: #e74c3c; }
+
+.slider-point.active {
+    transform: scale(1.8);
+    z-index: 10;
+    box-shadow: 0 0 20px currentColor, 0 0 10px currentColor;
+}
+
+.slider-point.active::after {
+    opacity: 1;
+    color: #fff;
+    font-size: 11px;
+    bottom: -28px;
+}
+
+.slider-thumb {
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    background: transparent;
+    z-index: 5;
+    pointer-events: none;
+    left: 0;
+}
+
+.cycle-feedback-box {
+    background: rgba(47, 129, 247, 0.05);
+    border: 1px dashed rgba(47, 129, 247, 0.2);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    animation: fadeIn 0.5s ease;
+}
+
+.cycle-feedback-box span {
+    color: var(--primary-color);
+    font-size: 20px;
+}
+
+.cycle-feedback-box p {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+}
+
+.smart-slider.disabled {
+    opacity: 0.3;
+    pointer-events: none;
+    filter: grayscale(1);
+}
+
+.smart-slider {
+    transition: opacity 0.3s, filter 0.3s;
+}
+
+/* Premium Input & Date Styling */
+input[type="date"] {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    color: var(--text-primary);
+    padding: 12px 16px;
+    font-family: inherit;
+    font-size: 15px;
+    width: 100%;
+    outline: none;
+    transition: all 0.3s;
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+input[type="date"]:focus {
+    border-color: var(--primary-color);
+    background: rgba(47, 129, 247, 0.08);
+    box-shadow: 0 0 15px rgba(47, 129, 247, 0.15);
+}
+
+/* Date picker icon styling */
+input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    opacity: 0.5;
+    cursor: pointer;
+}
+
+.input-group-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 15px;
+}
+
 @media (max-width: 480px) {
     .input-group-row {
-        flex-direction: column;
-        gap: 0;
+        gap: 12px;
     }
 }
 
@@ -839,7 +1058,7 @@ input:checked + .slider:before {
     -ms-overflow-style: none;
     margin: 0;
     padding: 10px 0 20px 0;
-    touch-action: pan-x;
+    touch-action: pan-x pan-y;
     cursor: grab;
 }
 
@@ -1607,9 +1826,9 @@ input:checked + .slider:before {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
-    border-radius: 8px;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
     color: var(--text-secondary);
@@ -1632,8 +1851,8 @@ input:checked + .slider:before {
 .day-label-group {
     display: flex;
     align-items: center;
-    gap: 4px;
-    flex: 0 0 190px;
+    gap: 6px;
+    flex: 0 0 260px;
     overflow: hidden;
 }
 
@@ -1642,9 +1861,9 @@ input:checked + .slider:before {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 26px;
-    height: 26px;
-    border-radius: 8px;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
     color: var(--text-secondary);
@@ -1695,18 +1914,18 @@ input:checked + .slider:before {
 }
 
 .screw-size-input {
-    width: 44px !important;
-    height: 30px !important;
-    padding: 0 4px !important;
+    width: 50px !important; /* Increased for double digits + padding */
+    height: 34px !important;
+    padding: 0 6px !important;
     text-align: center !important;
-    font-size: 12px !important;
-    font-weight: 600 !important;
-    background: rgba(255, 255, 255, 0.03) !important;
-    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    background: rgba(255, 255, 255, 0.04) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
     border-radius: 10px !important;
-    color: var(--text-secondary) !important;
+    color: var(--text-primary) !important;
     box-shadow: none !important;
-    transition: border-color 0.2s, background 0.2s;
+    transition: all 0.2s;
 }
 
 .screw-size-input:focus {
@@ -1719,6 +1938,47 @@ input:checked + .slider:before {
 .screw-size-input::placeholder {
     color: rgba(255, 255, 255, 0.15);
     font-size: 10px;
+}
+
+/* Pompa Büyük Sayı (İnteraktif) */
+.pump-display-interactive {
+    font-size: 40px;
+    font-weight: 800;
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    letter-spacing: -1px;
+    margin-bottom: 6px;
+    cursor: ns-resize;
+    user-select: none;
+    transition: opacity 0.2s, transform 0.15s;
+    display: inline-block;
+    padding: 8px 20px;
+    border-radius: 16px;
+}
+
+.pump-display-interactive:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.pump-display-interactive:active {
+    transform: scale(0.97);
+}
+
+.pump-display-interactive.is-running {
+    cursor: default;
+    opacity: 0.9;
+}
+
+#pumpEditHint {
+    font-size: 11px;
+    color: var(--text-secondary);
+    opacity: 0.45;
+    margin-bottom: 12px;
+    letter-spacing: 0.3px;
+    transition: opacity 0.3s;
+}
+
+#pumpEditHint.hidden {
+    opacity: 0;
 }
 
 .day-number {

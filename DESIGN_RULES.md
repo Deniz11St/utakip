@@ -49,5 +49,10 @@ Uygulamanın mobil cihazlarda "Uygulama" gibi davranması için:
 - **İkonografi:** Yüksek çözünürlüklü (`512x512`) ve modern bir `icon.png` kullanılmalıdır.
 - **Offline Destek:** Kritik dosyalar cache'lenerek internet bağlantısı olmadan da uygulamanın açılması sağlanmalıdır.
 
+## 8. Terminoloji ve İletişim (Eğitim Modu)
+Kullanıcı uygulamayı geliştirirken aynı zamanda programlama terminolojisini öğrenmek istemektedir.
+- **Kural:** İletişim kurarken yapılan değişiklikler açıklanmalı ve o değişiklikle ilgili doğru yazılım terimleri (örneğin; Component, View, Function, Variable, DOM vb.) yeri geldikçe öğretici bir dille anlatılmalıdır.
+- **Kural:** Kullanıcının kullandığı terimler yanlışsa düzeltilmeli, doğrusu nazikçe açıklanarak kalıcı öğrenmesi sağlanmalıdır.
+
 ---
-*Bu kurallar kullanıcı talebi üzerine 21 Mart 2026 tarihinde sabitlenmiştir.*
+*Bu kurallar son olarak terminoloji eğitimi maddesiyle güncellenmiştir.*

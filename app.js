@@ -144,7 +144,7 @@ class TrackerData {
             },
             restDays: {}, // Format: "YYYY-MM-DD": true
             workCycleDays: 5,
-            restCycleDays: 1
+            restCycleDays: 2
         };
         const raw = localStorage.getItem('uTakipData');
         try {
@@ -184,7 +184,7 @@ class TrackerData {
         
         if (!this.data.restDays) this.data.restDays = {};
         if (this.data.workCycleDays === undefined) this.data.workCycleDays = 5;
-        if (this.data.restCycleDays === undefined) this.data.restCycleDays = 1;
+        if (this.data.restCycleDays === undefined) this.data.restCycleDays = 2;
         if (!this.data.dailyScrewSize) this.data.dailyScrewSize = {};
         
         // MIGRATION: Eskiden sadece dakika tutulan arrayleri (number array), objeye {mins: X, diff: 'normal'} dönüştürür.
@@ -252,7 +252,7 @@ class TrackerData {
         this.data.cloudSyncEnabled = !!fbEnabled;
 
         this.data.workCycleDays = parseInt(workCycle) || 5;
-        this.data.restCycleDays = parseInt(restCycle) || 1;
+        this.data.restCycleDays = parseInt(restCycle) || 2;
 
         if(target && !isNaN(parseFloat(target))) {
             this.data.targetSize = parseFloat(target);
@@ -582,7 +582,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 let displayVal = currentValCm % 1 === 0 ? currentValCm : currentValCm.toFixed(1);
                 const numberEl = document.createElement('div');
                 numberEl.className = 'ruler-floating-number';
-                numberEl.textContent = displayVal + ' mm';
+                numberEl.textContent = displayVal + ' cm';
                 tTick.appendChild(numberEl);
                 
                 tTick.style.cursor = 'pointer';
@@ -650,13 +650,15 @@ document.addEventListener('DOMContentLoaded', () => {
             let remainingCm = dataManager.data.targetSize - baseSize;
             
             const estEl = document.getElementById('displayEstimate');
-            if (remainingCm <= 0) {
-                estEl.textContent = 'Hedefe Ulaşıldı!';
-            } else {
-                let monthsNeeded = Math.ceil((remainingCm * 10) / rate); 
-                const estDate = new Date();
-                estDate.setMonth(estDate.getMonth() + monthsNeeded);
-                estEl.textContent = new Intl.DateTimeFormat('tr-TR', { month: 'long', year: 'numeric' }).format(estDate);
+            if (estEl) {
+                if (remainingCm <= 0) {
+                    estEl.textContent = 'Hedefe Ulaşıldı!';
+                } else {
+                    let monthsNeeded = Math.ceil((remainingCm * 10) / rate); 
+                    const estDate = new Date();
+                    estDate.setMonth(estDate.getMonth() + monthsNeeded);
+                    estEl.textContent = new Intl.DateTimeFormat('tr-TR', { month: 'long', year: 'numeric' }).format(estDate);
+                }
             }
         } else {
             if(displayTargetInfo) displayTargetInfo.style.display = 'none';
@@ -689,30 +691,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Bir sonraki iki hedefi hesaplayan fonksiyon (Kullanıcının isteği: 5mm'lik sıradaki iki hedef)
         function updateDefaultEstimates() {
-            if (dataManager.data.startDate && dataManager.data.targetMonthlyGrowth > 0) {
-                const startDate = new Date(dataManager.data.startDate);
-                const rate = dataManager.data.targetMonthlyGrowth;
-                const currentSize = dataManager.data.currentSize || dataManager.data.startSize;
-                
-                // Sıradaki ilk 5mm'lik hedef (örn: 16.2 ise 16.5, 16.5 ise 17.0)
-                const next1Cm = (Math.floor(currentSize * 2) + 1) / 2;
-                const next2Cm = next1Cm + 0.5;
-                
-                const mmDiff1 = Math.round((next1Cm - dataManager.data.startSize) * 10);
-                const mmDiff2 = Math.round((next2Cm - dataManager.data.startSize) * 10);
-                
-                const date1 = new Date(startDate);
-                date1.setDate(date1.getDate() + (mmDiff1 / rate) * 30.4375);
-                
-                const date2 = new Date(startDate);
-                date2.setDate(date2.getDate() + (mmDiff2 / rate) * 30.4375);
-                
-                estMidEl.innerHTML = `🎯 Sıradaki Hedef (<b>${next1Cm.toFixed(1)} cm</b>): ${date1.toLocaleDateString('tr-TR', dateOpts)}`;
-                estEndEl.innerHTML = `🏆 Sonraki Hedef (<b>${next2Cm.toFixed(1)} cm</b>): ${date2.toLocaleDateString('tr-TR', dateOpts)}`;
-            } else {
-                estMidEl.textContent = 'Tahmini Orta Nokta: -';
-                estEndEl.textContent = 'Tahmini Hedef Bitişi: -';
-            }
+            const rawRate = dataManager.data.targetMonthlyGrowth || 2; // mm cinsinden (2mm)
+            const rate = rawRate / 10; // cm cinsinden (0.2cm)
+            const currentSize = parseFloat(dataManager.data.currentSize) || parseFloat(dataManager.data.startSize);
+            
+            // Sıradaki ilk hedef: Gelecek ayın 1'i
+            const now = new Date();
+            const date1 = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+            const next1Cm = currentSize + rate;
+            
+            // Sonraki hedef: Ondan sonraki ayın 1'i
+            const date2 = new Date(now.getFullYear(), now.getMonth() + 2, 1);
+            const next2Cm = next1Cm + rate;
+            
+            estMidEl.innerHTML = `🎯 Sıradaki Hedef (<b>${next1Cm.toFixed(1)} cm</b>): ${date1.toLocaleDateString('tr-TR', dateOpts)}`;
+            estEndEl.innerHTML = `🏆 Sonraki Hedef (<b>${next2Cm.toFixed(1)} cm</b>): ${date2.toLocaleDateString('tr-TR', dateOpts)}`;
         }
 
         // Tıklama yapıldığında geçici süreyle o noktanın bilgisini gösterir
@@ -1074,7 +1067,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const editBtn = document.createElement('button');
                     editBtn.className = 'btn-day-edit';
                     editBtn.title = 'Yeni Seans Ekle';
-                    editBtn.innerHTML = '<span class="material-symbols-outlined">post_add</span>';
+                    editBtn.innerHTML = '<span class="material-symbols-outlined">add</span>';
                     editBtn.onclick = (e) => {
                         e.stopPropagation();
                         openEditModal(dateStr);
@@ -1153,12 +1146,12 @@ document.addEventListener('DOMContentLoaded', () => {
                             
                             const box = document.createElement('div');
                             box.className = 'session-box';
-                            const diffIcon = sessionObj.diff === 'rahat' ? '🟢' : (sessionObj.diff === 'zor' ? '🔴' : '🟡');
+                            const diffColor = sessionObj.diff === 'rahat' ? '#3fb950' : (sessionObj.diff === 'zor' ? '#f85149' : '#f1c40f');
                             box.innerHTML = `
                                 <div style="display:flex; align-items:center; justify-content:center; gap:4px; cursor:pointer;" title="Düzenle / Sil">
-                                    <span>${mins} dk</span>
-                                    <span style="font-size:11px">${diffIcon}</span>
-                                    <span style="font-size:10px; opacity:0.5;">✏️</span>
+                                    <span style="font-weight:700;">${mins} dk</span>
+                                    <span class="material-symbols-outlined" style="font-size:12px; color:${diffColor};">circle</span>
+                                    <span class="material-symbols-outlined" style="font-size:12px; opacity:0.4;">edit</span>
                                 </div>
                             `;
                             
@@ -1244,35 +1237,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span class="stat-label">Aylık Çalışma</span>
                     <strong class="stat-value text-blue">${formatMinutes(monthTotalMins)}</strong>
                 </div>
-                ${tension ? `
-                <div class="stat-box">
+                <div class="stat-box clickable" onclick="event.stopPropagation(); window.editMonthlyStat('tension', '${yearMonth}')" title="Düzenlemek için tıkla">
                     <span class="stat-label">Aylık Vida Boyutu</span>
-                    <strong class="stat-value" style="color: #d2a8ff;">${tension} mm</strong>
+                    <strong class="stat-value" style="color: #d2a8ff;">${tension || '-'} mm</strong>
                 </div>
-                ` : ''}
-                ${monthlySize ? `
-                <div class="stat-box">
+                <div class="stat-box clickable" onclick="event.stopPropagation(); window.editMonthlyStat('growth', '${yearMonth}')" title="Düzenlemek için tıkla">
                     <span class="stat-label">Aylık Uzama</span>
                     <strong class="stat-value text-green">${monthlyGrowth.toFixed(1)} mm</strong>
                 </div>
-                <div class="stat-box">
+                <div class="stat-box clickable" onclick="event.stopPropagation(); window.editMonthlyStat('size', '${yearMonth}')" title="Düzenlemek için tıkla">
                     <span class="stat-label">Ay Sonu Boyutu</span>
-                    <strong class="stat-value">${monthlySize.toFixed(2)} cm</strong>
+                    <strong class="stat-value">${monthlySize ? monthlySize.toFixed(2) : '-'} cm</strong>
                 </div>
-                ` : (yearMonth === currentYYYYMM ? `
-                <div class="stat-box">
-                    <span class="stat-label">Aylık Uzama</span>
-                    <strong class="stat-value text-green">- mm</strong>
-                </div>
-                <div class="stat-box">
-                    <span class="stat-label">Ay Sonu Boyutu</span>
-                    <strong class="stat-value">- cm</strong>
-                </div>
-                ` : '')}
             `;
             statsDiv.innerHTML = statsHtml;
             headerCard.appendChild(statsDiv);
-            
             const bodyDiv = document.createElement('div');
             bodyDiv.className = 'accordion-body calendar-days';
             if (yearMonth === currentYYYYMM) bodyDiv.classList.add('open');
@@ -1299,7 +1278,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     const dNum = n.date.split('-')[2];
                     const noteMonthName = new Intl.DateTimeFormat('tr-TR', { month: 'long' }).format(new Date(y, m));
                     
-                    // Not içeriğini güvenli şekilde render et
                     const noteTexts = n.text.map(t => typeof t === 'string' ? t : (t.note || ''));
                     noteDiv.innerHTML = `<small style="display:block; opacity:0.6; margin-bottom:2px;">${dNum} ${noteMonthName}:</small> ${noteTexts.join(' | ')}`;
                     bodyDiv.appendChild(noteDiv);
@@ -1316,6 +1294,52 @@ document.addEventListener('DOMContentLoaded', () => {
             container.appendChild(accordionItem);
         });
     }
+
+    // --- MANUEL STAT DÜZENLEME (TAKAVİM ÖZETİ) ---
+    window.editMonthlyStat = function(type, yearMonth) {
+        if (type === 'tension') {
+            const current = dataManager.data.monthlyTension[yearMonth] || 10;
+            const newVal = prompt(`${yearMonth} Ayı için Vida Boyutu (mm):`, current);
+            if (newVal !== null) {
+                dataManager.data.monthlyTension[yearMonth] = parseFloat(newVal);
+                dataManager.save();
+                updateCalendarView();
+            }
+        } else if (type === 'size' || type === 'growth') {
+            const currentSize = dataManager.data.monthlySize[yearMonth] || dataManager.data.startSize;
+            const growth = dataManager.getMonthlyGrowth(yearMonth);
+            
+            const msg = type === 'size' 
+                ? `${yearMonth} Ay Sonu Boyutu (cm):` 
+                : `${yearMonth} Aylık Toplam Uzama (mm):`;
+            const defaultVal = type === 'size' ? currentSize : growth;
+            
+            const newVal = prompt(msg, defaultVal);
+            if (newVal !== null) {
+                const val = parseFloat(newVal);
+                if (type === 'size') {
+                    dataManager.data.monthlySize[yearMonth] = val;
+                } else {
+                    const sizes = { "0000-00": dataManager.data.startSize }; 
+                    Object.keys(dataManager.data.monthlySize).forEach(k => sizes[k] = dataManager.data.monthlySize[k]);
+                    const sortedKeys = Object.keys(sizes).sort();
+                    const currentIndex = sortedKeys.indexOf(yearMonth);
+                    const prevKey = currentIndex > 0 ? sortedKeys[currentIndex - 1] : "0000-00";
+                    const prevSize = sizes[prevKey];
+                    dataManager.data.monthlySize[yearMonth] = prevSize + (val / 10);
+                }
+                
+                const allMonths = Object.keys(dataManager.data.monthlySize).sort();
+                if (allMonths[allMonths.length - 1] === yearMonth) {
+                    dataManager.data.currentSize = dataManager.data.monthlySize[yearMonth];
+                }
+
+                dataManager.save();
+                updateCalendarView();
+                if (typeof updateHomeView === 'function') updateHomeView();
+            }
+        }
+    };
 
     let growthChartInstance = null;
     function updateChartView() {
@@ -1702,7 +1726,14 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             return `Merhaba <strong>${name}</strong>,<br>🎉 <strong>HEDEFE ULAŞTIN! (${currentSize} cm)</strong><br><br>Ancak işimiz henüz tam bitmedi! Hücre bölünmesiyle kazandığın yepyeni dokunun "olgunlaşması" ve kolajen yapısının sertleşip tamamen senin olması zaman alır. <strong>Kural:</strong> Hedefine ulaştıktan sonra, en az 3 ile 6 ay boyunca "düşük gerginlikte" (yaylar 0.5 - 1 boğum içerde olacak şekilde) günde sadece 1-2 saat <em>koruma amaçlı</em> takmaya devam etmelisin. Bu, dokunun hafızasına yeni boyutu kalıcı olarak kazıyacaktır! Aksi halde geri çekilme yaşayabilirsin.`;
         }
 
-        // 1. ACİL DURUM UYARILARI (AŞIRI ÇALIŞMA VEYA TEMBELLİK)
+        // 2. AYLIK ÖLÇÜM HATIRLATMASI (Her ayın 1-3'ü arası)
+        const dayOfMonth = d.getDate();
+        if (dayOfMonth <= 3) {
+            const nextMonthName = new Date(d.getFullYear(), d.getMonth() + 1, 1).toLocaleDateString('tr-TR', { month: 'long' });
+            return `Merhaba <strong>${name}</strong>, bugün <strong>Analiz ve Değerlendirme</strong> günümüz! Yeni bir aya başladık. Gelişimini doğru takip edebilmek için lütfen bugün ölçümünü yap ve 'Ayarlar' kısmından 'Mevcut Boyun' bilgisini güncelle. Bir sonraki hedef tarihini 1 ${nextMonthName} olarak belirledim, hadi göreyim seni!`;
+        }
+
+        // 3. ACİL DURUM UYARILARI (AŞIRI ÇALIŞMA VEYA TEMBELLİK)
         if (consecutiveDays >= 5 && !workedToday) {
             return `Merhaba <strong>${name}</strong>,<br>${healingFactor}Son <strong>${consecutiveDays} gündür</strong> aralıksız cihazı kullanıyorsun. Extender sistemlerinde penisin hücre bölünmesi yaşayabilmesi için mutlaka dinlenmeye ihtiyacı vardır. Haftada en az 1-2 gün ara vermen gelişimi hızlandıracaktır. Bugün cihazı takmamanı (dinlenme günü yapmanı) şiddetle tavsiye ederim.`;
         }
@@ -2174,6 +2205,9 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         const card = document.getElementById('timerCard');
         if (!card) return;
         
+        // Pompa çalışırken geçişe izin verme (updateTimerDisplay zaten butonu kilitler ama burası ikinci katman)
+        if (pumpEndTime > 0) return;
+
         if (card.classList.contains('mode-manual') || card.classList.contains('is-manual-view')) {
             card.classList.remove('mode-manual');
             card.classList.remove('is-manual-view');
@@ -2181,6 +2215,11 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             const icon = document.querySelector('#btnToggleManual span');
             if (icon) icon.textContent = 'edit_calendar';
         } else {
+            // DİĞER MODU KAPAT (EXCLUSIVITY)
+            card.classList.remove('mode-pump');
+            const pumpIcon = document.querySelector('#btnTogglePump span');
+            if (pumpIcon) pumpIcon.textContent = 'mode_fan';
+
             card.classList.add('mode-manual');
             card.classList.add('is-manual-view');
             localStorage.setItem('timer_entry_mode', 'manual');
@@ -2365,7 +2404,6 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         const display = document.getElementById('timerDisplay');
         const btnSession = document.getElementById('btnStartSession');
         const btnBreak = document.getElementById('btnStartBreak');
-        const btnManual = document.getElementById('btnAddTime');
         const btnFinalize = document.getElementById('btnFinalizeSession');
         const btnCancel = document.getElementById('btnCancelSession');
         const info = document.getElementById('timerSessionInfo');
@@ -2374,6 +2412,11 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         const manualSection = document.getElementById('manualTimeSection');
         const metaSection = document.getElementById('sessionMetaSection');
         const saveManualBtn = document.getElementById('btnSaveManual');
+        const btnStartPump = document.getElementById('btnStartPump');
+        const pumpSection = document.getElementById('pumpSettingSection');
+        const pumpDisplay = document.getElementById('pumpTimerDisplay');
+        const btnToggleManual = document.getElementById('btnToggleManual');
+        const btnTogglePump = document.getElementById('btnTogglePump');
 
         if (!display || !btnSession || !btnBreak || !info || !card || !manualSection || !metaSection) return;
 
@@ -2381,33 +2424,35 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         const isManualMode = card.classList.contains('mode-manual') || card.classList.contains('is-manual-view');
         const isPumpMode = card.classList.contains('mode-pump');
 
-        const btnStartPump = document.getElementById('btnStartPump');
-        const pumpSection = document.getElementById('pumpSettingSection');
-        const pumpDisplay = document.getElementById('pumpTimerDisplay');
+        // --- 1. HER ŞEYİ GİZLE (ÖNCE TEMİZLİK) ---
+        display.style.display = 'none';
+        manualSection.style.display = 'none';
+        metaSection.style.display = 'none';
+        saveManualBtn.style.display = 'none';
+        btnSession.style.display = 'none';
+        btnBreak.style.display = 'none';
+        btnFinalize.style.display = 'none';
+        if (pumpSection) pumpSection.style.display = 'none';
+        if (btnStartPump) btnStartPump.style.display = 'none';
+        if (btnCancel) btnCancel.style.display = 'none';
 
-        // Apply Pump View UI
+        // --- 2. MODLARI AYRI AYRI İŞLE (EXCLUSIVITY) ---
+
+        // A) POMPA MODU
         if (isPumpMode) {
+            if (pumpSection) pumpSection.style.display = 'block';
+            if (btnStartPump) btnStartPump.style.display = 'block';
+            
+            // DİĞERLERİNİ GİZLE
             display.style.display = 'none';
             manualSection.style.display = 'none';
             metaSection.style.display = 'none';
-            if (pumpSection) pumpSection.style.display = 'block';
-
-            btnSession.style.display = 'none';
-            btnBreak.style.display = 'none';
-            btnFinalize.style.display = 'none';
-            saveManualBtn.style.display = 'none';
-            if (btnCancel) btnCancel.style.display = 'none';
-            if (btnStartPump) btnStartPump.style.display = 'block';
 
             if (pumpEndTime > 0) {
-                // Running pump
                 info.textContent = '🌀 POMPA SÜRECİ';
-                if (btnStartPump) {
-                    btnStartPump.textContent = '⏹ Pompayı Durdur';
-                    btnStartPump.className = 'btn-danger';
-                }
-                card.className = card.className.replace(/mode-\w+/g, '');
-                card.classList.add('mode-pump');
+                if (btnStartPump) { btnStartPump.textContent = '⏹ Pompayı Durdur'; btnStartPump.className = 'btn-danger'; }
+                if (btnToggleManual) { btnToggleManual.disabled = true; btnToggleManual.style.opacity = '0.3'; }
+                if (btnTogglePump) { btnTogglePump.disabled = true; btnTogglePump.style.opacity = '0.3'; }
                 
                 const remaining = pumpEndTime - Date.now();
                 if (remaining <= 0) {
@@ -2416,49 +2461,62 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                     const rs = Math.ceil(remaining / 1000);
                     const rm = Math.floor(rs / 60);
                     const rss = rs % 60;
-                    if (pumpDisplay) pumpDisplay.textContent = `${String(rm).padStart(2,'0')}:${String(rss).padStart(2,'0')}`;
+                    if (pumpDisplay) { 
+                        pumpDisplay.textContent = `${String(rm).padStart(2,'0')}:${String(rss).padStart(2,'0')}`; 
+                        pumpDisplay.classList.add('is-running'); 
+                    }
                 }
+                const hint = document.getElementById('pumpEditHint');
+                if (hint) hint.classList.add('hidden');
             } else {
-                // Stopped pump
                 info.textContent = '🌀 POMPA MODU';
-                if (btnStartPump) {
-                    btnStartPump.textContent = '▶ Pompayı Başlat';
-                    btnStartPump.className = 'btn-primary';
-                }
-                card.className = card.className.replace(/mode-\w+/g, '');
-                card.classList.add('mode-pump');
+                if (btnStartPump) { btnStartPump.textContent = '▶ Pompayı Başlat'; btnStartPump.className = 'btn-primary'; }
+                if (btnToggleManual) { btnToggleManual.disabled = false; btnToggleManual.style.opacity = '1'; }
+                if (btnTogglePump) { btnTogglePump.disabled = false; btnTogglePump.style.opacity = '1'; }
                 
                 const durationInput = document.getElementById('pumpDuration');
                 const d = durationInput ? (parseInt(durationInput.value) || 15) : 15;
-                if (pumpDisplay) pumpDisplay.textContent = `${String(d).padStart(2,'0')}:00`;
+                if (pumpDisplay) { 
+                    pumpDisplay.textContent = `${String(d).padStart(2,'0')}:00`; 
+                    pumpDisplay.classList.remove('is-running'); 
+                }
+                const hint = document.getElementById('pumpEditHint');
+                if (hint) hint.classList.remove('hidden');
             }
             return;
-        } else {
-            if (pumpSection) pumpSection.style.display = 'none';
-            if (btnStartPump) btnStartPump.style.display = 'none';
         }
-
         // Apply Manual View UI if idle
         if (isManualMode && state.mode === 'ready') {
             display.style.display = 'none';
             manualSection.style.display = 'block';
             metaSection.style.display = 'block';
+            saveManualBtn.style.display = 'block';
             
             btnSession.style.display = 'none';
             btnBreak.style.display = 'none';
             btnFinalize.style.display = 'none';
-            saveManualBtn.style.display = 'block';
+            if (btnCancel) btnCancel.style.display = 'none';
+            if (pumpSection) pumpSection.style.display = 'none';
+            if (btnStartPump) btnStartPump.style.display = 'none';
             
             info.textContent = '📝 MANUEL GİRİŞ MODU';
             card.className = card.className.replace(/mode-\w+/g, '');
-            card.classList.add('mode-ready');
-            card.classList.add('mode-manual');
-            card.classList.add('is-manual-view');
+            card.classList.add('mode-ready', 'mode-manual', 'is-manual-view');
             return;
         } else {
             display.style.display = 'block';
             manualSection.style.display = 'none';
             saveManualBtn.style.display = 'none';
+            if (pumpSection) pumpSection.style.display = 'none';
+            if (btnStartPump) btnStartPump.style.display = 'none';
+            
+            // Normal moddayken pompa butonunu aç (eğer seans aktif değilse)
+            if (btnTogglePump) {
+                const isSessionActive = state.mode !== 'ready';
+                btnTogglePump.disabled = isSessionActive;
+                btnTogglePump.style.opacity = isSessionActive ? '0.3' : '1';
+                btnTogglePump.style.cursor = isSessionActive ? 'not-allowed' : 'pointer';
+            }
         }
 
         if (state.mode === 'ready') {
@@ -2477,8 +2535,8 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             if (btnCancel) btnCancel.style.display = 'none';
             metaSection.style.display = 'block';
             
-            info.textContent = '⏱️ UZATICI SEANSI';
-            card.className = card.className.replace(/mode-\w+/g, '');
+            info.textContent = '⏱️ SEANS MODU';
+            card.classList.remove('is-manual-view', 'mode-manual', 'mode-pump', 'mode-work', 'mode-break', 'mode-review');
             card.classList.add('mode-ready');
             return;
         }
@@ -2815,7 +2873,384 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         }
     });
 
+    // --- INTERACTIVE INPUT LOGIC (Scroll & Swipe) ---
+    function initInteractiveInputs() {
+        const inputs = document.querySelectorAll('.modern-stepper-input');
+        
+        inputs.forEach(input => {
+            // Disable default wheel behavior to prevent page scroll
+            input.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const delta = e.deltaY < 0 ? 1 : -1;
+                handleStep(input, delta);
+            }, { passive: false });
+
+            // Touch support
+            let touchStartY = 0;
+            const threshold = 10; // pixels to trigger change
+
+            input.addEventListener('touchstart', (e) => {
+                touchStartY = e.touches[0].clientY;
+            }, { passive: true });
+
+            input.addEventListener('touchmove', (e) => {
+                const currentY = e.touches[0].clientY;
+                const diff = touchStartY - currentY; // Upward move is positive diff
+
+                if (Math.abs(diff) > threshold) {
+                    const delta = diff > 0 ? 1 : -1;
+                    handleStep(input, delta);
+                    touchStartY = currentY; // Reset for continuous sliding
+                    
+                    if (e.cancelable) e.preventDefault();
+                }
+            }, { passive: false });
+        });
+
+        function handleStep(input, direction) {
+            const step = parseFloat(input.step) || 1;
+            const min = !isNaN(parseFloat(input.min)) ? parseFloat(input.min) : -Infinity;
+            const max = !isNaN(parseFloat(input.max)) ? parseFloat(input.max) : Infinity;
+            
+            let val = parseFloat(input.value) || 0;
+            val += (direction * step);
+
+            // Precision and constraints
+            if (input.id === 'userAge' || input.id.includes('Days')) {
+                val = Math.round(val);
+            } else {
+                val = Math.round(val * 100) / 100;
+            }
+
+            if (val < min) val = min;
+            if (val > max) val = max;
+
+            input.value = val;
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    }
+
+    // Initialize interactive inputs
+    initInteractiveInputs();
+
+    // --- SMART CYCLE SLIDER LOGIC (v2.0.0) ---
+    function initSmartCycleSliders() {
+        const sliders = document.querySelectorAll('.smart-slider');
+        
+        sliders.forEach(slider => {
+            const targetId = slider.id.replace('slider-', '');
+            let min = parseFloat(slider.dataset.min);
+            let max = parseFloat(slider.dataset.max);
+            const step = parseFloat(slider.dataset.step) || 1;
+
+            // DİNAMİK HEDEF AYARI: Başlangıç boyutuna göre aralığı güncelle
+            if (targetId === 'targetSize') {
+                const startVal = parseFloat(document.getElementById('startSize').value) || 0;
+                if (startVal > 0) {
+                    min = startVal + 0.5;
+                    max = startVal + 5.0;
+                    slider.classList.remove('disabled');
+                } else {
+                    slider.classList.add('disabled');
+                    return; // Başlangıç girilmediyse çizme
+                }
+            }
+
+            const pointsContainer = slider.querySelector('.slider-points');
+            const thumb = slider.querySelector('.slider-thumb');
+            const valueSpan = document.getElementById(`val-${targetId}`);
+            const hiddenInput = document.getElementById(targetId);
+
+            // Generate Points
+            pointsContainer.innerHTML = '';
+            for (let i = min; i <= max; i = parseFloat((i + step).toFixed(2))) {
+                if (i > max) break;
+                
+                const point = document.createElement('div');
+                point.className = 'slider-point';
+                point.dataset.value = i;
+                point.dataset.label = i;
+                
+                // Color coding based on research
+                if (targetId === 'workCycleDays') {
+                    if (i <= 3) point.classList.add('status-low');
+                    else if (i <= 7) point.classList.add('status-ideal');
+                    else if (i <= 9) point.classList.add('status-high');
+                    else point.classList.add('status-danger');
+                } else if (targetId === 'dailyGoalHours') {
+                    if (i <= 3) point.classList.add('status-low');
+                    else if (i <= 8) point.classList.add('status-ideal');
+                    else if (i <= 11) point.classList.add('status-high');
+                    else point.classList.add('status-danger');
+                    point.dataset.label = i; 
+                } else if (targetId === 'targetSize') {
+                    const startSize = parseFloat(document.getElementById('startSize').value) || 0;
+                    const gain = i - startSize;
+                    if (gain <= 1.5) point.classList.add('status-ideal');
+                    else if (gain <= 3.0) point.classList.add('status-high');
+                    else point.classList.add('status-danger');
+                    // Sadece tam sayıları veya 2.5 gibi kritik değerleri etiketle
+                    if (i % 1 !== 0 && i % 0.5 !== 0) point.dataset.label = "";
+                } else if (targetId === 'targetMonthlyGrowth') {
+                    if (i <= 1.5) point.classList.add('status-low');
+                    else if (i <= 3.0) point.classList.add('status-ideal');
+                    else if (i <= 4.5) point.classList.add('status-high');
+                    else point.classList.add('status-danger');
+                    if (i % 1 !== 0) point.dataset.label = ""; 
+                } else {
+                    if (i === 1) point.classList.add('status-low');
+                    else point.classList.add('status-ideal');
+                }
+
+                point.addEventListener('click', () => updateValue(i));
+                pointsContainer.appendChild(point);
+                
+                if (i === max) break;
+                if (i + step > max && i < max) { i = max - step; } 
+            }
+
+            function updateValue(val) {
+                val = parseFloat(val);
+                val = Math.max(min, Math.min(max, val));
+                val = Math.round(val / step) * step;
+                val = parseFloat(val.toFixed(2));
+
+                slider.dataset.value = val;
+                if (valueSpan) valueSpan.textContent = val.toFixed((targetId === 'targetMonthlyGrowth' || targetId === 'targetSize') ? 1 : 0);
+                if (hiddenInput) {
+                    hiddenInput.value = val;
+                    hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+
+                const percent = ((val - min) / (max - min)) * 100;
+                thumb.style.left = `calc(${percent}% - 12px)`;
+
+                slider.querySelectorAll('.slider-point').forEach(p => {
+                    const pVal = parseFloat(p.dataset.value);
+                    p.classList.toggle('active', Math.abs(pVal - val) < 0.01);
+                });
+
+                if (targetId === 'dailyGoalHours') updateGoalFeedback();
+                else if (targetId === 'targetMonthlyGrowth') updateGrowthFeedback();
+                else if (targetId === 'targetSize') updateTargetFeedback();
+                else updateCycleFeedback();
+                
+                dataManager.save();
+            }
+
+            // Drag/Swipe Support
+            let isDragging = false;
+            const handleDrag = (e) => {
+                const rect = slider.getBoundingClientRect();
+                const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+                const percent = Math.max(0, Math.min(100, (x / rect.width) * 100));
+                const val = min + (percent / 100) * (max - min);
+                updateValue(val);
+            };
+
+            slider.addEventListener('mousedown', (e) => { isDragging = true; handleDrag(e); });
+            window.addEventListener('mousemove', (e) => { if (isDragging) handleDrag(e); });
+            window.addEventListener('mouseup', () => { isDragging = false; });
+            
+            slider.addEventListener('touchstart', (e) => { isDragging = true; handleDrag(e); }, {passive: false});
+            slider.addEventListener('touchmove', (e) => { if (isDragging) { e.preventDefault(); handleDrag(e); } }, {passive: false});
+            slider.addEventListener('touchend', () => { isDragging = false; });
+
+            // Initial Sync
+            setTimeout(() => updateValue(parseFloat(hiddenInput.value) || min), 100);
+        });
+    }
+
+    function updateTargetFeedback() {
+        const start = parseFloat(document.getElementById('startSize').value) || 0;
+        const target = parseFloat(document.getElementById('targetSize').value) || 0;
+        const age = parseInt(document.getElementById('userAge').value) || 30;
+        const feedbackText = document.getElementById('targetFeedbackText');
+        if (!feedbackText) return;
+
+        const gain = target - start;
+        let msg = "";
+        let icon = "psychology";
+
+        if (start === 0) {
+            msg = "Lütfen önce başlangıç boyutunuzu girin.";
+        } else if (gain <= 0) {
+            msg = "Hedef boyut, başlangıç boyutundan büyük olmalıdır.";
+            icon = "error";
+        } else {
+            // Base estimation (1 cm growth roughly 6-12 months)
+            let baseMonths = gain * 8; // Average 8 months per cm
+            
+            // Age factor
+            let ageMultiplier = 1;
+            if (age > 40) ageMultiplier = 1.25;
+            if (age > 55) ageMultiplier = 1.5;
+
+            const estMonths = Math.round(baseMonths * ageMultiplier);
+            const years = Math.floor(estMonths / 12);
+            const remainingMonths = estMonths % 12;
+            let timeStr = years > 0 ? `${years} yıl ${remainingMonths} ay` : `${remainingMonths} ay`;
+            
+            // Yaş faktörü açıklaması
+            let ageNote = age > 40 ? `<br><small style="opacity:0.7; font-size: 0.85em;">* Yaşınıza bağlı doku yenilenme hızı (hücre analiz faktörü) süreye dahil edilmiştir.</small>` : "";
+
+            if (gain <= 1.5) {
+                msg = `<strong>Gerçekçi Hedef:</strong> ${gain.toFixed(1)} cm kazanım için tahmini süre: <strong>${timeStr}</strong>. Bu hedef, disiplinli bir çalışmayla ulaşılabilir düzeydedir. ${ageNote}`;
+                icon = "verified";
+            } else if (gain <= 3.0) {
+                msg = `<strong>Hırslı Hedef:</strong> ${gain.toFixed(1)} cm kazanım için tahmini süre: <strong>${timeStr}</strong>. Bu seviye yüksek sabır ve kusursuz bir döngü disiplini gerektirir. ${ageNote}`;
+                icon = "workspace_premium";
+            } else if (gain <= 4.0) {
+                msg = `<strong>Uç Hedef / Maraton:</strong> ${gain.toFixed(1)} cm kazanım için tahmini süre: <strong>${timeStr}+</strong>. Bu hedefe ulaşmak genetik limitleri zorlamak anlamına gelir. Çok uzun yıllar sürecek bir maratondur. ${ageNote}`;
+                icon = "military_tech";
+            } else {
+                msg = `<strong>BİYOLOJİK LİMİT:</strong> ${gain.toFixed(1)} cm kazanım, cerrahi müdahale olmadan doğal yollarla (traksiyon) ulaşılması neredeyse imkansız olan bir 'teorik limit' değeridir. ${ageNote}`;
+                icon = "warning";
+            }
+        }
+
+        feedbackText.innerHTML = msg;
+        const box = document.getElementById('targetFeedback');
+        if (box) {
+            const iconEl = box.querySelector('.material-symbols-outlined');
+            if (iconEl) iconEl.textContent = icon;
+        }
+    }
+
+    // Başlangıç boyutu veya yaş değiştiğinde analizi ve slider noktalarını tazele
+    document.getElementById('startSize').addEventListener('change', () => {
+        initSmartCycleSliders(); // Re-init to update point colors
+        updateTargetFeedback();
+    });
+
+    document.getElementById('userAge').addEventListener('change', () => {
+        const age = parseInt(document.getElementById('userAge').value) || 30;
+        const growthSlider = document.getElementById('slider-targetMonthlyGrowth');
+        
+        // Yaşa göre ideal beklentiyi otomatik öner
+        let suggestedGrowth = 2.0;
+        if (age > 40 && age <= 55) suggestedGrowth = 1.5;
+        if (age > 55) suggestedGrowth = 1.0;
+
+        // Slider'ı güncelle (varsa updateValue fonksiyonunu tetiklemek için)
+        // targetMonthlyGrowth slider'ının kendi updateValue'sunu bulup çalıştırmalıyız
+        // Basitçe hidden inputu güncelleyip slider'ı re-init edebiliriz veya manuel tetikleriz
+        const hiddenGrowth = document.getElementById('targetMonthlyGrowth');
+        if (hiddenGrowth) {
+            hiddenGrowth.value = suggestedGrowth;
+            // initSmartCycleSliders içindeki setTimeout initial sync'i tetikleyecektir
+            initSmartCycleSliders(); 
+        }
+        
+        updateTargetFeedback();
+    });
+
+    function updateGrowthFeedback() {
+        const mm = parseFloat(document.getElementById('targetMonthlyGrowth').value) || 2;
+        const feedbackText = document.getElementById('growthFeedbackText');
+        if (!feedbackText) return;
+
+        let msg = "";
+        let icon = "insights";
+
+        if (mm <= 1.5) {
+            msg = "<strong>Muhafazakar Hedef:</strong> Ayda " + mm + " mm gelişim, istikrarlı ve sürdürülebilir bir ilerleme için idealdir. Moral bozmaz, disiplin sağlar.";
+            icon = "trending_up";
+        } else if (mm >= 2.0 && mm <= 3.0) {
+            msg = "<strong>İdeal Aralık:</strong> Çoğu klinik çalışma ve disiplinli kullanıcının ayda " + mm + " mm civarında gelişim kaydettiğini göstermektedir. Verimli bölge.";
+            icon = "check_circle";
+        } else if (mm >= 3.5 && mm <= 4.5) {
+            msg = "<strong>Zorlayıcı Hedef:</strong> Ayda " + mm + " mm gelişim oldukça hırslıdır. Genetik yatkınlık ve kusursuz bir çalışma disiplini gerektirebilir.";
+            icon = "bolt";
+        } else {
+            msg = "<strong>ÜTOPİK HEDEF:</strong> Ayda 5 mm (yarım cm) gelişim bilimsel olarak çok nadirdir. Beklentiyi biraz düşürmek motivasyon için daha sağlıklı olabilir.";
+            icon = "auto_awesome";
+        }
+
+        feedbackText.innerHTML = msg;
+        const box = document.getElementById('growthFeedback');
+        if (box) {
+            const iconEl = box.querySelector('.material-symbols-outlined');
+            if (iconEl) iconEl.textContent = icon;
+        }
+    }
+
+    function updateGoalFeedback() {
+        const hours = parseInt(document.getElementById('dailyGoalHours').value) || 6;
+        const feedbackText = document.getElementById('goalFeedbackText');
+        if (!feedbackText) return;
+
+        let msg = "";
+        let icon = "analytics";
+
+        if (hours <= 3) {
+            msg = "<strong>Düşük Hedef:</strong> Günde " + hours + " saat kullanım, doku genişlemesini tetiklemek için yetersiz kalabilir. İdeal sonuçlar için en az 4-6 saat önerilir.";
+            icon = "trending_down";
+        } else if (hours >= 4 && hours <= 8) {
+            msg = "<strong>İdeal Hedef:</strong> Günde " + hours + " saatlik kullanım, dokuların sağlıklı bir şekilde genişlemesi ve onarılması için mükemmel bir süredir.";
+            icon = "check_circle";
+        } else if (hours >= 9 && hours <= 11) {
+            msg = "<strong>Yüksek Yoğunluk:</strong> " + hours + " saatlik kullanım üst sınıra yakındır. Cilt hassasiyetini yakından takip etmelisin.";
+            icon = "speed";
+        } else {
+            msg = "<strong>ÜST SINIR:</strong> 12 saatlik kullanım en yüksek güvenlik sınırıdır. Bu sürenin üzerine çıkılması doku sağlığı açısından önerilmez.";
+            icon = "report_problem";
+        }
+
+        feedbackText.innerHTML = msg;
+        const box = document.getElementById('goalFeedback');
+        if (box) {
+            const iconEl = box.querySelector('.material-symbols-outlined');
+            if (iconEl) iconEl.textContent = icon;
+        }
+    }
+
+    function updateCycleFeedback() {
+        const work = parseInt(document.getElementById('workCycleDays').value) || 5;
+        const rest = parseInt(document.getElementById('restCycleDays').value) || 2;
+        const feedbackText = document.getElementById('cycleFeedbackText');
+        if (!feedbackText) return;
+
+        let msg = "";
+        let icon = "info";
+
+        if (work <= 3) {
+            msg = "<strong>Düşük Yoğunluk:</strong> " + work + " günlük çalışma, doku genişlemesi tetiklemek için yetersiz kalabilir. İdeal verim için 4-6 gün önerilir.";
+            icon = "warning";
+        } else if (work >= 8 && work <= 9) {
+            msg = "<strong>Yüksek Yoğunluk:</strong> " + work + " gün üst üste çalışma dokuları yorabilir. Hassasiyet veya ereksiyon kalitesini takip etmelisin.";
+            icon = "shutter_speed";
+        } else if (work >= 10) {
+            msg = "<strong>RİSKLİ BÖLGE:</strong> 10 gün ve ötesi aralıksız çalışma doku hasarı riskini artırır. MUTLAKA dinlenme arası vermelisin!";
+            icon = "report_problem";
+        } else {
+            msg = "<strong>İdeal Çalışma:</strong> " + work + " günlük çalışma periyodu, istikrarlı gelişim için mükemmeldir.";
+            icon = "check_circle";
+        }
+
+        msg += "<br><br>";
+
+        if (rest === 1) {
+            msg += "<strong>Hızlı Onarım:</strong> 1 gün dinlenme 'minimum' seviyededir. Eğer yorgunluk hissediyorsan 2 güne çıkarmalısın.";
+        } else {
+            msg += "<strong>Tam Onarım:</strong> 2 günlük dinlenme, yeni oluşan dokuların kalıcılaşması (konsolidasyon) için en sağlıklı süredir.";
+        }
+
+        feedbackText.innerHTML = msg;
+        const box = document.getElementById('cycleFeedback');
+        if (box) {
+            const iconEl = box.querySelector('.material-symbols-outlined');
+            if (iconEl) iconEl.textContent = icon;
+        }
+    }
+
+    // Initialize Smart Cycle Sliders
+    initSmartCycleSliders();
+
     // --- UNIVERSAL STEPPER LOGIC ---
+    // (Note: .btn-stepper logic remains for any remaining buttons if any, 
+    // but the inputs themselves are now interactive)
     document.querySelectorAll('.btn-stepper').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.preventDefault();
@@ -2851,7 +3286,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
     document.querySelectorAll('.dual-box').forEach(box => {
         box.addEventListener('click', () => {
             const container = box.closest('.dual-stepper-container');
-            if (container.classList.contains('single')) return; // Mola gibi tekli alanlarda seçime gerek yok zaten aktif
+            if (!container || container.classList.contains('single') || container.classList.contains('time-stepper-full')) return;
 
             container.querySelectorAll('.dual-box').forEach(b => b.classList.remove('active'));
             box.classList.add('active');
@@ -2930,14 +3365,13 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
     }
 
     // Init App
-    // Restore entry mode
-    if (localStorage.getItem('timer_entry_mode') === 'manual') {
-        const card = document.getElementById('timerCard');
-        if (card) {
-            card.classList.add('is-manual-view');
-            const icon = document.querySelector('#btnToggleManual span');
-            if (icon) icon.textContent = 'timer';
-        }
+    // Varsayılan olarak Seans Modu ile başla
+    localStorage.setItem('timer_entry_mode', 'timer');
+    const card = document.getElementById('timerCard');
+    if (card) {
+        card.classList.remove('is-manual-view', 'mode-manual');
+        const icon = document.querySelector('#btnToggleManual span');
+        if (icon) icon.textContent = 'edit_calendar';
     }
 
     renderRulerScale();
@@ -2945,4 +3379,126 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
     updateHomeView();
     checkUpdateStatus();
     if (dataManager.data.activeSessionState && dataManager.data.activeSessionState.mode !== 'ready') startTimerUI();
+    
+    // UI Durumunu Senkronize Et
+    updateTimerDisplay();
+
+    // --- MANUEL SAYAÇ: SWIPE, WHEEL & TAP ETKİLEŞİMİ ---
+    (function initManualStepperSwipe() {
+        const boxes = document.querySelectorAll('#timeEntryDualStepper .dual-box[data-target]');
+
+        boxes.forEach(box => {
+            const inputId = box.getAttribute('data-target');
+            const input = document.getElementById(inputId);
+            if (!input) return;
+
+            const isMinutes = inputId === 'inputMinutes';
+            const maxVal = isMinutes ? 55 : 12;
+            const step = isMinutes ? 5 : 1;
+            const PX_PER_STEP = 15; // Hassasiyet: Her 15px harekette bir adım
+
+            let startY = 0, lastY = 0, isDragging = false, accumulated = 0;
+
+            function clamp(val) {
+                // Saat 0-12, Dakika 0-55 (5'erli)
+                let v = Math.max(0, Math.min(maxVal, val));
+                if (isMinutes) v = Math.round(v / 5) * 5; // 5'e yuvarla
+                return v;
+            }
+
+            function changeBy(delta) {
+                const current = parseInt(input.value) || 0;
+                input.value = Math.max(0, Math.min(maxVal, current + delta));
+            }
+
+            function onStart(y) {
+                startY = y; lastY = y;
+                isDragging = false; accumulated = 0;
+            }
+
+            function onMove(y) {
+                const dy = lastY - y; 
+                lastY = y;
+                if (Math.abs(y - startY) > 5) isDragging = true;
+                if (!isDragging) return;
+
+                accumulated += dy;
+                while (accumulated >= PX_PER_STEP)  { changeBy(step);  accumulated -= PX_PER_STEP; }
+                while (accumulated <= -PX_PER_STEP) { changeBy(-step); accumulated += PX_PER_STEP; }
+            }
+
+            function onEnd() {
+                if (!isDragging) {
+                    // Tıklayınca birer birer artsın (Hata payı bırakmamak için her zaman +1)
+                    let v = (parseInt(input.value) || 0) + 1;
+                    if (v > maxVal) v = 0;
+                    input.value = v;
+                }
+                isDragging = false; accumulated = 0;
+            }
+
+            // Dokunmatik (Mobil)
+            box.addEventListener('touchstart', e => { e.preventDefault(); onStart(e.touches[0].clientY); }, { passive: false });
+            box.addEventListener('touchmove',  e => { e.preventDefault(); onMove(e.touches[0].clientY); },  { passive: false });
+            box.addEventListener('touchend',   e => { e.preventDefault(); onEnd(); },                       { passive: false });
+
+            // Masaüstü: Tıklama = +1
+            box.addEventListener('click', e => {
+                e.preventDefault();
+                onEnd(); 
+            });
+
+            // Masaüstü: Tekerlek = ±Step
+            box.addEventListener('wheel', e => {
+                e.preventDefault();
+                changeBy(e.deltaY < 0 ? step : -step);
+            }, { passive: false });
+        });
+    })();
+
+
+    // --- POMPA SÜRESİ: TIKLA (+1) & TEKERLEK (±5) ---
+    (function initPumpDurationInteraction() {
+        const display = document.getElementById('pumpTimerDisplay');
+        const input = document.getElementById('pumpDuration');
+        if (!display || !input) return;
+
+        function clamp(val) { return Math.max(1, Math.min(60, val)); }
+        function changeBy(delta) {
+            if (pumpEndTime > 0) return; // Çalışırken düzenleme kapalı
+            input.value = clamp((parseInt(input.value) || 15) + delta);
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+
+        display.addEventListener('click', e => { e.preventDefault(); changeBy(1); });
+        display.addEventListener('wheel', e => {
+            e.preventDefault();
+            changeBy(e.deltaY < 0 ? 5 : -5);
+        }, { passive: false });
+
+        // Mobil: parmakla kaydır
+        let startY = 0, isDragging = false, accumulated = 0;
+        display.addEventListener('touchstart', e => { 
+            if (pumpEndTime > 0) return;
+            e.preventDefault(); 
+            startY = e.touches[0].clientY; isDragging = false; accumulated = 0; 
+        }, { passive: false });
+        
+        display.addEventListener('touchmove', e => {
+            if (pumpEndTime > 0) return;
+            e.preventDefault();
+            const dy = startY - e.touches[0].clientY;
+            if (Math.abs(dy) > 5) isDragging = true;
+            accumulated += (startY - e.touches[0].clientY);
+            startY = e.touches[0].clientY;
+            while (accumulated >= 10)  { changeBy(5);  accumulated -= 10; }
+            while (accumulated <= -10) { changeBy(-5); accumulated += 10; }
+        }, { passive: false });
+        
+        display.addEventListener('touchend', e => { 
+            if (pumpEndTime > 0) return;
+            e.preventDefault(); 
+            if (!isDragging) changeBy(1); 
+        }, { passive: false });
+    })();
 });
