@@ -558,7 +558,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function switchView(target) {
-        // Auto-save settings before leaving settings view (v2.0.7)
+        // Auto-save settings before leaving settings view (v2.0.8)
         const settingsView = document.getElementById('settings');
         if (settingsView && settingsView.classList.contains('active') && target !== 'settings') {
             saveSettingsUI();
@@ -2141,7 +2141,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             try {
                 const registration = await navigator.serviceWorker.getRegistration();
                 if (registration) {
-                    btn.textContent = "🚀 Güncelleniyor (v2.0.7)...";
+                    btn.textContent = "🚀 Güncelleniyor (v2.0.8)...";
                     await registration.update();
                     
                     if (registration.waiting) {
@@ -2230,7 +2230,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                         window.location.reload();
                     });
 
-                    btn.textContent = "🚀 Güncelleniyor (v2.0.7)...";
+                    btn.textContent = "🚀 Güncelleniyor (v2.0.8)...";
                     await registration.update();
                     
                     // If after 3 seconds still no reload, force it
@@ -3462,7 +3462,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                 const originalText = verText.textContent;
                 verText.style.color = '#2ecc71'; // Yeşil renk
                 verText.style.fontWeight = '700';
-                verText.textContent = '✅ Uygulamanız v2.0.7 sürümüne güncellendi!';
+                verText.textContent = '✅ Uygulamanız v2.0.8 sürümüne güncellendi!';
                 
                 setTimeout(() => {
                     verText.style.color = '';
@@ -3668,7 +3668,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         });
     })();
 
-    // Desktop Scroll Delegation (v2.0.7)
+    // Desktop Scroll Delegation (v2.0.8)
     // Allows desktop users to scroll the app even when hovering outside the 480px container
     window.addEventListener('wheel', (e) => {
         // If hovered directly over the body/html background (the dark empty space)
