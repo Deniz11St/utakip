@@ -119,6 +119,7 @@ body {
     display: flex;
     flex-direction: column;
     box-shadow: 0 0 40px rgba(0,0,0,0.5);
+    overflow: hidden; /* Prevent body scroll and keep nav fixed */
 }
 
 /* Views Layout */
