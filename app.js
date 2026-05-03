@@ -558,7 +558,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function switchView(target) {
-        // Auto-save settings before leaving settings view (v2.0.6)
+        // Auto-save settings before leaving settings view (v2.0.7)
         const settingsView = document.getElementById('settings');
         if (settingsView && settingsView.classList.contains('active') && target !== 'settings') {
             saveSettingsUI();
@@ -2141,7 +2141,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             try {
                 const registration = await navigator.serviceWorker.getRegistration();
                 if (registration) {
-                    btn.textContent = "🚀 Güncelleniyor (v2.0.6)...";
+                    btn.textContent = "🚀 Güncelleniyor (v2.0.7)...";
                     await registration.update();
                     
                     if (registration.waiting) {
@@ -2230,7 +2230,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                         window.location.reload();
                     });
 
-                    btn.textContent = "🚀 Güncelleniyor (v2.0.6)...";
+                    btn.textContent = "🚀 Güncelleniyor (v2.0.7)...";
                     await registration.update();
                     
                     // If after 3 seconds still no reload, force it
@@ -3462,7 +3462,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                 const originalText = verText.textContent;
                 verText.style.color = '#2ecc71'; // Yeşil renk
                 verText.style.fontWeight = '700';
-                verText.textContent = '✅ Uygulamanız v2.0.6 sürümüne güncellendi!';
+                verText.textContent = '✅ Uygulamanız v2.0.7 sürümüne güncellendi!';
                 
                 setTimeout(() => {
                     verText.style.color = '';
@@ -3638,7 +3638,37 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         }, { passive: false });
     })();
 
-    // Desktop Scroll Delegation (v2.0.6)
+    // --- VIDA BOYUTU REHBERİ (PAGINATION) ---
+    (function initTensionPagination() {
+        const dots = document.querySelectorAll('.page-dot');
+        const text = document.getElementById('tensionFeedbackText');
+        if (!dots.length || !text) return;
+
+        const pages = {
+            "1": "<strong>Rehber (1/3):</strong> Vida boyutu, dokulara uygulanan gerilimi belirler. Her hafta 0.5 - 1 mm arası artış, doku hasarı riskini minimize ederken en istikrarlı gelişimi sağlar.",
+            "2": "<strong>Rehber (2/3):</strong> Ne zaman artırmalı? Mevcut gerilim artık hissedilmediğinde veya seans sonunda dokular tamamen esnek kaldığında vidayı 1 mm artırabilirsiniz.",
+            "3": "<strong>Rehber (3/3):</strong> Güvenlik: Eğer acı, uyuşma veya deride renk değişimi varsa vidayı sabit tutun veya 1-2 mm geri çekerek dokuları birkaç gün dinlendirin."
+        };
+
+        dots.forEach(dot => {
+            dot.addEventListener('click', () => {
+                const pageNum = dot.getAttribute('data-page');
+                
+                // Update UI
+                dots.forEach(d => d.classList.remove('active'));
+                dot.classList.add('active');
+                
+                // Update Text with simple animation
+                text.style.opacity = '0';
+                setTimeout(() => {
+                    text.innerHTML = pages[pageNum];
+                    text.style.opacity = '1';
+                }, 150);
+            });
+        });
+    })();
+
+    // Desktop Scroll Delegation (v2.0.7)
     // Allows desktop users to scroll the app even when hovering outside the 480px container
     window.addEventListener('wheel', (e) => {
         // If hovered directly over the body/html background (the dark empty space)
