@@ -558,7 +558,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function switchView(target) {
-        // Auto-save settings before leaving settings view (v2.0.8)
+        // Auto-save settings before leaving settings view (v2.0.9)
         const settingsView = document.getElementById('settings');
         if (settingsView && settingsView.classList.contains('active') && target !== 'settings') {
             saveSettingsUI();
@@ -1876,14 +1876,14 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         }
         
         // Let's get the latest available tension, regardless of the month, so the input doesn't incorrectly seem 'cleared'
-        let lastTension = '';
+        let lastTension = 80; // Default 80mm (v2.0.9)
         if (dataManager.data.monthlyTension) {
             const tensionKeys = Object.keys(dataManager.data.monthlyTension).sort().reverse();
             if (tensionKeys.length > 0) {
                 lastTension = dataManager.data.monthlyTension[tensionKeys[0]];
             }
         }
-        document.getElementById('currentTension').value = lastTension !== null ? lastTension : '';
+        document.getElementById('currentTension').value = lastTension;
 
         // Timer Settings
         document.getElementById('timerCount').value = dataManager.data.timerSettings.count;
@@ -2141,7 +2141,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             try {
                 const registration = await navigator.serviceWorker.getRegistration();
                 if (registration) {
-                    btn.textContent = "🚀 Güncelleniyor (v2.0.8)...";
+                    btn.textContent = "🚀 Güncelleniyor (v2.0.9)...";
                     await registration.update();
                     
                     if (registration.waiting) {
@@ -2230,7 +2230,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                         window.location.reload();
                     });
 
-                    btn.textContent = "🚀 Güncelleniyor (v2.0.8)...";
+                    btn.textContent = "🚀 Güncelleniyor (v2.0.9)...";
                     await registration.update();
                     
                     // If after 3 seconds still no reload, force it
@@ -3462,7 +3462,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                 const originalText = verText.textContent;
                 verText.style.color = '#2ecc71'; // Yeşil renk
                 verText.style.fontWeight = '700';
-                verText.textContent = '✅ Uygulamanız v2.0.8 sürümüne güncellendi!';
+                verText.textContent = '✅ Uygulamanız v2.0.9 sürümüne güncellendi!';
                 
                 setTimeout(() => {
                     verText.style.color = '';
@@ -3494,12 +3494,12 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
 
     // --- MANUEL SAYAÇ: SWIPE, WHEEL & TAP ETKİLEŞİMİ ---
     (function initManualStepperSwipe() {
-        const boxes = document.querySelectorAll('.dual-box[data-target]');
+        const boxes = document.querySelectorAll('.dual-box[data-target], .modern-stepper-container');
 
         boxes.forEach(box => {
-            const inputId = box.getAttribute('data-target');
-            const input = document.getElementById(inputId);
+            const input = box.querySelector('input') || document.getElementById(box.getAttribute('data-target'));
             if (!input) return;
+            const inputId = input.id;
 
             // Dinamik sınırlar ve adımlar
             let maxVal = parseFloat(input.getAttribute('max')) || 999;
@@ -3668,7 +3668,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         });
     })();
 
-    // Desktop Scroll Delegation (v2.0.8)
+    // Desktop Scroll Delegation (v2.0.9)
     // Allows desktop users to scroll the app even when hovering outside the 480px container
     window.addEventListener('wheel', (e) => {
         // If hovered directly over the body/html background (the dark empty space)
