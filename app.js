@@ -558,7 +558,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function switchView(target) {
-        // Auto-save settings before leaving settings view (v2.1.2)
+        // Auto-save settings before leaving settings view (v2.1.3)
         const settingsView = document.getElementById('settings');
         if (settingsView && settingsView.classList.contains('active') && target !== 'settings') {
             saveSettingsUI();
@@ -1876,7 +1876,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         }
         
         // Let's get the latest available tension, regardless of the month, so the input doesn't incorrectly seem 'cleared'
-        let lastTension = 8.0; // Default 8.0cm (v2.1.2)
+        let lastTension = 8.0; // Default 8.0cm (v2.1.3)
         if (dataManager.data.monthlyTension) {
             const tensionKeys = Object.keys(dataManager.data.monthlyTension).sort().reverse();
             if (tensionKeys.length > 0) {
@@ -1928,92 +1928,70 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
 
     // --- SETTINGS SAVE BUTTON LOGIC ---
     const settingsContainer = document.getElementById('settings');
-    const saveBtn = document.getElementById('btnSaveBaseSettings');
-    
-    function activateSaveButton() {
-        if (!saveBtn) return;
-        saveBtn.style.pointerEvents = 'auto';
-        saveBtn.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
-        saveBtn.style.color = 'white';
-        saveBtn.style.boxShadow = '0 4px 15px rgba(16, 185, 129, 0.3)';
-        saveBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size: 18px;">save</span> DEĞİŞİKLİKLERİ KAYDET';
-    }
+    // --- EVRENSEL OTOMATİK KAYIT: TÜM AYARLAR (v2.1.3) ---
+    let settingsAutoSaveTimer = null;
+    function triggerSettingsAutoSave() {
+        if (settingsAutoSaveTimer) clearTimeout(settingsAutoSaveTimer);
+        settingsAutoSaveTimer = setTimeout(() => {
+            const name = document.getElementById('userName').value;
+            const age = document.getElementById('userAge').value;
+            const date = document.getElementById('startDate').value;
+            const size = document.getElementById('startSize').value;
+            const target = document.getElementById('targetSize').value;
+            const growth = document.getElementById('targetMonthlyGrowth').value;
+            const aiProvider = document.getElementById('aiProvider').value;
+            const apiKey = document.getElementById('geminiApiKey').value;
+            const minimaxKey = document.getElementById('minimaxApiKey').value;
+            const modelName = document.getElementById('geminiModelName').value;
+            const dailyGoal = document.getElementById('dailyGoalHours').value;
+            
+            const fbKey = document.getElementById('firebaseApiKey').value;
+            const fbUrl = document.getElementById('firebaseDbUrl').value;
+            const fbId = document.getElementById('firebaseSyncId').value;
+            const fbEnabled = document.getElementById('cloudSyncEnabled').checked;
 
-    function deactivateSaveButton() {
-        if (!saveBtn) return;
-        saveBtn.style.pointerEvents = 'none';
-        saveBtn.style.background = 'rgba(16, 185, 129, 0.2)';
-        saveBtn.style.color = '#10b981';
-        saveBtn.style.boxShadow = 'none';
-        saveBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size: 18px;">save</span> DEĞİŞİKLİK YOK';
+            const workCycle = document.getElementById('workCycleDays').value;
+            const restCycle = document.getElementById('restCycleDays').value;
+
+            // Timer Settings
+            const tCount = document.getElementById('timerCount').value;
+            const tDur = document.getElementById('timerDuration').value;
+            const tBreak = document.getElementById('timerBreak').value;
+            const tSound = document.getElementById('notifSound').checked;
+            const tVib = document.getElementById('notifVibrate').checked;
+
+            // Verileri Kaydet
+            dataManager.setBaseSettings(name, age, date, size, target, growth, apiKey, modelName, dailyGoal, aiProvider, minimaxKey, fbKey, fbUrl, fbId, fbEnabled, workCycle, restCycle);
+            dataManager.setTimerSettings(tCount, tDur, tBreak, tSound, tVib);
+
+            if (fbEnabled && !firebaseApp) initCloudSync();
+
+            updateHomeView();
+            updateCalendarView();
+            console.log("Global settings auto-saved.");
+        }, 1200); // 1.2 saniye gecikmeli kayıt
     }
 
     if (settingsContainer) {
         settingsContainer.addEventListener('input', (e) => {
-            if(e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') activateSaveButton();
+            triggerSettingsAutoSave();
+            // Timer feedback'i hemen güncelle
             if(e.target.id === 'timerDuration' || e.target.id === 'timerBreak') {
                 if (typeof updateTimerFeedback === 'function') updateTimerFeedback();
             }
         });
+        
         settingsContainer.addEventListener('change', (e) => {
-            if(e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') activateSaveButton();
-            if(e.target.id === 'timerDuration' || e.target.id === 'timerBreak') {
-                if (typeof updateTimerFeedback === 'function') updateTimerFeedback();
+            triggerSettingsAutoSave();
+            
+            // AI Provider değiştiğinde config alanlarını hemen aç/kapat
+            if(e.target.id === 'aiProvider') {
+                const val = e.target.value;
+                document.getElementById('geminiConfig').style.display = val === 'gemini' ? 'block' : 'none';
+                document.getElementById('minimaxConfig').style.display = val === 'minimax' ? 'block' : 'none';
             }
         });
     }
-
-    document.getElementById('btnSaveBaseSettings')?.addEventListener('click', () => {
-        const name = document.getElementById('userName').value;
-        const age = document.getElementById('userAge').value;
-        const date = document.getElementById('startDate').value;
-        const size = document.getElementById('startSize').value;
-        const target = document.getElementById('targetSize').value;
-        const growth = document.getElementById('targetMonthlyGrowth').value;
-        const aiProvider = document.getElementById('aiProvider').value;
-        const apiKey = document.getElementById('geminiApiKey').value;
-        const minimaxKey = document.getElementById('minimaxApiKey').value;
-        const modelName = document.getElementById('geminiModelName').value;
-        const dailyGoal = document.getElementById('dailyGoalHours').value;
-        
-        const fbKey = document.getElementById('firebaseApiKey').value;
-        const fbUrl = document.getElementById('firebaseDbUrl').value;
-        const fbId = document.getElementById('firebaseSyncId').value;
-        const fbEnabled = document.getElementById('cloudSyncEnabled').checked;
-
-        const workCycle = document.getElementById('workCycleDays').value;
-        const restCycle = document.getElementById('restCycleDays').value;
-
-        if(!date || !size) {
-            alert("Uyarı: Başlangıç tarihi ve boyutu girmediniz. Bu veriler uygulamanın analizi için önemlidir. Ancak diğer verileriniz yine de kaydedildi.");
-        }
-        
-        dataManager.setBaseSettings(name, age, date, size, target, growth, apiKey, modelName, dailyGoal, aiProvider, minimaxKey, fbKey, fbUrl, fbId, fbEnabled, workCycle, restCycle);
-        
-        if (fbEnabled) {
-            initCloudSync();
-            setTimeout(() => cloudSyncPush(), 1000);
-        }
-        
-        // Timer Settings
-        const tCount = document.getElementById('timerCount').value;
-        const tDur = document.getElementById('timerDuration').value;
-        const tBreak = document.getElementById('timerBreak').value;
-        const tSound = document.getElementById('notifSound').checked;
-        const tVib = document.getElementById('notifVibrate').checked;
-        dataManager.setTimerSettings(tCount, tDur, tBreak, tSound, tVib);
-
-        showSuccessAchievement("Başarılı", "Tüm ayarlar kaydedildi.", "💾");
-        updateSettingsView();
-        updateHomeView();
-        deactivateSaveButton();
-    });
-
-    document.getElementById('aiProvider')?.addEventListener('change', (e) => {
-        const val = e.target.value;
-        document.getElementById('geminiConfig').style.display = val === 'gemini' ? 'block' : 'none';
-        document.getElementById('minimaxConfig').style.display = val === 'minimax' ? 'block' : 'none';
-    });
 
     document.getElementById('btnRequestNotif')?.addEventListener('click', async () => {
         if (!("Notification" in window)) {
@@ -2141,7 +2119,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             try {
                 const registration = await navigator.serviceWorker.getRegistration();
                 if (registration) {
-                    btn.textContent = "🚀 Güncelleniyor (v2.1.2)...";
+                    btn.textContent = "🚀 Güncelleniyor (v2.1.3)...";
                     await registration.update();
                     
                     if (registration.waiting) {
@@ -2230,7 +2208,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                         window.location.reload();
                     });
 
-                    btn.textContent = "🚀 Güncelleniyor (v2.1.2)...";
+                    btn.textContent = "🚀 Güncelleniyor (v2.1.3)...";
                     await registration.update();
                     
                     // If after 3 seconds still no reload, force it
@@ -2252,7 +2230,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         }
     });
 
-    // --- OTOMATİK KAYIT: GÜNCEL VERİLER (v2.1.2) ---
+    // --- OTOMATİK KAYIT: GÜNCEL VERİLER (v2.1.3) ---
     let autoSaveCurrentTimer = null;
     function triggerAutoSaveCurrent() {
         if (autoSaveCurrentTimer) clearTimeout(autoSaveCurrentTimer);
@@ -3469,7 +3447,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                 const originalText = verText.textContent;
                 verText.style.color = '#2ecc71'; // Yeşil renk
                 verText.style.fontWeight = '700';
-                verText.textContent = '✅ Uygulamanız v2.1.2 sürümüne güncellendi!';
+                verText.textContent = '✅ Uygulamanız v2.1.3 sürümüne güncellendi!';
                 
                 setTimeout(() => {
                     verText.style.color = '';
@@ -3607,7 +3585,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                 clearInteracting();
             }, { passive: false });
 
-            // Input'un kendi scroll davranışını kapat (v2.1.2)
+            // Input'un kendi scroll davranışını kapat (v2.1.3)
             input.addEventListener('wheel', e => e.preventDefault(), { passive: false });
         });
     })();
@@ -3688,7 +3666,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         });
     })();
 
-    // Desktop Scroll Delegation (v2.1.2)
+    // Desktop Scroll Delegation (v2.1.3)
     // Allows desktop users to scroll the app even when hovering outside the 480px container
     window.addEventListener('wheel', (e) => {
         // If hovered directly over the body/html background (the dark empty space)

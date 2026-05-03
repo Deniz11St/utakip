@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v68-v2.1.2'; // v2.0.4: Fix view-switch save logic
+const CACHE_NAME = 'utakip-v69-v2.1.3'; // v2.0.4: Fix view-switch save logic
 const ASSETS = [
     './',
     './index.html',
