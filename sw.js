@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v73-v2.1.7'; // v2.0.4: Fix view-switch save logic
+const CACHE_NAME = 'utakip-v80-v2.3.1'; // v2.3.1: Dinamik cetvel ve gizli notlar güncellemesi
 const ASSETS = [
     './',
     './index.html',
