@@ -193,6 +193,51 @@ body {
     gap: 8px;
 }
 
+.btn-lock-toggle {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.btn-lock-toggle:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+}
+
+.btn-lock-toggle .material-symbols-outlined {
+    font-size: 20px;
+    transition: color 0.3s, transform 0.2s;
+}
+
+.is-locked .btn-lock-toggle .material-symbols-outlined {
+    color: var(--primary-color);
+}
+
+.btn-lock-toggle:active .material-symbols-outlined {
+    transform: scale(0.85);
+}
+
+/* Kilitli kart icerikleri icin pointer-events kapatma */
+.is-locked .input-group,
+.is-locked .input-group-row,
+.is-locked .cycle-sliders-container,
+.is-locked .settings-toggle-list,
+.is-locked .ai-provider-config,
+.is-locked .data-actions-grid {
+    pointer-events: none;
+    opacity: 0.6;
+    transition: opacity 0.3s;
+}
+
+
 /* Buttons - Unified System */
 .btn-primary, .btn-secondary, .btn-danger {
     display: flex;
@@ -241,6 +286,13 @@ body {
 .btn-danger:active {
     background-color: rgba(218, 54, 51, 0.2);
     transform: scale(0.98);
+}
+
+.btn-small {
+    padding: 8px 16px;
+    font-size: 13px;
+    height: auto;
+    width: auto;
 }
 
 /* Forms & Inputs */
@@ -933,10 +985,10 @@ input:checked + .slider:before {
 }
 
 .slider-point {
-    width: 10px;
     width: 12px;
     height: 12px;
-    background: rgba(255, 255, 255, 0.2);
+    background: transparent;
+    border: 2px solid rgba(255, 255, 255, 0.2);
     border-radius: 50%;
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -944,27 +996,31 @@ input:checked + .slider:before {
     z-index: 2;
 }
 
-.slider-point.active {
-    background: #fff;
-    transform: scale(1.8);
-    box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
-}
-
 /* Nokta altı etiketleri kaldırıldı (v2.1.0) */
 .slider-point::after {
     display: none;
 }
 
-/* Renk Kodları ve Aktif Durum */
-.slider-point.status-low { background: #f1c40f; }
-.slider-point.status-ideal { background: #2ecc71; }
-.slider-point.status-high { background: #e67e22; }
-.slider-point.status-danger { background: #e74c3c; }
+/* Renk Kodları - Zen Tasarım (Sadece dolu olduğunda renklenir) */
+.slider-point.status-low { color: #f1c40f; }
+.slider-point.status-ideal { color: #2ecc71; }
+.slider-point.status-high { color: #e67e22; }
+.slider-point.status-danger { color: #e74c3c; }
+
+.slider-point.filled {
+    background: currentColor;
+    border-color: currentColor;
+    box-shadow: 0 0 5px currentColor;
+    opacity: 0.35; /* Yarı saydam, zeminle bütünleşik */
+}
 
 .slider-point.active {
-    transform: scale(1.8);
+    transform: scale(1.6);
     z-index: 10;
-    box-shadow: 0 0 20px currentColor, 0 0 10px currentColor;
+    background: currentColor;
+    border-color: currentColor;
+    box-shadow: 0 0 15px currentColor, 0 0 8px currentColor;
+    opacity: 1 !important; /* Aktif nokta tam parlak */
 }
 
 .slider-point.active::after {
@@ -1545,7 +1601,8 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     display: flex;
     flex-direction: column;
     padding: 0;
-    height: calc(100dvh - var(--nav-height));
+    height: 100%;
+    position: relative;
 }
 
 .panel-switcher {
@@ -1632,10 +1689,11 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     padding: 14px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    background: rgba(0, 0, 0, 0.2);
+    gap: 12px;
+    background: rgba(0, 0, 0, 0.1);
     scrollbar-width: none;
     -ms-overflow-style: none;
+    margin-bottom: 0;
 }
 
 .coach-chat-history::-webkit-scrollbar {
@@ -1647,9 +1705,19 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     flex-shrink: 0;
     display: flex;
     gap: 10px;
-    padding: 10px 12px;
-    background: var(--card-bg);
-    border-top: 1px solid var(--card-border);
+    padding: 12px;
+    background: var(--surface-color);
+    border-top: 1px solid var(--glass-border);
+}
+
+.coach-full-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 0 !important; /* Remove internal padding to let chat fill */
+    overflow: hidden;
+    margin-bottom: 0 !important;
+    border-radius: var(--card-radius);
 }
 
 .coach-input-row input {

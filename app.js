@@ -119,7 +119,7 @@ class TrackerData {
             coachChat: [], // Format: [{role: 'user', text: '...'}, {role: 'coach', text: '...'}]
             geminiApiKey: '',
             minimaxApiKey: '',
-            geminiModelName: 'gemini-1.5-flash',
+            geminiModelName: 'gemini-2.5-flash',
             aiProvider: 'gemini', // 'gemini' or 'minimax'
             dailyGoalHours: 6,
             timerSettings: {
@@ -167,8 +167,8 @@ class TrackerData {
         if (!this.data.minimaxApiKey) this.data.minimaxApiKey = '';
         if (!this.data.aiProvider) this.data.aiProvider = 'gemini';
         if (!this.data.dailyPump) this.data.dailyPump = {};
-        if (!this.data.geminiModelName || this.data.geminiModelName === 'gemini-3-flash-preview') {
-            this.data.geminiModelName = 'gemini-1.5-flash';
+        if (!this.data.geminiModelName) {
+            this.data.geminiModelName = 'gemini-2.5-flash';
         }
         
         if (this.data.targetMonthlyGrowth === undefined) this.data.targetMonthlyGrowth = 2;
@@ -591,6 +591,33 @@ document.addEventListener('DOMContentLoaded', () => {
         switchView('home');
     });
 
+    // Settings Locks (Prevent Accidental Touches)
+    function initSettingsLocks() {
+        const sections = document.querySelectorAll('.settings-section');
+        sections.forEach(section => {
+            const h3 = section.querySelector('h3');
+            if (!h3) return;
+            
+            section.classList.add('is-locked');
+            
+            const lockBtn = document.createElement('button');
+            lockBtn.className = 'btn-lock-toggle';
+            lockBtn.title = 'Ayarları Düzenle / Kilitle';
+            lockBtn.innerHTML = '<span class="material-symbols-outlined icon-lock">lock</span>';
+            
+            lockBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                section.classList.toggle('is-locked');
+                const isLocked = section.classList.contains('is-locked');
+                lockBtn.querySelector('.icon-lock').textContent = isLocked ? 'lock' : 'lock_open';
+            });
+            
+            h3.appendChild(lockBtn);
+        });
+    }
+    initSettingsLocks();
+
     // --- SETUP: UI Generics ---
     
     function renderRulerScale(startCm = 0, targetCm = 0) {
@@ -671,8 +698,71 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- LOGIC: Views ---
 
 
+    function renderRulerScale(startCm = 0, targetCm = 0) {
+        const topScale = document.getElementById('topScale');
+        const bottomScale = document.getElementById('bottomScale');
+        topScale.innerHTML = '';
+        bottomScale.innerHTML = '';
+        
+        // Mevcut boyu da hesaba kat (v2.2.1) - Eğer hedef aşılmışsa cetvel uzamaya devam etmeli
+        const currentSize = parseFloat(dataManager.data.currentSize) || startCm;
+        const maxReached = Math.max(targetCm, currentSize + 1.0); 
+        
+        let diffMm = maxReached > startCm ? Math.round((maxReached - startCm) * 10) : 50;
+        let totalMm = diffMm + 10; 
+        
+        if (totalMm < 30) totalMm = 35; 
+        
+        document.getElementById('rulerContainer').style.width = `${(totalMm / 10) * 100}%`;
+        
+        for(let i=0; i<=totalMm; i++) {
+            const isMajor = (i % 5 === 0);
+            let mmRelative = i - 5;
+            let currentValCm = startCm + (mmRelative / 10);
+
+            const tTick = document.createElement('div');
+            tTick.className = `tick-number-pos ${isMajor ? 'major' : ''}`;
+            
+            if (isMajor) {
+                let displayVal = currentValCm % 1 === 0 ? currentValCm : currentValCm.toFixed(1);
+                const numberEl = document.createElement('div');
+                numberEl.className = 'ruler-floating-number';
+                numberEl.textContent = displayVal + ' cm';
+                tTick.appendChild(numberEl);
+                tTick.style.cursor = 'pointer';
+                tTick.onclick = () => { if (window.showPointEstimate) window.showPointEstimate(currentValCm); };
+            }
+            
+            if (i === 5) {
+                const flag = document.createElement('div');
+                flag.textContent = '🚩';
+                flag.className = 'ruler-target-flag';
+                flag.style.color = '#ff6b6b';
+                tTick.appendChild(flag);
+            }
+
+            const targetIndex = totalMm - 5;
+            if (i === targetIndex && targetCm > startCm) {
+                const flag = document.createElement('div');
+                flag.textContent = '🏁';
+                flag.className = 'ruler-target-flag';
+                tTick.appendChild(flag);
+            }
+            
+            topScale.appendChild(tTick);
+            
+            const bTick = document.createElement('div');
+            bTick.className = `ruler-dot ${isMajor ? 'major' : ''}`;
+            if (isMajor) {
+                bTick.style.cursor = 'pointer';
+                bTick.onclick = () => { if (window.showPointEstimate) window.showPointEstimate(currentValCm); };
+            }
+            bottomScale.appendChild(bTick);
+        }
+        return totalMm;
+    }
+
     function updateHomeView() {
-        // Display Start Date
         const displayDate = document.getElementById('displayStartDate');
         if (dataManager.data.startDate) {
             const d = new Date(dataManager.data.startDate);
@@ -681,17 +771,13 @@ document.addEventListener('DOMContentLoaded', () => {
             displayDate.textContent = 'Ayarlanmadı';
         }
 
-        // Update Target Estimate
         const displayTargetInfo = document.getElementById('displayTargetInfo');
         if (dataManager.data.targetSize && dataManager.data.targetSize > 0) {
             displayTargetInfo.style.display = 'block';
             document.getElementById('displayTargetSize').textContent = dataManager.data.targetSize.toFixed(1);
-            
             let rate = dataManager.data.targetMonthlyGrowth > 0 ? dataManager.data.targetMonthlyGrowth : 2;
-            
             let baseSize = dataManager.data.currentSize > 0 ? dataManager.data.currentSize : dataManager.data.startSize;
             let remainingCm = dataManager.data.targetSize - baseSize;
-            
             const estEl = document.getElementById('displayEstimate');
             if (estEl) {
                 if (remainingCm <= 0) {
@@ -707,149 +793,95 @@ document.addEventListener('DOMContentLoaded', () => {
             if(displayTargetInfo) displayTargetInfo.style.display = 'none';
         }
 
-        // Update Coach
         const coachMsgEl = document.getElementById('coachMessage');
         coachMsgEl.innerHTML = generateCoachAdvice();
         
-        // Coach card click to go to library
-        const coachCard = document.querySelector('.coach-card');
-
-        // Update Thermometer
-        const stage = dataManager.getStage();
-        
         const startCm = dataManager.data.startSize;
         const targetCm = dataManager.data.targetSize > 0 ? dataManager.data.targetSize : startCm + 5;
-        
-        // Cetveli tek bir upuzun bant olarak render ediyoruz
         const totalMm = renderRulerScale(startCm, targetCm);
 
-        // Tarih Tahminleri Hesaplama
         const estMidEl = document.getElementById('estMid');
         const estEndEl = document.getElementById('estEnd');
-        
-        // Global bir timer referansı tutarak çakışmaları önleyelim
         if (!window.rulerTimer) window.rulerTimer = null;
-
         const dateOpts = { day: '2-digit', month: 'long', year: 'numeric' };
 
-        // Bir sonraki iki hedefi hesaplayan fonksiyon (Kullanıcının isteği: 0.5 cm'lik ana durakları baz al)
         function updateDefaultEstimates() {
-            const rawRate = dataManager.data.targetMonthlyGrowth || 2; // mm cinsinden (örn: 1.5mm)
+            const rawRate = dataManager.data.targetMonthlyGrowth || 2;
             const currentSize = parseFloat(dataManager.data.currentSize) || parseFloat(dataManager.data.startSize);
-            
-            // Sıradaki 0.5'lik durak (Beyaz Noktalar)
-            // Örn: 15.3 ise 15.5'e, 15.5 ise 16.0'a hedefler.
             let next1Cm = (Math.floor(currentSize * 2) + 1) / 2;
             let next2Cm = next1Cm + 0.5;
-
-            const dateOpts = { day: '2-digit', month: 'long', year: 'numeric' };
-
-            // İlk Hedef Tarihi
             const mmDiff1 = Math.max(0, (next1Cm - currentSize) * 10);
             const daysNeeded1 = (mmDiff1 / rawRate) * 30.4375;
             const date1 = new Date();
             date1.setDate(date1.getDate() + daysNeeded1);
-
-            // İkinci Hedef Tarihi
             const mmDiff2 = Math.max(0, (next2Cm - currentSize) * 10);
             const daysNeeded2 = (mmDiff2 / rawRate) * 30.4375;
             const date2 = new Date();
             date2.setDate(date2.getDate() + daysNeeded2);
-            
             estMidEl.innerHTML = `🎯 Sıradaki Hedef (<b>${next1Cm.toFixed(1)} cm</b>): ${date1.toLocaleDateString('tr-TR', dateOpts)}`;
             estEndEl.innerHTML = `🏆 Sonraki Hedef (<b>${next2Cm.toFixed(1)} cm</b>): ${date2.toLocaleDateString('tr-TR', dateOpts)}`;
         }
 
-        // Tıklama yapıldığında geçici süreyle o noktanın bilgisini gösterir
         window.showPointEstimate = (targetCmValue) => {
             if (window.rulerTimer) clearTimeout(window.rulerTimer);
-            
             const currentSize = parseFloat(dataManager.data.currentSize) || parseFloat(dataManager.data.startSize);
             const rate = dataManager.data.targetMonthlyGrowth || 2;
             const mmDiff = Math.max(0, (targetCmValue - currentSize) * 10);
-            
             const targetDate = new Date();
-            // Gün cinsinden hesapla (mm farkı / aylık hız * 30.43 gün)
             const daysNeeded = (mmDiff / rate) * 30.4375;
             targetDate.setDate(targetDate.getDate() + daysNeeded);
-            
             estMidEl.innerHTML = `🔎 <b>${targetCmValue.toFixed(1)} cm</b> Sorgusu: ${targetDate.toLocaleDateString('tr-TR', dateOpts)}`;
             estEndEl.innerHTML = `<span style="opacity: 0.5;">(Tahmini varış süresidir)</span>`;
-            
-            window.rulerTimer = setTimeout(() => {
-                updateDefaultEstimates();
-            }, 3500);
+            window.rulerTimer = setTimeout(() => { updateDefaultEstimates(); }, 3500);
         };
 
-        // İlk yüklemede varsayılan hedefleri göster
         if (!window.rulerTimer) updateDefaultEstimates();
 
-        // Kırmızı barı güncelle ve scroll ayarı yap
-        // Dolgu cetvelin en başından (startCm - 0.5) güncel boyuta kadar olmalı
         const currentSizeNum = parseFloat(dataManager.data.currentSize) || parseFloat(startCm);
         const scaleStartCm = startCm - 0.5;
         let growthMmRelativeToScale = (currentSizeNum - scaleStartCm) * 10;
-        
         if(growthMmRelativeToScale < 0) growthMmRelativeToScale = 0;
         if(growthMmRelativeToScale > totalMm) growthMmRelativeToScale = totalMm;
-        
         const widthPercent = (growthMmRelativeToScale / totalMm) * 100;
         
         setTimeout(() => {
             const fill = document.getElementById('rulerFill');
             if(fill) fill.style.width = `${widthPercent}%`;
-            
             const viewport = document.getElementById('rulerViewport');
             if (viewport) {
-                // Scroll ofset: Stage başlangıcı + başlangıç boşluğu payı
-                // +4mm vererek 5.mm'deki bayrağın solunda tam 1mm (bir küçük nokta) boşluk kalmasını sağlıyoruz
-                let scrollStageMm = (stage > 0 ? (stage - 1) * 10 : 0) + 4;
+                const diffCm = currentSizeNum - startCm;
+                const vitesIndex = Math.floor(diffCm / 0.5);
+                let scrollMm = (Math.max(0, vitesIndex) * 5) + 4;
                 const scrollWidth = viewport.scrollWidth;
                 const pxPerMm = scrollWidth / totalMm;
-                
-                viewport.scrollTo({
-                    left: scrollStageMm * pxPerMm,
-                    behavior: 'smooth'
-                });
+                viewport.scrollTo({ left: scrollMm * pxPerMm, behavior: 'smooth' });
             }
         }, 150);
 
-        // Daily Work Goal Update
         const dailyMins = dataManager.getTodayMinutes();
         const goalHours = dataManager.data.dailyGoalHours || 6;
         const goalMins = goalHours * 60;
         const dailyPercent = Math.min((dailyMins / goalMins) * 100, 100); 
         const dailyFill = document.getElementById('dailyProgressFill');
         const dailyText = document.getElementById('dailyTimeText');
-        const dailyGoalLabel = document.getElementById('dailyGoalLabel');
-        const dailyGoalEndLabel = document.getElementById('dailyGoalEndLabel');
-
         if (dailyFill && dailyText) {
             const h = Math.floor(dailyMins / 60);
             const m = dailyMins % 60;
             dailyText.textContent = `${h}s ${m}dk`;
-            if (dailyGoalLabel) dailyGoalLabel.textContent = goalHours;
-            if (dailyGoalEndLabel) dailyGoalEndLabel.textContent = `${goalHours}s+`;
-
-            // Color logic (Orantısal geçişler)
-            let color = '#ffffff'; // 0 - 25% hedef: Beyaz
-            if (dailyMins >= goalMins * 0.75) color = '#bb86fc';      // %75+: Mor (Excellent)
-            else if (dailyMins >= 240) color = '#2ecc71';            // 4 saat: Yeşil (Sabit uzman barajı)
-            else if (dailyMins >= 120) color = '#f39c12';            // 2 saat: Turuncu (Gelişim)
-
+            let color = '#ffffff'; 
+            if (dailyMins >= goalMins * 0.75) color = '#bb86fc';
+            else if (dailyMins >= 240) color = '#2ecc71';
+            else if (dailyMins >= 120) color = '#f39c12';
             setTimeout(() => {
                 dailyFill.style.width = `${dailyPercent}%`;
                 dailyFill.style.backgroundColor = color;
                 dailyFill.style.boxShadow = `0 0 10px ${color}44`;
             }, 100);
-
             if (dailyMins >= goalMins && !dataManager.sessionAchievements.daily) {
                 showSuccessAchievement("Günlük Hedef", "Tebrikler, bugünkü çalışma seansını başarıyla tamamladın!", "🔥");
                 dataManager.sessionAchievements.daily = true;
             }
         }
-
-        // Update Chart (Anasayfaya taşındı)
         updateChartView();
     }
     
@@ -1028,8 +1060,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const sessions = dataManager.data.sessions[dateStr] || [];
                 const isRestDay = dataManager.data.restDays && dataManager.data.restDays[dateStr];
                 
-                // Sadece bugün ve geçmişi, veya seansı olan günleri göster (Eski mantık korundu + renklendirme eklendi)
-                if (sessions.length > 0 || yearMonth === currentYYYYMM) {
+                // Tüm günleri göster (Filtreleme kaldırıldı v2.3.0)
+                if (true) {
                     let dailyTotalMins = 0;
                     
                     const dayRow = document.createElement('div');
@@ -1272,31 +1304,10 @@ document.addEventListener('DOMContentLoaded', () => {
             
             daysHTMLArray.forEach(el => bodyDiv.appendChild(el));
 
-            // EĞER O AYIN NOTLARI VARSA EKLE
-            const monthNotes = [];
-            Object.keys(dataManager.data.notes).forEach(d => {
-                if (d.startsWith(yearMonth)) {
-                    monthNotes.push({ date: d, text: dataManager.data.notes[d] });
-                }
-            });
-
-            if (monthNotes.length > 0) {
-                const notesTitle = document.createElement('h4');
-                notesTitle.style = "margin: 20px 0 10px 0; color: #a5d6ff; font-size: 14px; border-bottom: 1px solid #333; padding-bottom: 5px;";
-                notesTitle.innerHTML = "📝 Ayın Notları";
-                bodyDiv.appendChild(notesTitle);
-                
-                monthNotes.forEach(n => {
-                    const noteDiv = document.createElement('div');
-                    noteDiv.style = "font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px; border-left: 2px solid #a5d6ff;";
-                    const dNum = n.date.split('-')[2];
-                    const noteMonthName = new Intl.DateTimeFormat('tr-TR', { month: 'long' }).format(new Date(y, m));
-                    
-                    const noteTexts = n.text.map(t => typeof t === 'string' ? t : (t.note || ''));
-                    noteDiv.innerHTML = `<small style="display:block; opacity:0.6; margin-bottom:2px;">${dNum} ${noteMonthName}:</small> ${noteTexts.join(' | ')}`;
-                    bodyDiv.appendChild(noteDiv);
-                });
-            }
+            /* 
+               Kullanıcı isteği üzerine 'Ayın Notları' arayüzden kaldırıldı. 
+               Veriler arka planda AI kullanımı için saklanmaya devam ediyor.
+            */
 
             headerCard.addEventListener('click', () => {
                 headerCard.classList.toggle('open');
@@ -1506,6 +1517,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateCoachSectionView() {
         // Render Chat History
         const chatContainer = document.getElementById('coachChatHistory');
+        if (!chatContainer) return; // Safety
+
         const history = dataManager.data.coachChat || [];
         
         // Clear except first welcome message
@@ -1527,6 +1540,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Render Encyclopedia
         const encContainer = document.getElementById('encyclopediaContainer');
+        if (!encContainer) return; // Safety
+        
         encContainer.innerHTML = '';
         
         // Group by category
@@ -1564,7 +1579,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // GEMINI API Integration
 async function askGemini(userMessage, context) {
     const apiKey = dataManager.data.geminiApiKey;
-    const model = dataManager.data.geminiModelName || 'gemini-1.5-flash';
+    const model = dataManager.data.geminiModelName || 'gemini-2.5-flash';
     if (!apiKey) return null;
 
     const cleanModel = model.replace('models/', '').trim();
@@ -1585,7 +1600,7 @@ async function askGemini(userMessage, context) {
         if (data.candidates && data.candidates[0].content.parts[0].text) {
             return data.candidates[0].content.parts[0].text;
         }
-        return "⚠️ Yanıt alınamadı. API anahtarınızın 'Gemini 1.5 Flash' modeline erişimi olduğundan emin olun.";
+        return "⚠️ Yanıt alınamadı. API anahtarınızın seçili modele erişimi olduğundan emin olun.";
     } catch (error) {
         console.error("Gemini Fetch Error:", error);
         return "🚨 Bağlantı başarısız. İnternet erişiminizi veya API anahtarınızı (Ayarlar -> Gemini API Key) kontrol edip tekrar deneyin.";
@@ -1647,6 +1662,14 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
     // Enter key for Chat
     document.getElementById('coachQuery').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') document.getElementById('btnAskCoach').click();
+    });
+
+    document.getElementById('btnClearCoachChat').addEventListener('click', () => {
+        if (confirm('Tüm sohbet geçmişini temizlemek istediğinizden emin misiniz?')) {
+            dataManager.data.coachChat = [];
+            dataManager.save();
+            updateCoachSectionView();
+        }
     });
 
     function updateJournalView() {
@@ -3092,6 +3115,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                 slider.querySelectorAll('.slider-point').forEach(p => {
                     const pVal = parseFloat(p.dataset.value);
                     p.classList.toggle('active', Math.abs(pVal - val) < 0.01);
+                    p.classList.toggle('filled', pVal <= val + 0.01); // Eşit veya küçük olanlar dolu
                 });
 
                 if (targetId === 'dailyGoalHours') updateGoalFeedback();
