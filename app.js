@@ -2180,7 +2180,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         reader.readAsText(file);
     });
 
-    // PWA Güncelleme (v1.8.2 - Ultra Aggressive)
+    // PWA Güncelleme (v2.4.0 - Ultra Aggressive)
     document.getElementById('btnUpdateApp')?.addEventListener('click', async () => {
         const btn = document.getElementById('btnUpdateApp');
         const originalText = btn.textContent;
@@ -2191,38 +2191,37 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             try {
                 const registration = await navigator.serviceWorker.getRegistration();
                 if (registration) {
-                    btn.textContent = "🚀 Güncelleniyor (v2.1.7)...";
+                    btn.textContent = "🚀 Güncelleniyor (v2.4.0)...";
                     await registration.update();
                     
-                    if (registration.waiting) {
-                        sessionStorage.setItem('app_just_updated', 'true');
-                        registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-                        window.location.reload();
-                        return;
+                    // Force cache clearing for PWA assets
+                    if ('caches' in window) {
+                        const keys = await caches.keys();
+                        for (let key of keys) await caches.delete(key);
                     }
-
-                    navigator.serviceWorker.addEventListener('controllerchange', () => {
-                        sessionStorage.setItem('app_just_updated', 'true');
-                        window.location.reload();
-                    });
-
+                    
+                    // If after 2 seconds still no reload, force it
                     setTimeout(() => {
-                        if (btn.disabled) {
-                            btn.textContent = "📢 Yenileme Gerekli";
-                            alert("Sistem güncellendi. Değişikliklerin görünmesi için lütfen uygulamayı kapatıp açın.");
-                            btn.disabled = false;
-                        }
-                    }, 4000);
+                        sessionStorage.setItem('app_just_updated', 'true');
+                        window.location.reload(true);
+                    }, 2000);
+                } else {
+                    if ('caches' in window) {
+                        const keys = await caches.keys();
+                        for (let key of keys) await caches.delete(key);
+                    }
+                    window.location.reload(true);
                 }
             } catch (err) {
-                console.error(err);
-                btn.textContent = "❌ Hata";
-                btn.disabled = false;
+                console.error("SW Update Error:", err);
+                if ('caches' in window) {
+                    const keys = await caches.keys();
+                    for (let key of keys) await caches.delete(key);
+                }
+                window.location.reload(true);
             }
         } else {
-            alert("Sistem PWA desteklemiyor. Lütfen sayfayı manuel yenileyin.");
-            btn.textContent = originalText;
-            btn.disabled = false;
+            window.location.reload(true);
         }
     });
 
@@ -2264,45 +2263,9 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         }
     });
 
-    document.getElementById('btnUpdateApp').addEventListener('click', async () => {
-        const btn = document.getElementById('btnUpdateApp');
-        const originalText = btn.textContent;
-        btn.textContent = "🔄 Kontrol Ediliyor...";
-        btn.disabled = true;
 
-        if ('serviceWorker' in navigator) {
-            try {
-                const registration = await navigator.serviceWorker.getRegistration();
-                if (registration) {
-                    // Listen for the controller changing (new SW takes over)
-                    navigator.serviceWorker.addEventListener('controllerchange', () => {
-                        sessionStorage.setItem('app_just_updated', 'true');
-                        window.location.reload();
-                    });
 
-                    btn.textContent = "🚀 Güncelleniyor (v2.1.7)...";
-                    await registration.update();
-                    
-                    // If after 3 seconds still no reload, force it
-                    setTimeout(() => {
-                        sessionStorage.setItem('app_just_updated', 'true');
-                        window.location.reload(true);
-                    }, 3000);
-                } else {
-                    window.location.reload(true);
-                }
-            } catch (e) {
-                console.error("SW Update Error:", e);
-                alert("Hata: " + e.message);
-                btn.textContent = originalText;
-                btn.disabled = false;
-            }
-        } else {
-            window.location.reload(true);
-        }
-    });
-
-    // --- OTOMATİK KAYIT: GÜNCEL VERİLER (v2.1.7) ---
+    // --- OTOMATİK KAYIT: GÜNCEL VERİLER (v2.4.0) ---
     let autoSaveCurrentTimer = null;
     function triggerAutoSaveCurrent() {
         if (autoSaveCurrentTimer) clearTimeout(autoSaveCurrentTimer);
