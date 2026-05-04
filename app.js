@@ -142,9 +142,9 @@ class TrackerData {
                 startTime: 0,
                 lastModeChange: 0
             },
-            restDays: {}, // Format: "YYYY-MM-DD": true
             workCycleDays: 5,
-            restCycleDays: 2
+            restCycleDays: 2,
+            monthlyWork: {} // Format: "YYYY-MM": minutes
         };
         const raw = localStorage.getItem('uTakipData');
         try {
@@ -186,6 +186,7 @@ class TrackerData {
         if (this.data.workCycleDays === undefined) this.data.workCycleDays = 5;
         if (this.data.restCycleDays === undefined) this.data.restCycleDays = 2;
         if (!this.data.dailyScrewSize) this.data.dailyScrewSize = {};
+        if (!this.data.monthlyWork) this.data.monthlyWork = {};
         
         // MIGRATION: Eskiden sadece dakika tutulan arrayleri (number array), objeye {mins: X, diff: 'normal'} dönüştürür.
         if (this.data.sessions) {
@@ -1032,6 +1033,24 @@ document.addEventListener('DOMContentLoaded', () => {
             monthSet.add(dateStr.substring(0, 7));
         });
 
+        // Geçmiş ayları startDate'e göre ekle (v2.4.0)
+        if (dataManager.data.startDate) {
+            let start = new Date(dataManager.data.startDate);
+            if (!isNaN(start.getTime())) {
+                let end = new Date();
+                let curr = new Date(start.getFullYear(), start.getMonth(), 1);
+                while (curr <= end) {
+                    monthSet.add(`${curr.getFullYear()}-${String(curr.getMonth() + 1).padStart(2, '0')}`);
+                    curr.setMonth(curr.getMonth() + 1);
+                }
+            }
+        }
+        
+        // Manuel girilen ayları da ekle
+        Object.keys(dataManager.data.monthlyWork || {}).forEach(m => monthSet.add(m));
+        Object.keys(dataManager.data.monthlyTension || {}).forEach(m => monthSet.add(m));
+        Object.keys(dataManager.data.monthlySize || {}).forEach(m => monthSet.add(m));
+
         const sortedMonths = Array.from(monthSet).sort((a, b) => b.localeCompare(a));
 
         sortedMonths.forEach(yearMonth => {
@@ -1279,9 +1298,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const monthlyGrowth = dataManager.getMonthlyGrowth(yearMonth);
 
             const statsHtml = `
-                <div class="stat-box">
+                <div class="stat-box clickable" onclick="event.stopPropagation(); window.editMonthlyStat('work', '${yearMonth}')" title="Düzenlemek için tıkla">
                     <span class="stat-label">Aylık Çalışma</span>
-                    <strong class="stat-value text-blue">${formatMinutes(monthTotalMins)}</strong>
+                    <strong class="stat-value text-blue">${formatMinutes(monthTotalMins || dataManager.data.monthlyWork[yearMonth] || 0)}</strong>
                 </div>
                 <div class="stat-box clickable" onclick="event.stopPropagation(); window.editMonthlyStat('tension', '${yearMonth}')" title="Düzenlemek için tıkla">
                     <span class="stat-label">Aylık Vida Boyutu</span>
@@ -1329,6 +1348,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 dataManager.data.monthlyTension[yearMonth] = parseFloat(newVal);
                 dataManager.save();
                 updateCalendarView();
+            }
+        } else if (type === 'work') {
+            const current = dataManager.data.monthlyWork[yearMonth] || 0;
+            const h = Math.floor(current / 60);
+            const m = current % 60;
+            const newVal = prompt(`${yearMonth} Ayı için Toplam Çalışma Süresi (Dakika):\n(Örn: 5 saat için 300 yazın)`, current);
+            if (newVal !== null) {
+                const mins = parseInt(newVal);
+                if (!isNaN(mins)) {
+                    dataManager.data.monthlyWork[yearMonth] = mins;
+                    dataManager.save();
+                    updateCalendarView();
+                    updateHomeView();
+                }
             }
         } else if (type === 'size' || type === 'growth') {
             const currentSize = dataManager.data.monthlySize[yearMonth] || dataManager.data.startSize;
@@ -1635,9 +1668,13 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
     const pumpCount = Object.values(dataManager.data.dailyPump || {}).filter(v => v).length;
     const pumpStatus = dataManager.data.dailyPump[new Date().toISOString().split('T')[0]] ? "Bugün pompa yapıldı." : "Bugün pompa yapılmadı.";
 
+    // Geçmiş veri özeti (AI için)
+    const monthlySummary = Object.keys(dataManager.data.monthlyWork || {}).map(m => `${m}: ${dataManager.data.monthlyWork[m]}dk çalışma`).join(', ');
+
     const systemContext = `Sen UTakip uygulamasının uzman gelişim koçusun. 
     Kullanıcı: ${name}, Yaş: ${dataManager.data.age}, Gelişim: ${totalGrowth} mm (Aşama ${stage}).
     Pompa Verisi: Toplam ${pumpCount} gün pompa kullanıldı. ${pumpStatus}
+    Geçmiş Özet: ${monthlySummary || 'Yok'}.
     Kural: Kısa ve öz cevap ver. Tıbbi tavsiye verme.`;
 
     const provider = dataManager.data.aiProvider || 'gemini';
@@ -1726,7 +1763,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         const currentYYYYMM = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
         
-        let monthTotalMins = 0;
+        let monthTotalMins = dataManager.data.monthlyWork[currentYYYYMM] || 0;
         Object.keys(dataManager.data.sessions).forEach(dateStr => {
             if (dateStr.startsWith(currentYYYYMM)) {
                 monthTotalMins += dataManager.data.sessions[dateStr].reduce((sum, s) => sum + (s.mins || 0), 0);
@@ -3509,7 +3546,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                 const originalText = verText.textContent;
                 verText.style.color = '#2ecc71'; // Yeşil renk
                 verText.style.fontWeight = '700';
-                verText.textContent = '✅ Uygulamanız v2.1.7 sürümüne güncellendi!';
+                verText.textContent = '✅ Uygulamanız v2.4.0 sürümüne güncellendi!';
                 
                 setTimeout(() => {
                     verText.style.color = '';

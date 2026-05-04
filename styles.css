@@ -1430,6 +1430,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 .stat-value {
     font-size: 18px;
     font-weight: 700;
+    white-space: nowrap;
 }
 
 /* Calendar Days */
@@ -1490,7 +1491,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     border-radius: 8px;
     font-size: 14px;
     font-weight: 700;
-    min-width: 65px;
+    min-width: 85px;
     text-align: center;
     cursor: pointer;
     position: relative;
@@ -1498,6 +1499,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     user-select: none;
     margin-left: auto;
+    white-space: nowrap;
 }
 
 .day-total.total-low {
