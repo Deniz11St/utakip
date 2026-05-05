@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v244-v2.4.2'; // v2.4.2: Firebase senkronizasyon ve veri bütünlüğü fix
+const CACHE_NAME = 'utakip-v255-v2.5.5'; // v2.5.5: Auth stabilizasyon ve profil e-posta alanı
 const ASSETS = [
     './',
     './index.html',

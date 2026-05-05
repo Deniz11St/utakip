@@ -4,14 +4,17 @@ let firebaseDb = null;
 
 function initCloudSync() {
     const data = dataManager.data;
-    if (!data.firebaseApiKey || !data.firebaseDbUrl || !data.firebaseSyncId || !data.cloudSyncEnabled) {
-        console.log("Cloud Sync is disabled or missing config.");
-        return;
+    const authOverlay = document.getElementById('authOverlay');
+
+    // Eğer config yoksa ama kullanıcı giriş yapmamışsa yine de overlay'i göster
+    if (!data.firebaseApiKey || !data.firebaseDbUrl || !data.firebaseAuthDomain) {
+        console.log("Cloud Sync config missing, but checking auth status...");
     }
 
     const firebaseConfig = {
         apiKey: data.firebaseApiKey,
-        databaseURL: data.firebaseDbUrl
+        databaseURL: data.firebaseDbUrl,
+        authDomain: data.firebaseAuthDomain
     };
 
     try {
@@ -27,23 +30,44 @@ function initCloudSync() {
         firebaseDb = firebaseApp.database();
         console.log("Firebase Initialized Successfully.");
 
-        // Real-time Listener
-        const syncRef = firebaseDb.ref('users/' + data.firebaseSyncId);
-        syncRef.on('value', (snapshot) => {
-            const remoteData = snapshot.val();
-            // Pull only if remote is newer
-            if (remoteData && remoteData.lastSyncTimestamp > dataManager.data.lastSyncTimestamp) {
-                console.log("Cloud data is newer, pulling...");
-                dataManager.data = remoteData;
-                // Ensure data integrity after pull (v2.4.2)
-                dataManager.sanitize();
-                dataManager.save(true); // Save locally without re-push loop
-                updateHomeView();
-                updateCalendarView();
-                updateTimerDisplay();
-                updateSettingsView();
-            }
-        });
+        // Auth Listener (v2.5.0) - Sadece bir kez ekle
+        if (!window.authListenerAttached) {
+            firebase.auth().onAuthStateChanged(user => {
+            const authOverlay = document.getElementById('authOverlay');
+            if (user) {
+                console.log("User logged in:", user.email);
+                if (authOverlay) authOverlay.classList.add('hidden');
+                
+                // Display user email in settings (v2.5.3)
+                const emailDisplay = document.getElementById('displayUserEmail');
+                if (emailDisplay) emailDisplay.textContent = user.email;
+                
+                // Sync data with User UID
+                dataManager.data.firebaseSyncId = user.uid;
+                dataManager.save(true);
+                
+                // Real-time Database Listener
+                const syncRef = firebaseDb.ref('users/' + user.uid);
+                syncRef.on('value', (snapshot) => {
+                    const remoteData = snapshot.val();
+                    if (remoteData && remoteData.lastSyncTimestamp > dataManager.data.lastSyncTimestamp) {
+                        console.log("Cloud data is newer, pulling...");
+                        dataManager.data = remoteData;
+                        dataManager.sanitize();
+                        dataManager.save(true);
+                        if (window.updateHomeView) window.updateHomeView();
+                        if (window.updateCalendarView) window.updateCalendarView();
+                        if (window.updateTimerDisplay) window.updateTimerDisplay();
+                        if (window.updateSettingsView) window.updateSettingsView();
+                    }
+                });
+            } else {
+                console.log("User logged out.");
+                if (authOverlay) authOverlay.classList.remove('hidden');
+                }
+            });
+            window.authListenerAttached = true;
+        }
     } catch (e) {
         console.error("Firebase Init Error:", e);
     }
@@ -72,8 +96,8 @@ async function cloudSyncPullManual() {
             dataManager.data = remoteData;
             dataManager.sanitize(); // v2.4.2 Fix
             dataManager.save(true);
-            updateHomeView();
-            updateSettingsView();
+            if (window.updateHomeView) window.updateHomeView();
+            if (window.updateSettingsView) window.updateSettingsView();
             return true;
         }
     } catch (e) {
@@ -136,8 +160,9 @@ class TrackerData {
             dailyScrewSize: {}, // Format: "YYYY-MM-DD": 14 (mm cinsinden vida boyutu)
             firebaseApiKey: '',
             firebaseDbUrl: '',
+            firebaseAuthDomain: '',
             firebaseSyncId: '',
-            cloudSyncEnabled: false,
+            cloudSyncEnabled: true,
             lastSyncTimestamp: 0,
             activeSessionState: {
                 current: 1,
@@ -193,7 +218,7 @@ class TrackerData {
         if (this.data.dailyGoalHours === undefined) this.data.dailyGoalHours = 6;
         if (this.data.workCycleDays === undefined) this.data.workCycleDays = 5;
         if (this.data.restCycleDays === undefined) this.data.restCycleDays = 2;
-        if (this.data.cloudSyncEnabled === undefined) this.data.cloudSyncEnabled = false;
+        if (this.data.cloudSyncEnabled === undefined) this.data.cloudSyncEnabled = true;
         if (this.data.lastSyncTimestamp === undefined) this.data.lastSyncTimestamp = 0;
         
         // MIGRATION: Sessions data integrity
@@ -241,7 +266,7 @@ class TrackerData {
     }
 
     // Setters
-    setBaseSettings(name, age, date, size, target, growthRate, apiKey = '', modelName = 'gemini-1.5-flash', dailyGoal = 6, aiProvider = 'gemini', minimaxKey = '', fbKey = '', fbUrl = '', fbId = '', fbEnabled = false, workCycle = 5, restCycle = 1) {
+    setBaseSettings(name, age, date, size, target, growthRate, apiKey = '', modelName = 'gemini-1.5-flash', dailyGoal = 6, aiProvider = 'gemini', minimaxKey = '', fbKey = '', fbUrl = '', fbId = '', fbEnabled = false, workCycle = 5, restCycle = 1, fbAuth = '') {
         this.data.name = name;
         this.data.age = parseInt(age) || 0;
         this.data.startDate = date;
@@ -262,6 +287,7 @@ class TrackerData {
         
         this.data.firebaseApiKey = fbKey.trim();
         this.data.firebaseDbUrl = fbUrl.trim();
+        this.data.firebaseAuthDomain = (fbAuth || '').trim();
         this.data.firebaseSyncId = fbId.trim();
         this.data.cloudSyncEnabled = !!fbEnabled;
 
@@ -502,8 +528,86 @@ function vibrateDevice() {
 let dataManager;
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Fonksiyonları global kapsamda erişilebilir kıl (v2.4.3 Fix)
+    window.updateHomeView = updateHomeView;
+    window.updateCalendarView = updateCalendarView;
+    window.updateTimerDisplay = updateTimerDisplay;
+    window.updateSettingsView = updateSettingsView;
+    window.updateJournalView = updateJournalView;
+    window.updateCoachSectionView = updateCoachSectionView;
+
     dataManager = new TrackerData();
     initCloudSync();
+
+    // --- AUTH UI LOGIC (v2.5.0) ---
+    let authMode = 'login';
+    const btnToggleAuth = document.getElementById('btnToggleAuthMode');
+    const btnAuthAction = document.getElementById('btnAuthAction');
+
+    if (btnToggleAuth) {
+        btnToggleAuth.addEventListener('click', () => {
+            authMode = authMode === 'login' ? 'register' : 'login';
+            document.getElementById('authTitle').textContent = authMode === 'login' ? 'Hoş Geldiniz' : 'Hesap Oluştur';
+            document.getElementById('authSubtitle').textContent = authMode === 'login' ? 'Gelişiminizi bulut ile senkronize edin.' : 'Verileriniz her zaman güvende kalır.';
+            btnAuthAction.textContent = authMode === 'login' ? 'GİRİŞ YAP' : 'KAYIT OL';
+            document.getElementById('authFooterText').textContent = authMode === 'login' ? 'Hesabınız yok mu?' : 'Zaten hesabınız var mı?';
+            btnToggleAuth.textContent = authMode === 'login' ? 'Kayıt Ol' : 'Giriş Yap';
+            
+            // Google Buton Metnini Güncelle (v2.5.1)
+            const googleBtn = document.getElementById('btnGoogleAuth');
+            if (googleBtn) {
+                googleBtn.innerHTML = authMode === 'login' 
+                    ? '<img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/action/google.svg" class="google-icon" alt="Google"> Google ile Giriş Yap'
+                    : '<img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/action/google.svg" class="google-icon" alt="Google"> Google ile Kayıt Ol';
+            }
+        });
+    }
+
+    if (btnAuthAction) {
+        btnAuthAction.addEventListener('click', async () => {
+            const email = document.getElementById('authEmail').value.trim();
+            const password = document.getElementById('authPassword').value;
+            const errorEl = document.getElementById('authError');
+            if (errorEl) errorEl.textContent = "";
+
+            if (!email || !password) {
+                if (errorEl) errorEl.textContent = "Lütfen e-posta ve şifre girin.";
+                return;
+            }
+
+            btnAuthAction.disabled = true;
+            const originalText = btnAuthAction.textContent;
+            btnAuthAction.textContent = "İşleniyor...";
+
+            try {
+                if (authMode === 'login') {
+                    await firebase.auth().signInWithEmailAndPassword(email, password);
+                } else {
+                    await firebase.auth().createUserWithEmailAndPassword(email, password);
+                    showSuccessAchievement("Kayıt Başarılı", "Hesabınız oluşturuldu.", "✨");
+                }
+            } catch (e) {
+                console.error("Auth Error:", e);
+                if (errorEl) errorEl.textContent = e.message;
+            } finally {
+                btnAuthAction.disabled = false;
+                btnAuthAction.textContent = originalText;
+            }
+        });
+    }
+
+    if (document.getElementById('btnGoogleAuth')) {
+        document.getElementById('btnGoogleAuth').addEventListener('click', async () => {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            try {
+                await firebase.auth().signInWithPopup(provider);
+            } catch (e) {
+                console.error("Google Auth Error:", e);
+                const errorEl = document.getElementById('authError');
+                if (errorEl) errorEl.textContent = "Google Giriş Hatası: " + e.message;
+            }
+        });
+    }
 
     // Hide Splash Screen with delay
     setTimeout(() => {
@@ -553,6 +657,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const fbKey = document.getElementById('firebaseApiKey').value;
         const fbUrl = document.getElementById('firebaseDbUrl').value;
+        const fbAuth = document.getElementById('firebaseAuthDomain').value;
         const fbId = document.getElementById('firebaseSyncId').value;
         const fbEnabled = document.getElementById('cloudSyncEnabled').checked;
 
@@ -560,7 +665,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const restCycle = document.getElementById('restCycleDays').value;
 
         // Save Base Settings
-        dataManager.setBaseSettings(name, age, date, size, target, growth, apiKey, modelName, dailyGoal, aiProvider, minimaxKey, fbKey, fbUrl, fbId, fbEnabled, workCycle, restCycle);
+        dataManager.setBaseSettings(name, age, date, size, target, growth, apiKey, modelName, dailyGoal, aiProvider, minimaxKey, fbKey, fbUrl, fbId, fbEnabled, workCycle, restCycle, fbAuth);
         
         // Timer Settings
         const tCount = document.getElementById('timerCount').value;
@@ -599,6 +704,56 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btnHomeOpenJournal')?.addEventListener('click', () => {
         switchView('journal');
     });
+
+    // --- EMERGENCY AUTH SETUP (v2.5.2) ---
+    document.getElementById('authSettingsTrigger')?.addEventListener('click', () => {
+        const panel = document.getElementById('authSettingsPanel');
+        if (panel) panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        
+        // Mevcut verileri doldur
+        document.getElementById('authSetupKey').value = dataManager.data.firebaseApiKey || '';
+        document.getElementById('authSetupDomain').value = dataManager.data.firebaseAuthDomain || '';
+        document.getElementById('authSetupUrl').value = dataManager.data.firebaseDbUrl || '';
+    });
+
+    document.getElementById('btnSaveAuthSetup')?.addEventListener('click', () => {
+        const key = document.getElementById('authSetupKey').value.trim();
+        const domain = document.getElementById('authSetupDomain').value.trim();
+        const url = document.getElementById('authSetupUrl').value.trim();
+        
+        if (!key || !domain || !url) {
+            alert("Lütfen tüm alanları doldurun.");
+            return;
+        }
+
+        dataManager.data.firebaseApiKey = key;
+        dataManager.data.firebaseAuthDomain = domain;
+        dataManager.data.firebaseDbUrl = url;
+        dataManager.data.cloudSyncEnabled = true;
+        dataManager.save();
+        
+        alert("Ayarlar kaydedildi. Uygulama yenileniyor...");
+        window.location.reload();
+    });
+
+    // Logout Button (v2.5.0)
+    const handleSignOut = async () => {
+        if (confirm("Oturumu kapatmak istediğinize emin misiniz?")) {
+            try {
+                if (firebase.apps.length > 0) {
+                    await firebase.auth().signOut();
+                }
+            } catch (e) {
+                console.warn("Firebase SignOut error (skipping):", e);
+            }
+            // Her durumda (hata olsa bile) yerel veriyi sil ve sayfayı yenile
+            localStorage.removeItem('uTakipData');
+            window.location.reload();
+        }
+    };
+
+    document.getElementById('btnSignOut')?.addEventListener('click', handleSignOut);
+    document.getElementById('btnQuickSignOut')?.addEventListener('click', handleSignOut);
 
     // Journal Back Button
     document.getElementById('btnJournalBack')?.addEventListener('click', () => {
@@ -2045,6 +2200,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         // Cloud Sync Fields
         document.getElementById('firebaseApiKey').value = dataManager.data.firebaseApiKey || '';
         document.getElementById('firebaseDbUrl').value = dataManager.data.firebaseDbUrl || '';
+        document.getElementById('firebaseAuthDomain').value = dataManager.data.firebaseAuthDomain || '';
         document.getElementById('firebaseSyncId').value = dataManager.data.firebaseSyncId || '';
         document.getElementById('cloudSyncEnabled').checked = dataManager.data.cloudSyncEnabled || false;
 
@@ -2098,6 +2254,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             
             const fbKey = document.getElementById('firebaseApiKey').value;
             const fbUrl = document.getElementById('firebaseDbUrl').value;
+            const fbAuth = document.getElementById('firebaseAuthDomain').value;
             const fbId = document.getElementById('firebaseSyncId').value;
             const fbEnabled = document.getElementById('cloudSyncEnabled').checked;
 
@@ -2112,7 +2269,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             const tVib = document.getElementById('notifVibrate').checked;
 
             // Verileri Kaydet
-            dataManager.setBaseSettings(name, age, date, size, target, growth, apiKey, modelName, dailyGoal, aiProvider, minimaxKey, fbKey, fbUrl, fbId, fbEnabled, workCycle, restCycle);
+            dataManager.setBaseSettings(name, age, date, size, target, growth, apiKey, modelName, dailyGoal, aiProvider, minimaxKey, fbKey, fbUrl, fbId, fbEnabled, workCycle, restCycle, fbAuth);
             dataManager.setTimerSettings(tCount, tDur, tBreak, tSound, tVib);
 
             if (fbEnabled && !firebaseApp) initCloudSync();
@@ -2178,6 +2335,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
 
         const fbKey = document.getElementById('firebaseApiKey').value;
         const fbUrl = document.getElementById('firebaseDbUrl').value;
+        const fbAuth = document.getElementById('firebaseAuthDomain').value;
         const fbId = document.getElementById('firebaseSyncId').value;
 
         if (!fbKey || !fbUrl || !fbId) {
@@ -2190,6 +2348,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         // Geçici olarak ayarları uygula
         dataManager.data.firebaseApiKey = fbKey;
         dataManager.data.firebaseDbUrl = fbUrl;
+        dataManager.data.firebaseAuthDomain = fbAuth;
         dataManager.data.firebaseSyncId = fbId;
         dataManager.data.cloudSyncEnabled = true;
 
@@ -2530,6 +2689,20 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         }, 500);
         
         releaseWakeLock();
+    });
+
+    document.getElementById('btnUpdateApp')?.addEventListener('click', () => {
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(registrations => {
+                for (let registration of registrations) {
+                    registration.update();
+                }
+                alert("Güncelleme kontrol ediliyor... Uygulama şimdi yenilenecek.");
+                location.reload(true);
+            });
+        } else {
+            location.reload(true);
+        }
     });
 
     document.getElementById('btnClearData').addEventListener('click', () => {
