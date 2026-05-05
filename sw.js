@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v243-v2.4.1'; // v2.4.1: Gün sayacı (Streak) ve header iyileştirmesi
+const CACHE_NAME = 'utakip-v244-v2.4.2'; // v2.4.2: Firebase senkronizasyon ve veri bütünlüğü fix
 const ASSETS = [
     './',
     './index.html',

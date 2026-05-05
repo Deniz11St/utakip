@@ -35,6 +35,8 @@ function initCloudSync() {
             if (remoteData && remoteData.lastSyncTimestamp > dataManager.data.lastSyncTimestamp) {
                 console.log("Cloud data is newer, pulling...");
                 dataManager.data = remoteData;
+                // Ensure data integrity after pull (v2.4.2)
+                dataManager.sanitize();
                 dataManager.save(true); // Save locally without re-push loop
                 updateHomeView();
                 updateCalendarView();
@@ -68,6 +70,7 @@ async function cloudSyncPullManual() {
         const remoteData = snapshot.val();
         if (remoteData) {
             dataManager.data = remoteData;
+            dataManager.sanitize(); // v2.4.2 Fix
             dataManager.save(true);
             updateHomeView();
             updateSettingsView();
@@ -159,38 +162,48 @@ class TrackerData {
         }
         
         if (!this.data) this.data = Object.assign({}, defaultData);
-        if (!this.data.monthlyTension) this.data.monthlyTension = {};
-        if (!this.data.monthlySize) this.data.monthlySize = {};
-        if (!this.data.notes) this.data.notes = {};
-        if (!this.data.coachChat) this.data.coachChat = [];
-        if (!this.data.geminiApiKey) this.data.geminiApiKey = '';
-        if (!this.data.minimaxApiKey) this.data.minimaxApiKey = '';
-        if (!this.data.aiProvider) this.data.aiProvider = 'gemini';
-        if (!this.data.dailyPump) this.data.dailyPump = {};
-        if (!this.data.geminiModelName) {
-            this.data.geminiModelName = 'gemini-2.5-flash';
+        
+        this.sanitize();
+    }
+
+    sanitize() {
+        if (!this.data) return;
+        
+        // Ensure core objects exist
+        const ensureObjects = [
+            'sessions', 'monthlyTension', 'monthlySize', 'notes', 
+            'dailyPump', 'dailyScrewSize', 'monthlyWork', 'restDays'
+        ];
+        ensureObjects.forEach(k => {
+            if (!this.data[k] || typeof this.data[k] !== 'object') this.data[k] = {};
+        });
+
+        if (!Array.isArray(this.data.coachChat)) this.data.coachChat = [];
+        
+        if (!this.data.timerSettings) {
+            this.data.timerSettings = { count: 3, duration: 120, break: 30, sound: true, vibrate: true };
         }
         
-        if (this.data.targetMonthlyGrowth === undefined) this.data.targetMonthlyGrowth = 2;
-        if (this.data.dailyGoalHours === undefined) this.data.dailyGoalHours = 6;
-        if (this.data.activeSessionState === undefined) {
+        if (!this.data.activeSessionState) {
             this.data.activeSessionState = { current: 1, mode: 'ready', startTime: 0, lastModeChange: 0 };
         }
-        if (!this.data.firebaseApiKey) this.data.firebaseApiKey = '';
-        if (!this.data.firebaseDbUrl) this.data.firebaseDbUrl = '';
-        if (!this.data.firebaseSyncId) this.data.firebaseSyncId = '';
+
+        // Defaults for primitives
+        if (this.data.targetMonthlyGrowth === undefined) this.data.targetMonthlyGrowth = 2;
+        if (this.data.dailyGoalHours === undefined) this.data.dailyGoalHours = 6;
+        if (this.data.workCycleDays === undefined) this.data.workCycleDays = 5;
+        if (this.data.restCycleDays === undefined) this.data.restCycleDays = 2;
         if (this.data.cloudSyncEnabled === undefined) this.data.cloudSyncEnabled = false;
         if (this.data.lastSyncTimestamp === undefined) this.data.lastSyncTimestamp = 0;
         
-        if (!this.data.restDays) this.data.restDays = {};
-        if (this.data.workCycleDays === undefined) this.data.workCycleDays = 5;
-        if (this.data.restCycleDays === undefined) this.data.restCycleDays = 2;
-        if (!this.data.dailyScrewSize) this.data.dailyScrewSize = {};
-        if (!this.data.monthlyWork) this.data.monthlyWork = {};
-        
-        // MIGRATION: Eskiden sadece dakika tutulan arrayleri (number array), objeye {mins: X, diff: 'normal'} dönüştürür.
+        // MIGRATION: Sessions data integrity
         if (this.data.sessions) {
             Object.keys(this.data.sessions).forEach(k => {
+                if (!Array.isArray(this.data.sessions[k])) {
+                    // If it's not an array, it's corrupted data for this key
+                    this.data.sessions[k] = [];
+                    return;
+                }
                 this.data.sessions[k] = this.data.sessions[k].map(item => {
                     return typeof item === 'number' ? { mins: item, diff: 'normal' } : item;
                 });
@@ -1085,9 +1098,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentYYYYMM = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
         monthSet.add(currentYYYYMM);
 
-        Object.keys(dataManager.data.sessions).forEach(dateStr => {
-            monthSet.add(dateStr.substring(0, 7));
-        });
+        if (dataManager.data.sessions) {
+            Object.keys(dataManager.data.sessions).forEach(dateStr => {
+                if (dateStr && dateStr.length >= 7 && dateStr.includes('-')) {
+                    monthSet.add(dateStr.substring(0, 7));
+                }
+            });
+        }
 
         // Geçmiş ayları startDate'e göre ekle (v2.4.1)
         if (dataManager.data.startDate) {
@@ -1103,17 +1120,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         // Manuel girilen ayları da ekle
-        Object.keys(dataManager.data.monthlyWork || {}).forEach(m => monthSet.add(m));
-        Object.keys(dataManager.data.monthlyTension || {}).forEach(m => monthSet.add(m));
-        Object.keys(dataManager.data.monthlySize || {}).forEach(m => monthSet.add(m));
+        Object.keys(dataManager.data.monthlyWork || {}).forEach(m => { if(m.includes('-')) monthSet.add(m); });
+        Object.keys(dataManager.data.monthlyTension || {}).forEach(m => { if(m.includes('-')) monthSet.add(m); });
+        Object.keys(dataManager.data.monthlySize || {}).forEach(m => { if(m.includes('-')) monthSet.add(m); });
 
         const sortedMonths = Array.from(monthSet).sort((a, b) => b.localeCompare(a));
 
         sortedMonths.forEach(yearMonth => {
-            const [yStr, mStr] = yearMonth.split('-');
-            const y = parseInt(yStr);
-            const m = parseInt(mStr) - 1;
+            const monthParts = yearMonth.split('-');
+            const y = parseInt(monthParts[0]);
+            const m = parseInt(monthParts[1]) - 1;
             
+            if (isNaN(y) || isNaN(m)) return; // Skip invalid formats (v2.4.2)
+
             const accordionItem = document.createElement('div');
             accordionItem.className = 'accordion-item';
 
@@ -1121,7 +1140,11 @@ document.addEventListener('DOMContentLoaded', () => {
             headerCard.className = 'card accordion-header';
             if (yearMonth === currentYYYYMM) headerCard.classList.add('open');
             
-            const monthName = new Intl.DateTimeFormat('tr-TR', { month: 'long', year: 'numeric' }).format(new Date(y, m));
+            let monthName = yearMonth;
+            try {
+                monthName = new Intl.DateTimeFormat('tr-TR', { month: 'long', year: 'numeric' }).format(new Date(y, m));
+            } catch(e) { console.error("Date format error for:", yearMonth); }
+
             const h3 = document.createElement('h3');
             h3.textContent = `${monthName} Takvimi`;
             headerCard.appendChild(h3);
@@ -2247,7 +2270,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             try {
                 const registration = await navigator.serviceWorker.getRegistration();
                 if (registration) {
-                    btn.textContent = "🚀 Güncelleniyor (v2.4.1)...";
+                    btn.textContent = "🚀 Güncelleniyor (v2.4.2)...";
                     await registration.update();
                     
                     // Force cache clearing for PWA assets
