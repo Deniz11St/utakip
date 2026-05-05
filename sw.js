@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v242-v2.4.0'; // v2.4.0: Coklu buton temizligi ve agresif guncelleme
+const CACHE_NAME = 'utakip-v243-v2.4.1'; // v2.4.1: Gün sayacı (Streak) ve header iyileştirmesi
 const ASSETS = [
     './',
     './index.html',

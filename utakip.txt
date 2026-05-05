@@ -1,0 +1,3 @@
+https://utakip-sync-default-rtdb.europe-west1.firebasedatabase.app
+AIzaSyBGrnSSeLSY_XvnhxZRjH8kk5uRb-JHdwk
+utakip-sync

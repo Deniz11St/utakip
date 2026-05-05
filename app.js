@@ -618,6 +618,14 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     initSettingsLocks();
+    
+    // Streak Click Toggle (v2.4.1)
+    document.getElementById('displayStreakInfo')?.addEventListener('click', () => {
+        window.streakDisplayMode = (window.streakDisplayMode === 'remaining') ? 'passed' : 'remaining';
+        // Haptic feedback if available
+        if ("vibrate" in navigator) navigator.vibrate(5);
+        updateHomeView();
+    });
 
     // --- SETUP: UI Generics ---
     
@@ -772,26 +780,74 @@ document.addEventListener('DOMContentLoaded', () => {
             displayDate.textContent = 'Ayarlanmadı';
         }
 
-        const displayTargetInfo = document.getElementById('displayTargetInfo');
-        if (dataManager.data.targetSize && dataManager.data.targetSize > 0) {
-            displayTargetInfo.style.display = 'block';
-            document.getElementById('displayTargetSize').textContent = dataManager.data.targetSize.toFixed(1);
-            let rate = dataManager.data.targetMonthlyGrowth > 0 ? dataManager.data.targetMonthlyGrowth : 2;
-            let baseSize = dataManager.data.currentSize > 0 ? dataManager.data.currentSize : dataManager.data.startSize;
-            let remainingCm = dataManager.data.targetSize - baseSize;
-            const estEl = document.getElementById('displayEstimate');
-            if (estEl) {
-                if (remainingCm <= 0) {
-                    estEl.textContent = 'Hedefe Ulaşıldı!';
+        // --- STREAK / DAY CALCULATION (v2.4.1) ---
+        const displayStreakInfo = document.getElementById('displayStreakInfo');
+        const displayStreakValue = document.getElementById('displayStreakValue');
+        const displayStreakSub = document.getElementById('displayStreakSub');
+        
+        if (displayStreakInfo && displayStreakValue && displayStreakSub) {
+            if (dataManager.data.startDate) {
+                displayStreakInfo.style.display = 'flex';
+                
+                const start = new Date(dataManager.data.startDate);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                start.setHours(0, 0, 0, 0);
+                
+                // Gün farkı (Geçen gün)
+                const diffTime = today - start;
+                const diffDays = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
+                
+                if (!window.streakDisplayMode) window.streakDisplayMode = 'passed';
+                
+                if (window.streakDisplayMode === 'passed') {
+                    displayStreakValue.textContent = diffDays;
+                    displayStreakSub.textContent = 'Geçen Gün';
                 } else {
-                    let monthsNeeded = Math.ceil((remainingCm * 10) / rate); 
-                    const estDate = new Date();
-                    estDate.setMonth(estDate.getMonth() + monthsNeeded);
-                    estEl.textContent = new Intl.DateTimeFormat('tr-TR', { month: 'long', year: 'numeric' }).format(estDate);
+                    // Hedefe kalan gün hesabı
+                    let rate = dataManager.data.targetMonthlyGrowth > 0 ? dataManager.data.targetMonthlyGrowth : 2;
+                    let baseSize = dataManager.data.currentSize > 0 ? dataManager.data.currentSize : dataManager.data.startSize;
+                    let remainingCm = dataManager.data.targetSize - baseSize;
+                    
+                    if (remainingCm <= 0 || !dataManager.data.targetSize) {
+                        displayStreakValue.textContent = '0';
+                        displayStreakSub.textContent = 'Kalan Gün';
+                    } else {
+                        // mm cinsinden kalan / (aylık mm / 30.43 gün) = toplam gün
+                        let totalDaysRemaining = Math.ceil((remainingCm * 10) / (rate / 30.4375));
+                        displayStreakValue.textContent = totalDaysRemaining;
+                        displayStreakSub.textContent = 'Kalan Gün';
+                    }
                 }
+            } else {
+                displayStreakInfo.style.display = 'none';
             }
-        } else {
-            if(displayTargetInfo) displayTargetInfo.style.display = 'none';
+        }
+
+        const displayTargetInfo = document.getElementById('displayTargetInfo');
+        if (displayTargetInfo) {
+            if (dataManager.data.targetSize && dataManager.data.targetSize > 0) {
+                displayTargetInfo.style.display = 'block';
+                const targetSizeEl = document.getElementById('displayTargetSize');
+                if (targetSizeEl) targetSizeEl.textContent = dataManager.data.targetSize.toFixed(1);
+                
+                let rate = dataManager.data.targetMonthlyGrowth > 0 ? dataManager.data.targetMonthlyGrowth : 2;
+                let baseSize = dataManager.data.currentSize > 0 ? dataManager.data.currentSize : dataManager.data.startSize;
+                let remainingCm = dataManager.data.targetSize - baseSize;
+                const estEl = document.getElementById('displayEstimate');
+                if (estEl) {
+                    if (remainingCm <= 0) {
+                        estEl.textContent = 'Hedefe Ulaşıldı!';
+                    } else {
+                        let monthsNeeded = Math.ceil((remainingCm * 10) / rate); 
+                        const estDate = new Date();
+                        estDate.setMonth(estDate.getMonth() + monthsNeeded);
+                        estEl.textContent = new Intl.DateTimeFormat('tr-TR', { month: 'long', year: 'numeric' }).format(estDate);
+                    }
+                }
+            } else {
+                displayTargetInfo.style.display = 'none';
+            }
         }
 
         const coachMsgEl = document.getElementById('coachMessage');
@@ -1033,7 +1089,7 @@ document.addEventListener('DOMContentLoaded', () => {
             monthSet.add(dateStr.substring(0, 7));
         });
 
-        // Geçmiş ayları startDate'e göre ekle (v2.4.0)
+        // Geçmiş ayları startDate'e göre ekle (v2.4.1)
         if (dataManager.data.startDate) {
             let start = new Date(dataManager.data.startDate);
             if (!isNaN(start.getTime())) {
@@ -2180,7 +2236,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         reader.readAsText(file);
     });
 
-    // PWA Güncelleme (v2.4.0 - Ultra Aggressive)
+    // PWA Güncelleme (v2.4.1 - Ultra Aggressive)
     document.getElementById('btnUpdateApp')?.addEventListener('click', async () => {
         const btn = document.getElementById('btnUpdateApp');
         const originalText = btn.textContent;
@@ -2191,7 +2247,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             try {
                 const registration = await navigator.serviceWorker.getRegistration();
                 if (registration) {
-                    btn.textContent = "🚀 Güncelleniyor (v2.4.0)...";
+                    btn.textContent = "🚀 Güncelleniyor (v2.4.1)...";
                     await registration.update();
                     
                     // Force cache clearing for PWA assets
@@ -2265,7 +2321,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
 
 
 
-    // --- OTOMATİK KAYIT: GÜNCEL VERİLER (v2.4.0) ---
+    // --- OTOMATİK KAYIT: GÜNCEL VERİLER (v2.4.1) ---
     let autoSaveCurrentTimer = null;
     function triggerAutoSaveCurrent() {
         if (autoSaveCurrentTimer) clearTimeout(autoSaveCurrentTimer);
@@ -3509,7 +3565,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                 const originalText = verText.textContent;
                 verText.style.color = '#2ecc71'; // Yeşil renk
                 verText.style.fontWeight = '700';
-                verText.textContent = '✅ Uygulamanız v2.4.0 sürümüne güncellendi!';
+                verText.textContent = '✅ Uygulamanız v2.4.1 sürümüne güncellendi!';
                 
                 setTimeout(() => {
                     verText.style.color = '';
