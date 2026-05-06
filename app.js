@@ -22,12 +22,26 @@ function initCloudSync() {
             console.error("Firebase SDK not loaded.");
             return;
         }
+        
+        if (!data.firebaseApiKey) {
+            console.warn("Firebase API Key missing. Cloud Sync features disabled.");
+            return;
+        }
+
         if (!firebase.apps.length) {
             firebaseApp = firebase.initializeApp(firebaseConfig);
         } else {
             firebaseApp = firebase.app();
         }
-        firebaseDb = firebaseApp.database();
+
+        // Initialize Database ONLY if URL is valid (v2.5.6 Fix)
+        if (data.firebaseDbUrl && data.firebaseDbUrl.startsWith('http')) {
+            firebaseDb = firebaseApp.database();
+            console.log("Firebase Database Initialized.");
+        } else {
+            console.warn("Firebase Database URL missing/invalid. Real-time sync disabled.");
+        }
+
         console.log("Firebase Initialized Successfully.");
 
         // Auth Listener (v2.5.0) - Sadece bir kez ekle
@@ -158,9 +172,9 @@ class TrackerData {
             },
             dailyPump: {}, // Format: "YYYY-MM-DD": true
             dailyScrewSize: {}, // Format: "YYYY-MM-DD": 14 (mm cinsinden vida boyutu)
-            firebaseApiKey: '',
-            firebaseDbUrl: '',
-            firebaseAuthDomain: '',
+            firebaseApiKey: 'AIzaSyBGrnSSeLSY_XvnhxZRjH8kk5uRb-JHdwk',
+            firebaseDbUrl: 'https://utakip-sync-default-rtdb.europe-west1.firebasedatabase.app',
+            firebaseAuthDomain: 'utakip-sync.firebaseapp.com',
             firebaseSyncId: '',
             cloudSyncEnabled: true,
             lastSyncTimestamp: 0,
@@ -221,6 +235,11 @@ class TrackerData {
         if (this.data.cloudSyncEnabled === undefined) this.data.cloudSyncEnabled = true;
         if (this.data.lastSyncTimestamp === undefined) this.data.lastSyncTimestamp = 0;
         
+        // AUTO-FILL Missing Firebase Config (v2.5.7)
+        if (!this.data.firebaseApiKey) this.data.firebaseApiKey = 'AIzaSyBGrnSSeLSY_XvnhxZRjH8kk5uRb-JHdwk';
+        if (!this.data.firebaseDbUrl) this.data.firebaseDbUrl = 'https://utakip-sync-default-rtdb.europe-west1.firebasedatabase.app';
+        if (!this.data.firebaseAuthDomain) this.data.firebaseAuthDomain = 'utakip-sync.firebaseapp.com';
+
         // MIGRATION: Sessions data integrity
         if (this.data.sessions) {
             Object.keys(this.data.sessions).forEach(k => {
@@ -285,9 +304,9 @@ class TrackerData {
         this.data.geminiModelName = modelName.trim() || 'gemini-1.5-flash';
         this.data.dailyGoalHours = parseFloat(dailyGoal) || 6;
         
-        this.data.firebaseApiKey = fbKey.trim();
-        this.data.firebaseDbUrl = fbUrl.trim();
-        this.data.firebaseAuthDomain = (fbAuth || '').trim();
+        this.data.firebaseApiKey = fbKey.trim() || 'AIzaSyBGrnSSeLSY_XvnhxZRjH8kk5uRb-JHdwk';
+        this.data.firebaseDbUrl = fbUrl.trim() || 'https://utakip-sync-default-rtdb.europe-west1.firebasedatabase.app';
+        this.data.firebaseAuthDomain = (fbAuth || '').trim() || 'utakip-sync.firebaseapp.com';
         this.data.firebaseSyncId = fbId.trim();
         this.data.cloudSyncEnabled = !!fbEnabled;
 
@@ -609,6 +628,46 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // --- UPDATE APP LOGIC (v2.5.8 Fix) ---
+    document.getElementById('btnUpdateApp')?.addEventListener('click', () => {
+        const btn = document.getElementById('btnUpdateApp');
+        if (btn) { btn.textContent = '⏳ Kontrol ediliyor...'; btn.disabled = true; }
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.ready.then(reg => {
+                reg.update().then(() => {
+                    // Waiting SW varsa hemen aktive et
+                    if (reg.waiting) {
+                        reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+                        // controllerchange eventi sayfayı yenileyecek (index.html'deki listener)
+                    } else {
+                        // Waiting SW yoksa zaten güncel
+                        if (btn) { btn.textContent = '✅ Uygulama Güncel'; btn.disabled = false; }
+                        setTimeout(() => {
+                            if (btn) btn.textContent = '🚀 Güncellemeyi Denetle';
+                        }, 3000);
+                    }
+
+                    // Yüklenen SW'yi de dinle (update() sonrası installing->waiting geçişi)
+                    if (reg.installing) {
+                        reg.installing.addEventListener('statechange', function() {
+                            if (this.state === 'installed' && navigator.serviceWorker.controller) {
+                                this.postMessage({ type: 'SKIP_WAITING' });
+                            }
+                        });
+                    }
+                }).catch(e => {
+                    console.error("Update failed:", e);
+                    if (btn) { btn.textContent = '❌ Hata - Tekrar Dene'; btn.disabled = false; }
+                    setTimeout(() => { if (btn) btn.textContent = '🚀 Güncellemeyi Denetle'; }, 3000);
+                });
+            });
+        } else {
+            alert("Uygulama bu tarayıcıda PWA olarak çalışmıyor.");
+            if (btn) { btn.textContent = '🚀 Güncellemeyi Denetle'; btn.disabled = false; }
+        }
+    });
+
     // Hide Splash Screen with delay
     setTimeout(() => {
         const splash = document.getElementById('splashScreen');
@@ -793,6 +852,34 @@ document.addEventListener('DOMContentLoaded', () => {
         // Haptic feedback if available
         if ("vibrate" in navigator) navigator.vibrate(5);
         updateHomeView();
+    });
+
+    // --- ADMIN LOCK LOGIC (v2.5.7) ---
+    let adminClickCount = 0;
+    let adminClickTimer = null;
+    document.getElementById('adminLockTrigger')?.addEventListener('click', () => {
+        adminClickCount++;
+        clearTimeout(adminClickTimer);
+        
+        if (adminClickCount >= 5) {
+            const section = document.getElementById('firebaseSettingsSection');
+            const inputs = section.querySelectorAll('.readonly-input');
+            const isLocked = section.classList.contains('is-locked');
+            
+            if (isLocked) {
+                section.classList.remove('is-locked');
+                inputs.forEach(input => input.removeAttribute('readonly'));
+                document.getElementById('adminLockIcon').textContent = 'lock_open';
+                alert("Yönetici Kilidi Açıldı: Firebase ayarlarını düzenleyebilirsiniz.");
+            } else {
+                section.classList.add('is-locked');
+                inputs.forEach(input => input.setAttribute('readonly', true));
+                document.getElementById('adminLockIcon').textContent = 'lock';
+            }
+            adminClickCount = 0;
+        }
+        
+        adminClickTimer = setTimeout(() => { adminClickCount = 0; }, 1000);
     });
 
     // --- SETUP: UI Generics ---

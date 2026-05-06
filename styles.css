@@ -2458,3 +2458,35 @@ input:focus, select:focus, textarea:focus {
     flex: 1;
     margin-bottom: 0;
 }
+/* --- SYSTEM & ADMIN UI (v2.5.7) --- */
+.readonly-input {
+    background: rgba(255, 255, 255, 0.02) !important;
+    border-color: rgba(255, 255, 255, 0.05) !important;
+    color: rgba(255, 255, 255, 0.3) !important;
+    cursor: default !important;
+    font-family: monospace;
+}
+
+.settings-section.is-locked .input-group label {
+    opacity: 0.5;
+}
+
+.settings-section.is-locked .hint {
+    color: #58a6ff;
+    opacity: 0.8;
+}
+
+#adminLockIcon {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.settings-section:not(.is-locked) #adminLockIcon {
+    color: #3fb950;
+    opacity: 1 !important;
+    filter: drop-shadow(0 0 5px rgba(63, 185, 80, 0.4));
+}
+
+.settings-section.is-locked .readonly-input:focus {
+    border-color: rgba(255, 255, 255, 0.05) !important;
+    box-shadow: none !important;
+}

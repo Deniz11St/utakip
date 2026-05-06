@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v255-v2.5.5'; // v2.5.5: Auth stabilizasyon ve profil e-posta alanı
+const CACHE_NAME = 'utakip-v258-v2.5.8'; // v2.5.8: Network-First Strategy Update
 const ASSETS = [
     './',
     './index.html',
@@ -33,11 +33,21 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-    event.respondWith(
-        caches.match(event.request).then((response) => {
-            return response || fetch(event.request);
-        })
-    );
+    // Network-First Strategy: Önce ağdan çek, hata alırsan cache'e bak (v2.5.8)
+    if (event.request.method === 'GET') {
+        event.respondWith(
+            fetch(event.request)
+                .then((networkResponse) => {
+                    return caches.open(CACHE_NAME).then((cache) => {
+                        cache.put(event.request, networkResponse.clone());
+                        return networkResponse;
+                    });
+                })
+                .catch(() => {
+                    return caches.match(event.request);
+                })
+        );
+    }
 });
 
 // Notifications
