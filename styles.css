@@ -811,12 +811,14 @@ select option {
 
 /* Bottom Nav - Premium Glassmorphism */
 .bottom-nav {
-    position: absolute;
+    position: fixed;
     bottom: 0;
-    left: 0;
+    left: 50%;
+    transform: translateX(-50%);
     width: 100%;
+    max-width: 480px;
     height: var(--nav-height);
-    background: rgba(13, 17, 23, 0.7);
+    background: rgba(13, 17, 23, 0.85);
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
     border-top: 1px solid var(--glass-border);

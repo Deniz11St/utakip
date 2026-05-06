@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v258-v2.5.8'; // v2.5.8: Network-First Strategy Update
+const CACHE_NAME = 'utakip-v260-v2.6.0'; // v2.6.0: Automated Updates & Setup Redesign
 const ASSETS = [
     './',
     './index.html',

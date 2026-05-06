@@ -158,7 +158,7 @@ class TrackerData {
             monthlyTension: {}, // Format: "YYYY-MM": 10.5 (cm)
             notes: {}, // Format: "YYYY-MM-DD": "Bugün seans çok verimliydi."
             coachChat: [], // Format: [{role: 'user', text: '...'}, {role: 'coach', text: '...'}]
-            geminiApiKey: '',
+            geminiApiKey: 'AIzaSyAY4X11SOje4b4GfQBF8ENHl4HYZuM8-Ik',
             minimaxApiKey: '',
             geminiModelName: 'gemini-2.5-flash',
             aiProvider: 'gemini', // 'gemini' or 'minimax'
@@ -239,6 +239,9 @@ class TrackerData {
         if (!this.data.firebaseApiKey) this.data.firebaseApiKey = 'AIzaSyBGrnSSeLSY_XvnhxZRjH8kk5uRb-JHdwk';
         if (!this.data.firebaseDbUrl) this.data.firebaseDbUrl = 'https://utakip-sync-default-rtdb.europe-west1.firebasedatabase.app';
         if (!this.data.firebaseAuthDomain) this.data.firebaseAuthDomain = 'utakip-sync.firebaseapp.com';
+
+        // AUTO-FILL Missing Gemini API Key
+        if (!this.data.geminiApiKey) this.data.geminiApiKey = 'AIzaSyAY4X11SOje4b4GfQBF8ENHl4HYZuM8-Ik';
 
         // MIGRATION: Sessions data integrity
         if (this.data.sessions) {
@@ -572,14 +575,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('authFooterText').textContent = authMode === 'login' ? 'Hesabınız yok mu?' : 'Zaten hesabınız var mı?';
             btnToggleAuth.textContent = authMode === 'login' ? 'Kayıt Ol' : 'Giriş Yap';
             
-            // Google Buton Metnini Güncelle (v2.5.1)
-            const googleBtn = document.getElementById('btnGoogleAuth');
-            const googleSVG = `<svg class="google-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>`;
-            if (googleBtn) {
-                googleBtn.innerHTML = authMode === 'login'
-                    ? googleSVG + ' Google ile Giriş Yap'
-                    : googleSVG + ' Google ile Kayıt Ol';
-            }
+
         });
     }
 
@@ -616,80 +612,55 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    if (document.getElementById('btnGoogleAuth')) {
-        document.getElementById('btnGoogleAuth').addEventListener('click', async () => {
-            const provider = new firebase.auth.GoogleAuthProvider();
-            // localhost/HTTP'de popup Google tarafından engelleniyor, redirect kullan
-            const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-            try {
-                if (isLocalhost) {
-                    await firebase.auth().signInWithRedirect(provider);
-                } else {
-                    await firebase.auth().signInWithPopup(provider);
-                }
-            } catch (e) {
-                // Kullanıcı popup'ı kendisi kapattıysa hata gösterme (normal kullanıcı eylemi)
-                if (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request') {
-                    console.log("Google popup kullanıcı tarafından kapatıldı.");
-                    return;
-                }
-                console.error("Google Auth Error:", e);
-                const errorEl = document.getElementById('authError');
-                if (errorEl) errorEl.textContent = "Google Giriş Hatası: " + e.message;
-            }
-        });
 
-        // Redirect sonrası geri dönüş kontrolü
-        firebase.auth().getRedirectResult().then(result => {
-            if (result && result.user) {
-                console.log("Google Redirect Auth başarılı:", result.user.email);
-            }
-        }).catch(e => {
-            if (e.code !== 'auth/popup-closed-by-user') {
-                console.error("Redirect Auth Error:", e);
-            }
-        });
-    }
 
-    // --- UPDATE APP LOGIC (v2.5.8 Fix) ---
-    document.getElementById('btnUpdateApp')?.addEventListener('click', () => {
-        const btn = document.getElementById('btnUpdateApp');
-        if (btn) { btn.textContent = '⏳ Kontrol ediliyor...'; btn.disabled = true; }
-
+    // --- AUTOMATED UPDATE LOGIC (v2.5.8 Fix) ---
+    function checkSystemUpdate() {
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.ready.then(reg => {
-                reg.update().then(() => {
-                    // Waiting SW varsa hemen aktive et
-                    if (reg.waiting) {
-                        reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-                        // controllerchange eventi sayfayı yenileyecek (index.html'deki listener)
-                    } else {
-                        // Waiting SW yoksa zaten güncel
-                        if (btn) { btn.textContent = '✅ Uygulama Güncel'; btn.disabled = false; }
-                        setTimeout(() => {
-                            if (btn) btn.textContent = '🚀 Güncellemeyi Denetle';
-                        }, 3000);
+                // UI Güncelleme Fonksiyonu
+                const showUpdateAvailable = (waitingWorker) => {
+                    const icon = document.getElementById('updateStatusIcon');
+                    const text = document.getElementById('updateStatusText');
+                    const box = document.getElementById('changelogBox');
+                    const btn = document.getElementById('btnUpdateApp');
+                    
+                    if (icon) { icon.textContent = 'system_update'; icon.style.color = '#ffca28'; }
+                    if (text) { text.textContent = 'Yeni Güncelleme Hazır!'; text.style.color = '#ffca28'; }
+                    if (box) box.style.display = 'block';
+                    if (btn) {
+                        btn.style.display = 'block';
+                        btn.onclick = () => {
+                            btn.textContent = '⏳ Yükleniyor...';
+                            btn.disabled = true;
+                            waitingWorker.postMessage({ type: 'SKIP_WAITING' });
+                        };
                     }
+                };
 
-                    // Yüklenen SW'yi de dinle (update() sonrası installing->waiting geçişi)
-                    if (reg.installing) {
-                        reg.installing.addEventListener('statechange', function() {
-                            if (this.state === 'installed' && navigator.serviceWorker.controller) {
-                                this.postMessage({ type: 'SKIP_WAITING' });
-                            }
-                        });
-                    }
-                }).catch(e => {
-                    console.error("Update failed:", e);
-                    if (btn) { btn.textContent = '❌ Hata - Tekrar Dene'; btn.disabled = false; }
-                    setTimeout(() => { if (btn) btn.textContent = '🚀 Güncellemeyi Denetle'; }, 3000);
+                // Zaten bekleyen bir SW varsa
+                if (reg.waiting) {
+                    showUpdateAvailable(reg.waiting);
+                }
+
+                // Yeni SW yükleniyorsa dinle
+                reg.addEventListener('updatefound', () => {
+                    const newWorker = reg.installing;
+                    newWorker.addEventListener('statechange', () => {
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            showUpdateAvailable(newWorker);
+                        }
+                    });
                 });
+
+                // Arka planda sunucuya yeni sürüm var mı diye sor
+                reg.update().catch(e => console.log("Background SW update check failed:", e));
             });
-        } else {
-            alert("Uygulama bu tarayıcıda PWA olarak çalışmıyor.");
-            if (btn) { btn.textContent = '🚀 Güncellemeyi Denetle'; btn.disabled = false; }
         }
-    });
+    }
+    
+    // Uygulama açılışında arka plan denetimi yap
+    checkSystemUpdate();
 
     // Hide Splash Screen with delay
     setTimeout(() => {
@@ -737,11 +708,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const modelName = document.getElementById('geminiModelName').value;
         const dailyGoal = document.getElementById('dailyGoalHours').value;
         
-        const fbKey = document.getElementById('firebaseApiKey').value;
-        const fbUrl = document.getElementById('firebaseDbUrl').value;
-        const fbAuth = document.getElementById('firebaseAuthDomain').value;
-        const fbId = document.getElementById('firebaseSyncId').value;
-        const fbEnabled = document.getElementById('cloudSyncEnabled').checked;
+        const fbKey = dataManager.data.firebaseApiKey;
+        const fbUrl = dataManager.data.firebaseDbUrl;
+        const fbAuth = dataManager.data.firebaseAuthDomain;
+        const fbId = dataManager.data.firebaseSyncId;
+        const fbEnabled = dataManager.data.cloudSyncEnabled;
 
         const workCycle = document.getElementById('workCycleDays').value;
         const restCycle = document.getElementById('restCycleDays').value;
@@ -834,7 +805,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    document.getElementById('btnSignOut')?.addEventListener('click', handleSignOut);
     document.getElementById('btnQuickSignOut')?.addEventListener('click', handleSignOut);
 
     // Journal Back Button
@@ -877,33 +847,6 @@ document.addEventListener('DOMContentLoaded', () => {
         updateHomeView();
     });
 
-    // --- ADMIN LOCK LOGIC (v2.5.7) ---
-    let adminClickCount = 0;
-    let adminClickTimer = null;
-    document.getElementById('adminLockTrigger')?.addEventListener('click', () => {
-        adminClickCount++;
-        clearTimeout(adminClickTimer);
-        
-        if (adminClickCount >= 5) {
-            const section = document.getElementById('firebaseSettingsSection');
-            const inputs = section.querySelectorAll('.readonly-input');
-            const isLocked = section.classList.contains('is-locked');
-            
-            if (isLocked) {
-                section.classList.remove('is-locked');
-                inputs.forEach(input => input.removeAttribute('readonly'));
-                document.getElementById('adminLockIcon').textContent = 'lock_open';
-                alert("Yönetici Kilidi Açıldı: Firebase ayarlarını düzenleyebilirsiniz.");
-            } else {
-                section.classList.add('is-locked');
-                inputs.forEach(input => input.setAttribute('readonly', true));
-                document.getElementById('adminLockIcon').textContent = 'lock';
-            }
-            adminClickCount = 0;
-        }
-        
-        adminClickTimer = setTimeout(() => { adminClickCount = 0; }, 1000);
-    });
 
     // --- SETUP: UI Generics ---
     
@@ -1076,7 +1019,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const diffTime = today - start;
                 const diffDays = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
                 
-                if (!window.streakDisplayMode) window.streakDisplayMode = 'passed';
+                if (!window.streakDisplayMode) window.streakDisplayMode = 'remaining';
                 
                 if (window.streakDisplayMode === 'passed') {
                     displayStreakValue.textContent = diffDays;
@@ -1102,10 +1045,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        const displayTargetInfo = document.getElementById('displayTargetInfo');
-        if (displayTargetInfo) {
+        const estFinal = document.getElementById('estFinal');
+        if (estFinal) {
             if (dataManager.data.targetSize && dataManager.data.targetSize > 0) {
-                displayTargetInfo.style.display = 'block';
+                estFinal.style.display = 'block';
                 const targetSizeEl = document.getElementById('displayTargetSize');
                 if (targetSizeEl) targetSizeEl.textContent = dataManager.data.targetSize.toFixed(1);
                 
@@ -1124,7 +1067,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
             } else {
-                displayTargetInfo.style.display = 'none';
+                estFinal.style.display = 'none';
             }
         }
 
@@ -2307,12 +2250,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         document.getElementById('notifSound').checked = dataManager.data.timerSettings.sound;
         document.getElementById('notifVibrate').checked = dataManager.data.timerSettings.vibrate;
 
-        // Cloud Sync Fields
-        document.getElementById('firebaseApiKey').value = dataManager.data.firebaseApiKey || '';
-        document.getElementById('firebaseDbUrl').value = dataManager.data.firebaseDbUrl || '';
-        document.getElementById('firebaseAuthDomain').value = dataManager.data.firebaseAuthDomain || '';
-        document.getElementById('firebaseSyncId').value = dataManager.data.firebaseSyncId || '';
-        document.getElementById('cloudSyncEnabled').checked = dataManager.data.cloudSyncEnabled || false;
+        // Cloud Sync Fields (Hardcoded, no DOM elements anymore)
 
         // Smart Cycle Settings
         document.getElementById('dailyGoalHours').value = dataManager.data.dailyGoalHours || 6;
@@ -2362,11 +2300,11 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             const modelName = document.getElementById('geminiModelName').value;
             const dailyGoal = document.getElementById('dailyGoalHours').value;
             
-            const fbKey = document.getElementById('firebaseApiKey').value;
-            const fbUrl = document.getElementById('firebaseDbUrl').value;
-            const fbAuth = document.getElementById('firebaseAuthDomain').value;
-            const fbId = document.getElementById('firebaseSyncId').value;
-            const fbEnabled = document.getElementById('cloudSyncEnabled').checked;
+            const fbKey = dataManager.data.firebaseApiKey;
+            const fbUrl = dataManager.data.firebaseDbUrl;
+            const fbAuth = dataManager.data.firebaseAuthDomain;
+            const fbId = dataManager.data.firebaseSyncId;
+            const fbEnabled = dataManager.data.cloudSyncEnabled;
 
             const workCycle = document.getElementById('workCycleDays').value;
             const restCycle = document.getElementById('restCycleDays').value;
