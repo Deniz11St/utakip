@@ -621,6 +621,11 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 await firebase.auth().signInWithPopup(provider);
             } catch (e) {
+                // Kullanıcı popup'ı kendisi kapattıysa hata gösterme (normal kullanıcı eylemi)
+                if (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request') {
+                    console.log("Google popup kullanıcı tarafından kapatıldı.");
+                    return;
+                }
                 console.error("Google Auth Error:", e);
                 const errorEl = document.getElementById('authError');
                 if (errorEl) errorEl.textContent = "Google Giriş Hatası: " + e.message;
