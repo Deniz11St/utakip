@@ -92,7 +92,7 @@ function cloudSyncPush(manualData) {
     if (!data || !firebaseDb || !data.cloudSyncEnabled) return;
     
     // KORUMA: Eğer lokal veri tamamen boşsa ve hiç senkronize olmamışsa, buluttaki veriyi ezmeyi engelle
-    if (!data.startDate && data.lastSyncTimestamp === 0) {
+    if (data.lastSyncTimestamp === 0 && !data.name && !data.startDate && Object.keys(data.sessions || {}).length === 0) {
         console.warn("Cloud Sync: Local data is empty. Preventing push to avoid overwriting cloud data.");
         return;
     }
@@ -2216,7 +2216,10 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
     }
 
 
+    let isUpdatingView = false;
+
     function updateSettingsView() {
+        isUpdatingView = true;
         document.getElementById('userName').value = dataManager.data.name || '';
         document.getElementById('userAge').value = dataManager.data.age || '';
         document.getElementById('startDate').value = dataManager.data.startDate || '';
@@ -2282,6 +2285,9 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             
             // Force deactivate button to counter any automated change events on load
             setTimeout(() => { if(typeof deactivateSaveButton === 'function') deactivateSaveButton(); }, 100);
+            
+            // Allow auto-save again
+            setTimeout(() => { isUpdatingView = false; }, 200);
         }, 50);
     }
 
@@ -2336,6 +2342,9 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
 
     if (settingsContainer) {
         settingsContainer.addEventListener('input', (e) => {
+            // Görünüm güncellenirken tetiklenmeyi engelle
+            if (isUpdatingView) return;
+            
             // Sadece ayarlar sekmesi açıkken otomatik kaydet (Autofill'in ezmesini önler)
             if (!settingsContainer.classList.contains('active')) return;
             
@@ -2347,6 +2356,9 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         });
         
         settingsContainer.addEventListener('change', (e) => {
+            // Görünüm güncellenirken tetiklenmeyi engelle
+            if (isUpdatingView) return;
+            
             // Sadece ayarlar sekmesi açıkken otomatik kaydet
             if (!settingsContainer.classList.contains('active')) return;
             
