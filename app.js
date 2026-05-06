@@ -64,8 +64,8 @@ function initCloudSync() {
                 const syncRef = firebaseDb.ref('users/' + user.uid);
                 syncRef.on('value', (snapshot) => {
                     const remoteData = snapshot.val();
-                    if (remoteData && remoteData.lastSyncTimestamp > dataManager.data.lastSyncTimestamp) {
-                        console.log("Cloud data is newer, pulling...");
+                    if (remoteData && (dataManager.data.lastSyncTimestamp === 0 || remoteData.lastSyncTimestamp > dataManager.data.lastSyncTimestamp)) {
+                        console.log("Cloud data is newer or local is empty, pulling...");
                         dataManager.data = remoteData;
                         dataManager.sanitize();
                         dataManager.save(true);
@@ -90,6 +90,12 @@ function initCloudSync() {
 function cloudSyncPush(manualData) {
     const data = manualData || (typeof dataManager !== 'undefined' ? dataManager.data : null);
     if (!data || !firebaseDb || !data.cloudSyncEnabled) return;
+    
+    // KORUMA: Eğer lokal veri tamamen boşsa ve hiç senkronize olmamışsa, buluttaki veriyi ezmeyi engelle
+    if (!data.startDate && data.lastSyncTimestamp === 0) {
+        console.warn("Cloud Sync: Local data is empty. Preventing push to avoid overwriting cloud data.");
+        return;
+    }
     
     // Update timestamp before pushing
     data.lastSyncTimestamp = Date.now();
@@ -2330,6 +2336,9 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
 
     if (settingsContainer) {
         settingsContainer.addEventListener('input', (e) => {
+            // Sadece ayarlar sekmesi açıkken otomatik kaydet (Autofill'in ezmesini önler)
+            if (!settingsContainer.classList.contains('active')) return;
+            
             triggerSettingsAutoSave();
             // Timer feedback'i hemen güncelle
             if(e.target.id === 'timerDuration' || e.target.id === 'timerBreak') {
@@ -2338,6 +2347,9 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         });
         
         settingsContainer.addEventListener('change', (e) => {
+            // Sadece ayarlar sekmesi açıkken otomatik kaydet
+            if (!settingsContainer.classList.contains('active')) return;
+            
             triggerSettingsAutoSave();
             
             // AI Provider değiştiğinde config alanlarını hemen aç/kapat

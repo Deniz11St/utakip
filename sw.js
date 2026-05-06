@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v260-v2.6.0'; // v2.6.0: Automated Updates & Setup Redesign
+const CACHE_NAME = 'utakip-v261-v2.6.1'; // v2.6.1: Firebase Auto-Save Data Loss Fix
 const ASSETS = [
     './',
     './index.html',
