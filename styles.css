@@ -1679,6 +1679,10 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     gap: 6px;
 }
 
+.calendar-days.open {
+    display: flex !important;
+}
+
 .day-row {
     display: flex;
     align-items: center;
@@ -1770,7 +1774,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     align-items: center;
     transition: all 0.3s ease;
     overflow: hidden;
-    min-height: 58px;
+    min-height: 44px;
 }
 
 .day-row.is-expanded {

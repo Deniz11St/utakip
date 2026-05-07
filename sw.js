@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v263-v2.6.3'; // v2.6.3: UI optimizations
+const CACHE_NAME = 'utakip-v264-v2.6.4'; // v2.6.4: Critical Firebase & UI Fixes
 const ASSETS = [
     './',
     './index.html',
