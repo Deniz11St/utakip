@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v262-v2.6.2'; // v2.6.2: Ultimate Auto-Save Bug Fix
+const CACHE_NAME = 'utakip-v263-v2.6.3'; // v2.6.3: UI optimizations
 const ASSETS = [
     './',
     './index.html',
