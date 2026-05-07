@@ -287,7 +287,9 @@ class TrackerData {
     }
 
     save(skipCloud = false) {
-        this.data.lastSyncTimestamp = Date.now();
+        if (!skipCloud) {
+            this.data.lastSyncTimestamp = Date.now();
+        }
         localStorage.setItem('uTakipData', JSON.stringify(this.data));
         if (this.data.cloudSyncEnabled && !skipCloud) {
             cloudSyncPush(this.data); // Pass current data directly (v1.9.1 Fix)

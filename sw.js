@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v265-v2.6.5'; // v2.6.5: Ultimate padding squish
+const CACHE_NAME = 'utakip-v266-v2.6.6'; // v2.6.6: Fix empty data overwrite
 const ASSETS = [
     './',
     './index.html',
