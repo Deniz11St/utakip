@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v266-v2.6.6'; // v2.6.6: Fix empty data overwrite
+const CACHE_NAME = 'utakip-v267-v2.6.7'; // v2.6.7: Lock-based manual saving
 const ASSETS = [
     './',
     './index.html',

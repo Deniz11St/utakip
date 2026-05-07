@@ -841,6 +841,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 section.classList.toggle('is-locked');
                 const isLocked = section.classList.contains('is-locked');
                 lockBtn.querySelector('.icon-lock').textContent = isLocked ? 'lock' : 'lock_open';
+                
+                // Kilit kapandığında verileri kaydet (Kullanıcı talebi: Güncelle ve kapat)
+                if (isLocked && typeof saveSettingsNow === 'function') {
+                    saveSettingsNow();
+                    // Başarı animasyonu gösterilebilir
+                    showSuccessAchievement("Ayarlar Kaydedildi", "Bilgileriniz buluta senkronize edildi.", "🔒");
+                }
             });
             
             h3.appendChild(lockBtn);
@@ -2298,49 +2305,45 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
 
     // --- SETTINGS SAVE BUTTON LOGIC ---
     const settingsContainer = document.getElementById('settings');
-    // --- EVRENSEL OTOMATİK KAYIT: TÜM AYARLAR (v2.1.7) ---
-    let settingsAutoSaveTimer = null;
-    function triggerSettingsAutoSave() {
-        if (settingsAutoSaveTimer) clearTimeout(settingsAutoSaveTimer);
-        settingsAutoSaveTimer = setTimeout(() => {
-            const name = document.getElementById('userName').value;
-            const age = document.getElementById('userAge').value;
-            const date = document.getElementById('startDate').value;
-            const size = document.getElementById('startSize').value;
-            const target = document.getElementById('targetSize').value;
-            const growth = document.getElementById('targetMonthlyGrowth').value;
-            const aiProvider = document.getElementById('aiProvider').value;
-            const apiKey = document.getElementById('geminiApiKey').value;
-            const minimaxKey = document.getElementById('minimaxApiKey').value;
-            const modelName = document.getElementById('geminiModelName').value;
-            const dailyGoal = document.getElementById('dailyGoalHours').value;
-            
-            const fbKey = dataManager.data.firebaseApiKey;
-            const fbUrl = dataManager.data.firebaseDbUrl;
-            const fbAuth = dataManager.data.firebaseAuthDomain;
-            const fbId = dataManager.data.firebaseSyncId;
-            const fbEnabled = dataManager.data.cloudSyncEnabled;
+    // --- AYARLARI KAYDET (KİLİT KAPANINCA TETİKLENİR) ---
+    function saveSettingsNow() {
+        const name = document.getElementById('userName').value;
+        const age = document.getElementById('userAge').value;
+        const date = document.getElementById('startDate').value;
+        const size = document.getElementById('startSize').value;
+        const target = document.getElementById('targetSize').value;
+        const growth = document.getElementById('targetMonthlyGrowth').value;
+        const aiProvider = document.getElementById('aiProvider').value;
+        const apiKey = document.getElementById('geminiApiKey').value;
+        const minimaxKey = document.getElementById('minimaxApiKey').value;
+        const modelName = document.getElementById('geminiModelName').value;
+        const dailyGoal = document.getElementById('dailyGoalHours').value;
+        
+        const fbKey = dataManager.data.firebaseApiKey;
+        const fbUrl = dataManager.data.firebaseDbUrl;
+        const fbAuth = dataManager.data.firebaseAuthDomain;
+        const fbId = dataManager.data.firebaseSyncId;
+        const fbEnabled = dataManager.data.cloudSyncEnabled;
 
-            const workCycle = document.getElementById('workCycleDays').value;
-            const restCycle = document.getElementById('restCycleDays').value;
+        const workCycle = document.getElementById('workCycleDays').value;
+        const restCycle = document.getElementById('restCycleDays').value;
 
-            // Timer Settings
-            const tCount = document.getElementById('timerCount').value;
-            const tDur = document.getElementById('timerDuration').value;
-            const tBreak = document.getElementById('timerBreak').value;
-            const tSound = document.getElementById('notifSound').checked;
-            const tVib = document.getElementById('notifVibrate').checked;
+        // Timer Settings
+        const tCount = document.getElementById('timerCount').value;
+        const tDur = document.getElementById('timerDuration').value;
+        const tBreak = document.getElementById('timerBreak').value;
+        const tSound = document.getElementById('notifSound').checked;
+        const tVib = document.getElementById('notifVibrate').checked;
 
-            // Verileri Kaydet
-            dataManager.setBaseSettings(name, age, date, size, target, growth, apiKey, modelName, dailyGoal, aiProvider, minimaxKey, fbKey, fbUrl, fbId, fbEnabled, workCycle, restCycle, fbAuth);
-            dataManager.setTimerSettings(tCount, tDur, tBreak, tSound, tVib);
+        // Verileri Kaydet
+        dataManager.setBaseSettings(name, age, date, size, target, growth, apiKey, modelName, dailyGoal, aiProvider, minimaxKey, fbKey, fbUrl, fbId, fbEnabled, workCycle, restCycle, fbAuth);
+        dataManager.setTimerSettings(tCount, tDur, tBreak, tSound, tVib);
 
-            if (fbEnabled && !firebaseApp) initCloudSync();
+        if (fbEnabled && !firebaseApp) initCloudSync();
 
-            updateHomeView();
-            updateCalendarView();
-            console.log("Global settings auto-saved.");
-        }, 1200); // 1.2 saniye gecikmeli kayıt
+        updateHomeView();
+        updateCalendarView();
+        console.log("Global settings saved via lock toggle.");
     }
 
     if (settingsContainer) {
@@ -2348,10 +2351,8 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             // Görünüm güncellenirken tetiklenmeyi engelle
             if (isUpdatingView) return;
             
-            // Sadece ayarlar sekmesi açıkken otomatik kaydet (Autofill'in ezmesini önler)
+            // Sadece ayarlar sekmesi açıkken çalış (Autofill'in ezmesini önler)
             if (!settingsContainer.classList.contains('active')) return;
-            
-            triggerSettingsAutoSave();
             // Timer feedback'i hemen güncelle
             if(e.target.id === 'timerDuration' || e.target.id === 'timerBreak') {
                 if (typeof updateTimerFeedback === 'function') updateTimerFeedback();
@@ -2362,10 +2363,8 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             // Görünüm güncellenirken tetiklenmeyi engelle
             if (isUpdatingView) return;
             
-            // Sadece ayarlar sekmesi açıkken otomatik kaydet
+            // Sadece ayarlar sekmesi açıkken çalış
             if (!settingsContainer.classList.contains('active')) return;
-            
-            triggerSettingsAutoSave();
             
             // AI Provider değiştiğinde config alanlarını hemen aç/kapat
             if(e.target.id === 'aiProvider') {
