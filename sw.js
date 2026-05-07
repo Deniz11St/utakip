@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v264-v2.6.4'; // v2.6.4: Critical Firebase & UI Fixes
+const CACHE_NAME = 'utakip-v265-v2.6.5'; // v2.6.5: Ultimate padding squish
 const ASSETS = [
     './',
     './index.html',

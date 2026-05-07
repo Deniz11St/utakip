@@ -1676,7 +1676,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 .calendar-days {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
 }
 
 .calendar-days.open {
@@ -1689,7 +1689,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     background: var(--card-bg);
     border: 1px solid var(--card-border);
     border-radius: 12px;
-    padding: 12px;
+    padding: 2px 12px;
 }
 
 .day-date {
