@@ -89,7 +89,7 @@ function initCloudSync() {
 
 function cloudSyncPush(manualData) {
     const data = manualData || (typeof dataManager !== 'undefined' ? dataManager.data : null);
-    if (!data || !firebaseDb || !data.cloudSyncEnabled) return;
+    if (!data || !firebaseDb || !data.cloudSyncEnabled || !data.firebaseSyncId) return;
     
     // KORUMA: Eğer lokal veri tamamen boşsa ve hiç senkronize olmamışsa, buluttaki veriyi ezmeyi engelle
     if (data.lastSyncTimestamp === 0 && !data.name && !data.startDate && Object.keys(data.sessions || {}).length === 0) {
@@ -97,13 +97,63 @@ function cloudSyncPush(manualData) {
         return;
     }
     
-    // Update timestamp before pushing
-    data.lastSyncTimestamp = Date.now();
+    // O anki lokal timestamp'i (son başarılı senkronizasyon zamanını) bir değişkene al
+    const localPreviousTimestamp = data.lastSyncTimestamp;
+    
+    // Derin kopya alarak push edilecek veriyi hazırla ve YENİ timestamp'ini ata
+    const newDataToPush = JSON.parse(JSON.stringify(data));
+    newDataToPush.lastSyncTimestamp = Date.now();
+    
     const syncRef = firebaseDb.ref('users/' + data.firebaseSyncId);
     
-    syncRef.set(data)
-        .then(() => console.log("Cloud Sync Push Successful"))
-        .catch(e => console.error("Cloud Sync Push Error:", e));
+    // Firebase Transaction (Çakışma Önleyici Sistem)
+    syncRef.transaction((currentRemoteData) => {
+        // Eğer bulutta hiç veri yoksa (ilk defa kayıt yapılıyorsa), veriyi yaz
+        if (currentRemoteData === null) {
+            return newDataToPush; 
+        }
+        
+        // KRİTİK KONTROL: Eğer buluttaki veri, bizim en son bildiğimiz (senkronize olduğumuz) veriden 
+        // daha yeniyse (yani aradaki sürede başka cihaz veri girmişse), YAZMA İŞLEMİNİ İPTAL ET.
+        // Not: Transaction içinde undefined dönersek işlem iptal edilir (aborted).
+        if (currentRemoteData.lastSyncTimestamp && currentRemoteData.lastSyncTimestamp > localPreviousTimestamp) {
+            return undefined; // PUSH iptal
+        }
+        
+        // Eğer buluttaki veri bizimkinden eskiyse veya aynıysa, veriyi güvenle ezebiliriz (bizimki güncel)
+        return newDataToPush;
+        
+    }, (error, committed, snapshot) => {
+        if (error) {
+             console.error("Cloud Sync Transaction Error:", error);
+        } else if (!committed) {
+             console.warn("🛡️ Cloud Sync Conflict Prevented: Cloud data is newer! Aborting Push and pulling fresh data.");
+             
+             // İşlem iptal edildi, yani buluttaki veri daha güncel. O halde buluttaki güncel veriyi bilgisayara indirelim.
+             const remoteData = snapshot.val();
+             if (remoteData && typeof dataManager !== 'undefined') {
+                 dataManager.data = remoteData;
+                 dataManager.sanitize();
+                 dataManager.save(true); // skipCloud = true (Tekrar push döngüsüne girmesini engeller)
+                 
+                 // Ekranda açık olan tüm bileşenleri buluttan gelen taze verilerle yenile
+                 if (window.updateHomeView) window.updateHomeView();
+                 if (window.updateCalendarView) window.updateCalendarView();
+                 if (window.updateTimerDisplay) window.updateTimerDisplay();
+                 if (window.updateSettingsView) window.updateSettingsView();
+                 
+                 console.log("Local UI updated successfully with fresh cloud data.");
+             }
+        } else {
+             // Transaction başarılı! Buluta yeni veri (ve yeni timestamp) PUSH edildi. 
+             // Şimdi bilgisayardaki lokal verimizin de timestamp'ini güncelleyelim.
+             if (typeof dataManager !== 'undefined') {
+                 dataManager.data.lastSyncTimestamp = newDataToPush.lastSyncTimestamp;
+                 localStorage.setItem('uTakipData', JSON.stringify(dataManager.data)); // Sessizce localStorage'ı güncelle
+             }
+             console.log("Cloud Sync Push Successful (Transaction Guarded)");
+        }
+    });
 }
 
 async function cloudSyncPullManual() {
@@ -287,12 +337,12 @@ class TrackerData {
     }
 
     save(skipCloud = false) {
-        if (!skipCloud) {
-            this.data.lastSyncTimestamp = Date.now();
-        }
+        // Transaction (v2.6.2): lastSyncTimestamp'i BURADA güncellemiyoruz. cloudSyncPush başarılı olunca güncelleyecek.
+        // Bu sayede buluttaki veri bizden yeniyse (Conflict), eski timestamp'imizi bulutla karşılaştırıp ezilmesini engelleyebiliyoruz.
         localStorage.setItem('uTakipData', JSON.stringify(this.data));
+        
         if (this.data.cloudSyncEnabled && !skipCloud) {
-            cloudSyncPush(this.data); // Pass current data directly (v1.9.1 Fix)
+            cloudSyncPush(this.data);
         }
     }
 
