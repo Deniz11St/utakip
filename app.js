@@ -62,13 +62,11 @@ function initCloudSync() {
                 
                 const syncRef = firebaseDb.ref('users/' + user.uid);
                 
-                // GERÇEk ZAMANLI DİNLEYİCİ: Başka cihazdan gelen değişiklikleri yakala
+                // Gerçek zamanlı dinleyici - açılışta da hemen tetiklenir
                 syncRef.on('value', (snapshot) => {
                     const remoteData = snapshot.val();
                     if (!remoteData) return;
-                    // Sadece bulut daha güncel ise çek (kendi push'umuzu tekrar çekmez)
                     if (remoteData.lastSyncTimestamp > dataManager.data.lastSyncTimestamp) {
-                        console.log("Realtime sync: pulling newer cloud data...");
                         window._cloudPullInProgress = true;
                         dataManager.data = remoteData;
                         dataManager.sanitize();
@@ -77,23 +75,16 @@ function initCloudSync() {
                         if (window.updateCalendarView) window.updateCalendarView();
                         if (window.updateTimerDisplay) window.updateTimerDisplay();
                         if (window.updateSettingsView) window.updateSettingsView();
-                        // Pull bitti, 1200ms sonra push'a izin ver
                         setTimeout(() => { window._cloudPullInProgress = false; }, 1200);
                     }
                 });
                 
-                // AÇILIŞ KONTROLÜ: İlk bağlantıda bulutla eşitle
-                syncRef.once('value').then((snapshot) => {
-                    const remoteData = snapshot.val();
-                    if (remoteData && remoteData.lastSyncTimestamp > dataManager.data.lastSyncTimestamp) {
-                        // Bulut daha güncel → zaten on('value') çekecek, burada tekrar yapmaya gerek yok
-                        console.log("Startup: cloud is newer, on('value') will handle pull.");
-                    } else {
-                        // Lokal güncel veya bulut boş → push et
-                        console.log("Startup: local is newer or cloud empty, pushing...");
+                // Açılış push: on('value') işlendikten sonra lokal daha güncelse push et
+                setTimeout(() => {
+                    if (!window._cloudPullInProgress) {
                         cloudSyncPush(dataManager.data);
                     }
-                });
+                }, 2500);
             } else {
                 console.log("User logged out.");
                 if (authOverlay) authOverlay.classList.remove('hidden');

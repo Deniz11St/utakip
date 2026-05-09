@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v275-v2.7.5'; // v2.7.5: Realtime sync rewrite
+const CACHE_NAME = 'utakip-v276-v2.7.6'; // v2.7.6: Simplified sync - on(value) only
 const ASSETS = [
     './',
     './index.html',
