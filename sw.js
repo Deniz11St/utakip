@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v273-v2.7.3'; // v2.7.3: Startup unconditional pull fix
+const CACHE_NAME = 'utakip-v274-v2.7.4'; // v2.7.4: Import pre-push + startup push fix
 const ASSETS = [
     './',
     './index.html',

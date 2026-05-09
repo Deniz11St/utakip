@@ -70,10 +70,9 @@ function initCloudSync() {
                 syncRef.once('value').then((snapshot) => {
                     const remoteData = snapshot.val();
                     if (remoteData && remoteData.lastSyncTimestamp > 0) {
-                        // Bulutta veri var — hangisi daha güncel?
-                        if (remoteData.lastSyncTimestamp >= dataManager.data.lastSyncTimestamp) {
-                            // Bulut daha güncel veya eşit → Pull et
-                            console.log("Startup: Cloud data is newer or equal, pulling...");
+                        if (remoteData.lastSyncTimestamp > dataManager.data.lastSyncTimestamp) {
+                            // Bulut daha güncel → Pull et
+                            console.log("Startup: Cloud data is newer, pulling...");
                             dataManager.data = remoteData;
                             dataManager.sanitize();
                             dataManager.save(true);
@@ -82,12 +81,14 @@ function initCloudSync() {
                             if (window.updateTimerDisplay) window.updateTimerDisplay();
                             if (window.updateSettingsView) window.updateSettingsView();
                         } else {
-                            // Lokal daha güncel → Push et (bilgisayar güncel, bulut eski)
-                            console.log("Startup: Local data is newer, pushing...");
+                            // Lokal daha güncel veya eşit → Firebase'e push et
+                            console.log("Startup: Local data is newer or equal, pushing to Firebase...");
+                            cloudSyncPush(dataManager.data);
                         }
                     } else {
                         // Bulutta hiç veri yok → Push et
                         console.log("Startup: No cloud data, pushing local...");
+                        cloudSyncPush(dataManager.data);
                     }
                     // Açılış pull'u bitti, 800ms sonra gerçek zamanlı dinleyiciyi başlat
                     setTimeout(() => {
@@ -2588,11 +2589,30 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                     importedData.sessions = {};
                 }
                 if (confirm('Mevcut verileriniz silinecek ve yedekteki veriler yüklenecek. Onaylıyor musunuz?')) {
-                    // İçe aktarılan verinin zaman damgasını 'şu an' yap.
-                    // Böylece bulut bu yedeği ezip eski veriyi geri getiremiyor.
-                    importedData.lastSyncTimestamp = Date.now();
+                    // Timestamp'i 'şu an + 2 saniye' yap.
+                    // +2000ms tampon: arka planda çalışan diğer cihaz şu an push yapsa bile
+                    // bu verinin daha yeni görünmesini garanti ediyoruz.
+                    importedData.lastSyncTimestamp = Date.now() + 2000;
                     localStorage.setItem('uTakipData', JSON.stringify(importedData));
-                    location.reload();
+                    
+                    // KRİTİK: Yenilenmeden ÖNCE Firebase'e push yap.
+                    // Bu sayede bilgisayar arka planda push yapmadan önce biz önce yazıyoruz.
+                    // Firebase bağlantısı varsa push et ve 1.5s bekle, yoksa hemen yenile.
+                    if (firebaseDb && importedData.firebaseSyncId) {
+                        const importRef = firebaseDb.ref('users/' + importedData.firebaseSyncId);
+                        importRef.set(importedData)
+                            .then(() => {
+                                console.log("Import: Data pushed to Firebase before reload.");
+                                location.reload();
+                            })
+                            .catch((err) => {
+                                console.warn("Import: Firebase push failed, reloading anyway:", err);
+                                location.reload();
+                            });
+                    } else {
+                        // Firebase yok, doğrudan yenile
+                        location.reload();
+                    }
                 }
             } catch (err) {
                 alert('İçe Aktarma Hatası: ' + err.message);
