@@ -2533,21 +2533,26 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         
         const reader = new FileReader();
         reader.onload = (event) => {
+            // Input'u hemen sıfırla ki aynı dosya tekrar seçilebilsin
+            e.target.value = '';
             try {
                 const importedData = JSON.parse(event.target.result);
-                if (!importedData.sessions || !importedData.startDate) {
-                    throw new Error("Geçersiz yedek dosyası.");
+                if (!importedData || typeof importedData !== 'object') {
+                    throw new Error('Dosya okunamadı. Geçerli bir UTakip yedek dosyası (.json) seçtiğinizden emin olun.');
                 }
-                if (confirm("Mevcut verileriniz silinecek ve yedekteki veriler yüklenecek. Onaylıyor musunuz?")) {
-                    // ÖNEMLİ: İçe aktarılan verinin zaman damgasını 'şu an' yapıyoruz.
-                    // Bu sayede buluttaki eski/hatalı veriler bu yedeği 'PULL' yaparak ezemez.
+                // sessions alanı yoksa boş obje ile devam et (esnek doğrulama)
+                if (!importedData.sessions) {
+                    importedData.sessions = {};
+                }
+                if (confirm('Mevcut verileriniz silinecek ve yedekteki veriler yüklenecek. Onaylıyor musunuz?')) {
+                    // İçe aktarılan verinin zaman damgasını 'şu an' yap.
+                    // Böylece bulut bu yedeği ezip eski veriyi geri getiremiyor.
                     importedData.lastSyncTimestamp = Date.now();
-                    
                     localStorage.setItem('uTakipData', JSON.stringify(importedData));
                     location.reload();
                 }
             } catch (err) {
-                alert("Hata: " + err.message);
+                alert('İçe Aktarma Hatası: ' + err.message);
             }
         };
         reader.readAsText(file);
