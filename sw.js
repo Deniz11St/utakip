@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v268-v2.6.8'; // v2.6.8: Firebase Transaction sync fix
+const CACHE_NAME = 'utakip-v269-v2.6.9'; // v2.6.9: Firebase Sync infinite loop fix
 const ASSETS = [
     './',
     './index.html',

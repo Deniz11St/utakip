@@ -104,6 +104,13 @@ function cloudSyncPush(manualData) {
     const newDataToPush = JSON.parse(JSON.stringify(data));
     newDataToPush.lastSyncTimestamp = Date.now();
     
+    // YANIP SÖNME (SONSUZ DÖNGÜ) HATASINI ÇÖZMEK İÇİN:
+    // Transaction tamamlanmadan lokal verinin tarihini de anında güncelliyoruz. 
+    // Böylece Firebase on('value') aynı veriyi gördüğünde tekrar ekrana basmayacak.
+    if (typeof dataManager !== 'undefined' && dataManager.data) {
+        dataManager.data.lastSyncTimestamp = newDataToPush.lastSyncTimestamp;
+    }
+    
     const syncRef = firebaseDb.ref('users/' + data.firebaseSyncId);
     
     // Firebase Transaction (Çakışma Önleyici Sistem)
