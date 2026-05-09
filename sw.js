@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v281-v2.8.1'; // v2.8.1: Eski format migrasyon desteği
+const CACHE_NAME = 'utakip-v282-v2.8.2'; // v2.8.2: Eşzamanlı düzenleme iyileştirmesi
 const ASSETS = [
     './',
     './index.html',

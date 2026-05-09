@@ -89,24 +89,40 @@ function _refreshAllViews() {
 
 function cloudSyncPushField(field, skipIfEmpty = true) {
     if (!firebaseDb || !dataManager.data.cloudSyncEnabled || !dataManager.data.firebaseSyncId) return;
-    if (window._cloudPullInProgress) return;
+    
+    // Kullanıcı işlemleri her zaman push edilmeli, pull işlemi push'u engellememeli.
+    // Loop koruması zaten transaction içindeki timestamp kontrolü ile sağlanıyor.
+    
     const payload = _buildFieldPayload(field);
-    if (skipIfEmpty && _isFieldEmpty(field, payload)) return;
+    if (skipIfEmpty && _isFieldEmpty(field, payload)) {
+        console.log(`[Sync] ${field} boş, gönderim atlandı.`);
+        return;
+    }
+
     const localTs = _getFieldTs(field);
     const newTs   = Date.now();
     const nodeRef = firebaseDb.ref(`users/${dataManager.data.firebaseSyncId}/${field}`);
+    
+    console.log(`[Sync] ${field} push başlatılıyor... (Lokal TS: ${localTs})`);
+    
     nodeRef.transaction((currentNode) => {
         if (currentNode === null) return { _ts: newTs, data: payload };
         const remoteTs = currentNode._ts || 0;
-        if (remoteTs > localTs) return undefined; // Bulut daha yeni, iptal
+        
+        // Eğer buluttaki veri bizim lokalimizden daha yeniyse, ezme!
+        if (remoteTs > localTs) {
+            console.warn(`[Sync] ${field} çakışma: Bulut daha yeni (${remoteTs} > ${localTs}). Push iptal.`);
+            return undefined; 
+        }
         return { _ts: newTs, data: payload };
     }, (error, committed, snapshot) => {
         if (error) {
             console.error(`[Sync] ${field} push hatası:`, error);
         } else if (!committed) {
-            // Bulut daha güncel – lokale uygula
+            // Çakışma oldu: Buluttaki veriyi çek ve güncelle
             const node = snapshot.val();
             if (node && node.data) {
+                console.log(`[Sync] ${field} çakışma sonrası taze veri çekiliyor...`);
                 _applyFieldPayload(field, node.data);
                 _setFieldTs(field, node._ts);
                 dataManager.sanitize();
@@ -115,14 +131,14 @@ function cloudSyncPushField(field, skipIfEmpty = true) {
             }
         } else {
             _setFieldTs(field, newTs);
-            console.log(`[Sync] ${field} push OK (ts=${newTs})`);
+            console.log(`[Sync] ${field} push BAŞARILI. (Yeni TS: ${newTs})`);
         }
     });
 }
 
 function cloudSyncPush() {
-    if (window._cloudPullInProgress) return;
-    SYNC_FIELDS.forEach(f => cloudSyncPushField(f));
+    // Tüm alanları gönder (Değişiklik olanlar transaction'da başarılı olur)
+    SYNC_FIELDS.forEach(f => cloudSyncPushField(f, false)); // skipIfEmpty false: boşaltılan alanlar da silinsin
 }
 
 function _initGranularSync(uid) {
