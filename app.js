@@ -2539,6 +2539,10 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                     throw new Error("Geçersiz yedek dosyası.");
                 }
                 if (confirm("Mevcut verileriniz silinecek ve yedekteki veriler yüklenecek. Onaylıyor musunuz?")) {
+                    // ÖNEMLİ: İçe aktarılan verinin zaman damgasını 'şu an' yapıyoruz.
+                    // Bu sayede buluttaki eski/hatalı veriler bu yedeği 'PULL' yaparak ezemez.
+                    importedData.lastSyncTimestamp = Date.now();
+                    
                     localStorage.setItem('uTakipData', JSON.stringify(importedData));
                     location.reload();
                 }
