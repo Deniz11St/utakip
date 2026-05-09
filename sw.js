@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v271-v2.7.1'; // v2.7.1: Import flexible validation fix
+const CACHE_NAME = 'utakip-v272-v2.7.2'; // v2.7.2: Pull-Push chain lock fix
 const ASSETS = [
     './',
     './index.html',

@@ -66,6 +66,11 @@ function initCloudSync() {
                     const remoteData = snapshot.val();
                     if (remoteData && (dataManager.data.lastSyncTimestamp === 0 || remoteData.lastSyncTimestamp > dataManager.data.lastSyncTimestamp)) {
                         console.log("Cloud data is newer or local is empty, pulling...");
+                        
+                        // KRİTİK: UI güncellemesi sırasında settings input'larının
+                        // change event'i tetikleyip tekrar push başlatmasını engelle.
+                        if (typeof window !== 'undefined') window._cloudPullInProgress = true;
+                        
                         dataManager.data = remoteData;
                         dataManager.sanitize();
                         dataManager.save(true);
@@ -73,6 +78,9 @@ function initCloudSync() {
                         if (window.updateCalendarView) window.updateCalendarView();
                         if (window.updateTimerDisplay) window.updateTimerDisplay();
                         if (window.updateSettingsView) window.updateSettingsView();
+                        
+                        // 600ms sonra flag'i kaldır (tüm UI güncellemeleri bitmeli)
+                        setTimeout(() => { window._cloudPullInProgress = false; }, 600);
                     }
                 });
             } else {
@@ -90,6 +98,13 @@ function initCloudSync() {
 function cloudSyncPush(manualData) {
     const data = manualData || (typeof dataManager !== 'undefined' ? dataManager.data : null);
     if (!data || !firebaseDb || !data.cloudSyncEnabled || !data.firebaseSyncId) return;
+    
+    // KORUMA: Buluttan veri çekilirken (pull devam ederken) push yapma.
+    // Bu, pull→updateSettingsView→change event→push zincirini kırar.
+    if (window._cloudPullInProgress) {
+        console.warn("Cloud Sync: Pull in progress, skipping push to prevent overwrite loop.");
+        return;
+    }
     
     // KORUMA: Eğer lokal veri tamamen boşsa ve hiç senkronize olmamışsa, buluttaki veriyi ezmeyi engelle
     if (data.lastSyncTimestamp === 0 && !data.name && !data.startDate && Object.keys(data.sessions || {}).length === 0) {
