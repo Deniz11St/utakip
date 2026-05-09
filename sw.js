@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v282-v2.8.2'; // v2.8.2: Eşzamanlı düzenleme iyileştirmesi
+const CACHE_NAME = 'utakip-v283-v2.8.3'; // v2.8.3: Senkronizasyon bloklama sorunları tamamen giderildi
 const ASSETS = [
     './',
     './index.html',

@@ -634,25 +634,25 @@
                         <h3><span class="material-symbols-outlined">system_update</span> Sistem ve Güncelleme</h3>
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                             <span style="font-size: 14px; color: rgba(255,255,255,0.7);">Mevcut Sürüm</span>
-                            <span id="appVersionText" style="font-weight: 700; color: #a5d6ff; font-size: 15px;">v2.8.2</span>
+                            <span id="appVersionText" style="font-weight: 700; color: #a5d6ff; font-size: 15px;">v2.8.3</span>
                         </div>
                         
-                        <div id="updateStatusContainer" style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 15px; border: 1px solid rgba(255,255,255,0.05);">
+                        <div id="updateStatusContainer" style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 15px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 15px;">
                             <div style="display: flex; align-items: center; gap: 10px;">
                                 <span id="updateStatusIcon" class="material-symbols-outlined" style="color: #4CAF50;">check_circle</span>
                                 <span id="updateStatusText" style="font-size: 14px; font-weight: 600;">Sisteminiz Güncel</span>
                             </div>
-                            
-                            <div id="changelogBox" style="display: none; margin-top: 15px; padding: 12px; background: rgba(0,0,0,0.3); border-radius: 6px; border-left: 3px solid #ffca28;">
-                                <h4 style="margin-top: 0; margin-bottom: 8px; font-size: 12px; color: #ffca28; text-transform: uppercase;">✨ Neler Yeni?</h4>
-                                <ul id="changelogList" style="margin: 0; padding-left: 20px; font-size: 13px; color: rgba(255,255,255,0.8); line-height: 1.5;">
-                                    <li>Otomatik bulut senkronizasyonu geliştirildi.</li>
-                                    <li>Sanal koç algoritması güncellendi.</li>
-                                    <li>Kullanıcı arayüzünde görsel iyileştirmeler yapıldı.</li>
-                                </ul>
-                            </div>
-                            
                             <button id="btnUpdateApp" class="btn-primary" style="width: 100%; display: none; margin-top: 15px;">🚀 Yeni Sürümü İndir ve Kur</button>
+                        </div>
+
+                        <div style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px;">
+                            <h4 style="margin: 0 0 10px 0; font-size: 14px; color: #ffca28;">🆘 Senkronizasyon Sorunu mu Var?</h4>
+                            <p style="font-size: 12px; color: rgba(255,255,255,0.6); margin-bottom: 15px;">
+                                Eğer cihazlar arasında veri uyuşmazlığı yaşıyorsanız, bu buton lokal verilerinizi buluttaki en güncel verilerle değiştirmeye zorlar.
+                            </p>
+                            <button id="btnForceCloudPull" class="btn-secondary" style="width: 100%; background: rgba(255, 202, 40, 0.1); border-color: rgba(255, 202, 40, 0.3); color: #ffca28;">
+                                <span class="material-symbols-outlined" style="font-size: 18px;">cloud_download</span> Zorla Buluttan Veri Çek
+                            </button>
                         </div>
                     </div>
                 </section>

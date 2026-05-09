@@ -231,42 +231,35 @@ function _runGranularPullAndPush(uid) {
         }).catch(e => console.error(`[Sync] ${field} ilk çekim hatası:`, e))
     );
     Promise.all(pulls).then(() => {
-        window._cloudPullInProgress = true;
+        console.log('[Sync] İlk pull tamamlandı. Listeners kuruluyor.');
         dataManager.sanitize();
         dataManager.save(true);
         _refreshAllViews();
-        // Lokalde daha güncel alanları push et
-        setTimeout(() => {
-            window._cloudPullInProgress = false;
-            SYNC_FIELDS.forEach(field => {
-                const payload = _buildFieldPayload(field);
-                if (_isFieldEmpty(field, payload)) return;
-                firebaseDb.ref(`users/${uid}/${field}`).once('value').then(snap => {
-                    const node = snap.val();
-                    const remoteTs = node ? (node._ts || 0) : 0;
-                    if (_getFieldTs(field) >= remoteTs) cloudSyncPushField(field, false);
-                });
-            });
-        }, 800);
+        
         // Gerçek zamanlı dinleyicileri kur
         _setupRealtimeListeners(uid);
     });
 }
 
-// Gerçek zamanlı Firebase dinleyicileri
 function _setupRealtimeListeners(uid) {
+    console.log(`[Sync] Gerçek zamanlı dinleyiciler kuruluyor (UID: ${uid})...`);
     SYNC_FIELDS.forEach(field => {
         firebaseDb.ref(`users/${uid}/${field}`).on('value', snap => {
-            if (window._cloudPullInProgress) return;
+            // DİKKAT: window._cloudPullInProgress kontrolü kaldırıldı. 
+            // Timestamp kontrolü (remoteTs > localTs) zaten döngüleri engellemek için yeterlidir.
             const node = snap.val();
             if (!node || !node._ts) return;
+
             const remoteTs = node._ts || 0;
-            if (remoteTs > _getFieldTs(field)) {
+            const localTs  = _getFieldTs(field);
+
+            if (remoteTs > localTs) {
+                console.log(`[Sync] ${field} alanında güncelleme var (Bulut: ${remoteTs} > Lokal: ${localTs})`);
                 window._cloudPullInProgress = true;
                 _applyFieldPayload(field, node.data);
                 _setFieldTs(field, remoteTs);
                 dataManager.sanitize();
-                dataManager.save(true);
+                dataManager.save(true); // Lokal kaydet, push etme
                 _refreshAllViews();
                 setTimeout(() => { window._cloudPullInProgress = false; }, 600);
             }
@@ -1480,6 +1473,36 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.classList.add('active');
             selectedPainLevel = parseInt(btn.getAttribute('data-val'));
         });
+    });
+
+    document.getElementById('btnForceCloudPull')?.addEventListener('click', async function() {
+        if (!confirm('Lokal verileriniz silinecek ve buluttaki verileriniz çekilecek. Onaylıyor musunuz?')) return;
+        
+        const btn = this;
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="material-symbols-outlined rotating">sync</span> Senkronize Ediliyor...';
+        
+        try {
+            // 1. Lokal timestamp'leri sıfırla (Böylece buluttaki her şeyi 'yeni' görecek)
+            localStorage.removeItem('_utakip_field_ts');
+            
+            // 2. Firebase'den taze çekim yap
+            const success = await cloudSyncPullManual();
+            
+            if (success) {
+                alert('Veriler başarıyla buluttan çekildi!');
+            } else {
+                alert('Bulutta veri bulunamadı veya bağlantı hatası oluştu.');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Hata: ' + e.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            window.location.reload(); // Her şeyi temizleyip yeniden başlatmak en güvenlisi
+        }
     });
 
     document.getElementById('btnSaveJournal')?.addEventListener('click', () => {
