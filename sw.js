@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v272-v2.7.2'; // v2.7.2: Pull-Push chain lock fix
+const CACHE_NAME = 'utakip-v273-v2.7.3'; // v2.7.3: Startup unconditional pull fix
 const ASSETS = [
     './',
     './index.html',

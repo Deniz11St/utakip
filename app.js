@@ -62,26 +62,54 @@ function initCloudSync() {
                 
                 // Real-time Database Listener
                 const syncRef = firebaseDb.ref('users/' + user.uid);
-                syncRef.on('value', (snapshot) => {
+                
+                // AÇILIŞ PULL'U: Uygulama her açıldığında Firebase'deki veriyi KOŞULSUZ olarak çek.
+                // "Hangi cihaz daha sonra açıldı" sorununu bu çözüyor.
+                // Timestamp farkı gözetmeksizin her zaman bulut verisi esas alınır.
+                window._cloudPullInProgress = true;
+                syncRef.once('value').then((snapshot) => {
                     const remoteData = snapshot.val();
-                    if (remoteData && (dataManager.data.lastSyncTimestamp === 0 || remoteData.lastSyncTimestamp > dataManager.data.lastSyncTimestamp)) {
-                        console.log("Cloud data is newer or local is empty, pulling...");
-                        
-                        // KRİTİK: UI güncellemesi sırasında settings input'larının
-                        // change event'i tetikleyip tekrar push başlatmasını engelle.
-                        if (typeof window !== 'undefined') window._cloudPullInProgress = true;
-                        
-                        dataManager.data = remoteData;
-                        dataManager.sanitize();
-                        dataManager.save(true);
-                        if (window.updateHomeView) window.updateHomeView();
-                        if (window.updateCalendarView) window.updateCalendarView();
-                        if (window.updateTimerDisplay) window.updateTimerDisplay();
-                        if (window.updateSettingsView) window.updateSettingsView();
-                        
-                        // 600ms sonra flag'i kaldır (tüm UI güncellemeleri bitmeli)
-                        setTimeout(() => { window._cloudPullInProgress = false; }, 600);
+                    if (remoteData && remoteData.lastSyncTimestamp > 0) {
+                        // Bulutta veri var — hangisi daha güncel?
+                        if (remoteData.lastSyncTimestamp >= dataManager.data.lastSyncTimestamp) {
+                            // Bulut daha güncel veya eşit → Pull et
+                            console.log("Startup: Cloud data is newer or equal, pulling...");
+                            dataManager.data = remoteData;
+                            dataManager.sanitize();
+                            dataManager.save(true);
+                            if (window.updateHomeView) window.updateHomeView();
+                            if (window.updateCalendarView) window.updateCalendarView();
+                            if (window.updateTimerDisplay) window.updateTimerDisplay();
+                            if (window.updateSettingsView) window.updateSettingsView();
+                        } else {
+                            // Lokal daha güncel → Push et (bilgisayar güncel, bulut eski)
+                            console.log("Startup: Local data is newer, pushing...");
+                        }
+                    } else {
+                        // Bulutta hiç veri yok → Push et
+                        console.log("Startup: No cloud data, pushing local...");
                     }
+                    // Açılış pull'u bitti, 800ms sonra gerçek zamanlı dinleyiciyi başlat
+                    setTimeout(() => {
+                        window._cloudPullInProgress = false;
+                        // Gerçek zamanlı dinleyici: sadece BAŞKA BİR CİHAZIN anlık değişikliklerini yakala
+                        syncRef.on('value', (snapshot) => {
+                            const remoteData = snapshot.val();
+                            if (remoteData && !window._cloudPullInProgress &&
+                                remoteData.lastSyncTimestamp > dataManager.data.lastSyncTimestamp) {
+                                console.log("Realtime: Remote change detected, pulling...");
+                                window._cloudPullInProgress = true;
+                                dataManager.data = remoteData;
+                                dataManager.sanitize();
+                                dataManager.save(true);
+                                if (window.updateHomeView) window.updateHomeView();
+                                if (window.updateCalendarView) window.updateCalendarView();
+                                if (window.updateTimerDisplay) window.updateTimerDisplay();
+                                if (window.updateSettingsView) window.updateSettingsView();
+                                setTimeout(() => { window._cloudPullInProgress = false; }, 800);
+                            }
+                        });
+                    }, 800);
                 });
             } else {
                 console.log("User logged out.");
