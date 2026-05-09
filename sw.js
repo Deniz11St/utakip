@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v280-v2.8.0'; // v2.8.0: Granüler alan bazlı senkronizasyon
+const CACHE_NAME = 'utakip-v281-v2.8.1'; // v2.8.1: Eski format migrasyon desteği
 const ASSETS = [
     './',
     './index.html',

@@ -127,11 +127,85 @@ function cloudSyncPush() {
 
 function _initGranularSync(uid) {
     if (!firebaseDb) return;
-    // Aşama 1: Her alanı bir kez çek ve karşılaştır
+    const userRef = firebaseDb.ref(`users/${uid}`);
+
+    // ===== AŞAMA 0: ESKİ FORMAT MİGRASYONU =====
+    // Eski sistem tüm veriyi users/UID altına tek blok yazıyordu.
+    // Yeni sistem users/UID/sessions, users/UID/dailyPump vb. ayrı node'lar bekliyor.
+    // Önce eski format var mı kontrol et, varsa dönüştür.
+    userRef.once('value').then(rootSnap => {
+        const rootData = rootSnap.val();
+
+        // Eski format tespiti: lastSyncTimestamp varsa VE granüler node'lar yoksa
+        const isOldFormat = rootData &&
+            rootData.lastSyncTimestamp !== undefined &&
+            !rootData.sessions?._ts; // granüler node sessions._ts yoksa eski format
+
+        if (isOldFormat && rootData.sessions) {
+            console.log('[Sync] Eski format tespit edildi. Migrasyona başlanıyor...');
+            const now = Date.now();
+
+            // Eski blob'dan granüler payload'lar oluştur
+            const migration = {};
+            migration.sessions   = { _ts: now, data: rootData.sessions   || {} };
+            migration.dailyPump  = { _ts: now, data: rootData.dailyPump  || {} };
+            migration.restDays   = { _ts: now, data: rootData.restDays   || {} };
+            migration.notes      = { _ts: now, data: rootData.notes      || {} };
+            migration.monthlyData = { _ts: now, data: {
+                monthlyTension: rootData.monthlyTension || {},
+                monthlySize:    rootData.monthlySize    || {},
+                monthlyWork:    rootData.monthlyWork    || {},
+                currentSize:    rootData.currentSize    || 0,
+                currentTension: rootData.currentTension || 0
+            }};
+            migration.profile = { _ts: now, data: {
+                name: rootData.name || '', age: rootData.age || 0,
+                startDate: rootData.startDate || '', startSize: rootData.startSize || 0,
+                targetSize: rootData.targetSize || 0, targetMonthlyGrowth: rootData.targetMonthlyGrowth || 2,
+                dailyGoalHours: rootData.dailyGoalHours || 6,
+                workCycleDays: rootData.workCycleDays || 5, restCycleDays: rootData.restCycleDays || 2,
+                timerSettings: rootData.timerSettings || {},
+                aiProvider: rootData.aiProvider || 'gemini', geminiModelName: rootData.geminiModelName || 'gemini-2.5-flash'
+            }};
+
+            // Firebase'e yeni granüler yapıyı yaz (eski veriyi ezmeden, set yerine update kullan)
+            userRef.update(migration).then(() => {
+                console.log('[Sync] Migrasyon tamamlandı! Granüler node\'lar oluşturuldu.');
+                // Lokal timestamp'leri güncelle
+                SYNC_FIELDS.forEach(f => _setFieldTs(f, now));
+
+                // Eski blob'daki veriyi lokale de uygula (en güncel veri Firebase'deki blob)
+                _applyFieldPayload('sessions', rootData.sessions);
+                _applyFieldPayload('dailyPump', rootData.dailyPump);
+                _applyFieldPayload('restDays', rootData.restDays);
+                _applyFieldPayload('notes', rootData.notes);
+                _applyFieldPayload('monthlyData', migration.monthlyData.data);
+                _applyFieldPayload('profile', migration.profile.data);
+                dataManager.sanitize();
+                dataManager.save(true);
+                _refreshAllViews();
+
+                // Migrasyon sonrası normal gerçek zamanlı dinleyicileri kur
+                _setupRealtimeListeners(uid);
+            }).catch(e => console.error('[Sync] Migrasyon hatası:', e));
+
+        } else {
+            // Eski format yok veya zaten granüler → normal akışa devam
+            console.log('[Sync] Granüler format mevcut veya ilk kurulum. Normal sync başlatılıyor.');
+            _runGranularPullAndPush(uid);
+        }
+    }).catch(e => {
+        console.error('[Sync] Kök veri okuma hatası:', e);
+        _runGranularPullAndPush(uid);
+    });
+}
+
+// Normal granüler pull+push akışı (migrasyon sonrası veya zaten yeni format)
+function _runGranularPullAndPush(uid) {
     const pulls = SYNC_FIELDS.map(field =>
         firebaseDb.ref(`users/${uid}/${field}`).once('value').then(snap => {
             const node = snap.val();
-            if (!node) return;
+            if (!node || !node._ts) return;
             const remoteTs = node._ts || 0;
             const localTs  = _getFieldTs(field);
             if (remoteTs > localTs) {
@@ -145,7 +219,7 @@ function _initGranularSync(uid) {
         dataManager.sanitize();
         dataManager.save(true);
         _refreshAllViews();
-        // Aşama 2: Lokalde daha güncel alanları push et
+        // Lokalde daha güncel alanları push et
         setTimeout(() => {
             window._cloudPullInProgress = false;
             SYNC_FIELDS.forEach(field => {
@@ -158,23 +232,28 @@ function _initGranularSync(uid) {
                 });
             });
         }, 800);
-        // Aşama 3: Gerçek zamanlı dinleyicileri kur
-        SYNC_FIELDS.forEach(field => {
-            firebaseDb.ref(`users/${uid}/${field}`).on('value', snap => {
-                if (window._cloudPullInProgress) return;
-                const node = snap.val();
-                if (!node) return;
-                const remoteTs = node._ts || 0;
-                if (remoteTs > _getFieldTs(field)) {
-                    window._cloudPullInProgress = true;
-                    _applyFieldPayload(field, node.data);
-                    _setFieldTs(field, remoteTs);
-                    dataManager.sanitize();
-                    dataManager.save(true);
-                    _refreshAllViews();
-                    setTimeout(() => { window._cloudPullInProgress = false; }, 600);
-                }
-            });
+        // Gerçek zamanlı dinleyicileri kur
+        _setupRealtimeListeners(uid);
+    });
+}
+
+// Gerçek zamanlı Firebase dinleyicileri
+function _setupRealtimeListeners(uid) {
+    SYNC_FIELDS.forEach(field => {
+        firebaseDb.ref(`users/${uid}/${field}`).on('value', snap => {
+            if (window._cloudPullInProgress) return;
+            const node = snap.val();
+            if (!node || !node._ts) return;
+            const remoteTs = node._ts || 0;
+            if (remoteTs > _getFieldTs(field)) {
+                window._cloudPullInProgress = true;
+                _applyFieldPayload(field, node.data);
+                _setFieldTs(field, remoteTs);
+                dataManager.sanitize();
+                dataManager.save(true);
+                _refreshAllViews();
+                setTimeout(() => { window._cloudPullInProgress = false; }, 600);
+            }
         });
     });
 }
