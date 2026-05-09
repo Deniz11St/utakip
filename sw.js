@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v276-v2.7.6'; // v2.7.6: Simplified sync - on(value) only
+const CACHE_NAME = 'utakip-v280-v2.8.0'; // v2.8.0: Granüler alan bazlı senkronizasyon
 const ASSETS = [
     './',
     './index.html',
