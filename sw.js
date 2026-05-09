@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v274-v2.7.4'; // v2.7.4: Import pre-push + startup push fix
+const CACHE_NAME = 'utakip-v275-v2.7.5'; // v2.7.5: Realtime sync rewrite
 const ASSETS = [
     './',
     './index.html',

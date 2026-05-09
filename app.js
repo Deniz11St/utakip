@@ -60,57 +60,39 @@ function initCloudSync() {
                 dataManager.data.firebaseSyncId = user.uid;
                 dataManager.save(true);
                 
-                // Real-time Database Listener
                 const syncRef = firebaseDb.ref('users/' + user.uid);
                 
-                // AÇILIŞ PULL'U: Uygulama her açıldığında Firebase'deki veriyi KOŞULSUZ olarak çek.
-                // "Hangi cihaz daha sonra açıldı" sorununu bu çözüyor.
-                // Timestamp farkı gözetmeksizin her zaman bulut verisi esas alınır.
-                window._cloudPullInProgress = true;
+                // GERÇEk ZAMANLI DİNLEYİCİ: Başka cihazdan gelen değişiklikleri yakala
+                syncRef.on('value', (snapshot) => {
+                    const remoteData = snapshot.val();
+                    if (!remoteData) return;
+                    // Sadece bulut daha güncel ise çek (kendi push'umuzu tekrar çekmez)
+                    if (remoteData.lastSyncTimestamp > dataManager.data.lastSyncTimestamp) {
+                        console.log("Realtime sync: pulling newer cloud data...");
+                        window._cloudPullInProgress = true;
+                        dataManager.data = remoteData;
+                        dataManager.sanitize();
+                        dataManager.save(true);
+                        if (window.updateHomeView) window.updateHomeView();
+                        if (window.updateCalendarView) window.updateCalendarView();
+                        if (window.updateTimerDisplay) window.updateTimerDisplay();
+                        if (window.updateSettingsView) window.updateSettingsView();
+                        // Pull bitti, 1200ms sonra push'a izin ver
+                        setTimeout(() => { window._cloudPullInProgress = false; }, 1200);
+                    }
+                });
+                
+                // AÇILIŞ KONTROLÜ: İlk bağlantıda bulutla eşitle
                 syncRef.once('value').then((snapshot) => {
                     const remoteData = snapshot.val();
-                    if (remoteData && remoteData.lastSyncTimestamp > 0) {
-                        if (remoteData.lastSyncTimestamp > dataManager.data.lastSyncTimestamp) {
-                            // Bulut daha güncel → Pull et
-                            console.log("Startup: Cloud data is newer, pulling...");
-                            dataManager.data = remoteData;
-                            dataManager.sanitize();
-                            dataManager.save(true);
-                            if (window.updateHomeView) window.updateHomeView();
-                            if (window.updateCalendarView) window.updateCalendarView();
-                            if (window.updateTimerDisplay) window.updateTimerDisplay();
-                            if (window.updateSettingsView) window.updateSettingsView();
-                        } else {
-                            // Lokal daha güncel veya eşit → Firebase'e push et
-                            console.log("Startup: Local data is newer or equal, pushing to Firebase...");
-                            cloudSyncPush(dataManager.data);
-                        }
+                    if (remoteData && remoteData.lastSyncTimestamp > dataManager.data.lastSyncTimestamp) {
+                        // Bulut daha güncel → zaten on('value') çekecek, burada tekrar yapmaya gerek yok
+                        console.log("Startup: cloud is newer, on('value') will handle pull.");
                     } else {
-                        // Bulutta hiç veri yok → Push et
-                        console.log("Startup: No cloud data, pushing local...");
+                        // Lokal güncel veya bulut boş → push et
+                        console.log("Startup: local is newer or cloud empty, pushing...");
                         cloudSyncPush(dataManager.data);
                     }
-                    // Açılış pull'u bitti, 800ms sonra gerçek zamanlı dinleyiciyi başlat
-                    setTimeout(() => {
-                        window._cloudPullInProgress = false;
-                        // Gerçek zamanlı dinleyici: sadece BAŞKA BİR CİHAZIN anlık değişikliklerini yakala
-                        syncRef.on('value', (snapshot) => {
-                            const remoteData = snapshot.val();
-                            if (remoteData && !window._cloudPullInProgress &&
-                                remoteData.lastSyncTimestamp > dataManager.data.lastSyncTimestamp) {
-                                console.log("Realtime: Remote change detected, pulling...");
-                                window._cloudPullInProgress = true;
-                                dataManager.data = remoteData;
-                                dataManager.sanitize();
-                                dataManager.save(true);
-                                if (window.updateHomeView) window.updateHomeView();
-                                if (window.updateCalendarView) window.updateCalendarView();
-                                if (window.updateTimerDisplay) window.updateTimerDisplay();
-                                if (window.updateSettingsView) window.updateSettingsView();
-                                setTimeout(() => { window._cloudPullInProgress = false; }, 800);
-                            }
-                        });
-                    }, 800);
                 });
             } else {
                 console.log("User logged out.");
