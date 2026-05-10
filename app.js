@@ -842,18 +842,32 @@ document.addEventListener('DOMContentLoaded', () => {
                     displayStreakValue.textContent = diffDays;
                     displayStreakSub.textContent = 'Geçen Gün';
                 } else {
-                    // Hedefe kalan gün hesabı
+                    // Hedefe kalan gün hesabı (Başlangıç Tarihine Göre Geri Sayım)
                     let rate = dataManager.data.targetMonthlyGrowth > 0 ? dataManager.data.targetMonthlyGrowth : 2;
-                    let baseSize = dataManager.data.currentSize > 0 ? dataManager.data.currentSize : dataManager.data.startSize;
-                    let remainingCm = dataManager.data.targetSize - baseSize;
+                    let targetSize = dataManager.data.targetSize || 0;
+                    let startSize = dataManager.data.startSize || 0;
                     
-                    if (remainingCm <= 0 || !dataManager.data.targetSize) {
+                    if (targetSize <= startSize) {
                         displayStreakValue.textContent = '0';
                         displayStreakSub.textContent = 'Kalan Gün';
                     } else {
-                        // mm cinsinden kalan / (aylık mm / 30.43 gün) = toplam gün
-                        let totalDaysRemaining = Math.ceil((remainingCm * 10) / (rate / 30.4375));
-                        displayStreakValue.textContent = totalDaysRemaining;
+                        // Toplam gereken ay (başlangıç boyutundan hedefe)
+                        let totalMonthsNeeded = ((targetSize - startSize) * 10) / rate;
+                        
+                        // Orijinal hedef tarihi: Başlangıç + Gereken Ay
+                        let targetDate = new Date(dataManager.data.startDate);
+                        
+                        // Ay küsuratını güne çevirerek ekle (daha hassas)
+                        let totalDaysNeeded = Math.ceil(totalMonthsNeeded * 30.4375);
+                        targetDate.setDate(targetDate.getDate() + totalDaysNeeded);
+                        
+                        // Kalan gün = Hedef Tarih - Bugün
+                        let remainingTime = targetDate.getTime() - today.getTime();
+                        let remainingDays = Math.ceil(remainingTime / (1000 * 60 * 60 * 24));
+                        
+                        if (remainingDays < 0) remainingDays = 0;
+                        
+                        displayStreakValue.textContent = remainingDays;
                         displayStreakSub.textContent = 'Kalan Gün';
                     }
                 }
@@ -870,16 +884,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (targetSizeEl) targetSizeEl.textContent = dataManager.data.targetSize.toFixed(1);
                 
                 let rate = dataManager.data.targetMonthlyGrowth > 0 ? dataManager.data.targetMonthlyGrowth : 2;
-                let baseSize = dataManager.data.currentSize > 0 ? dataManager.data.currentSize : dataManager.data.startSize;
-                let remainingCm = dataManager.data.targetSize - baseSize;
+                let targetSize = dataManager.data.targetSize || 0;
+                let startSize = dataManager.data.startSize || 0;
+                let currentSize = dataManager.data.currentSize || startSize;
+                
                 const estEl = document.getElementById('displayEstimate');
                 if (estEl) {
-                    if (remainingCm <= 0) {
+                    if (targetSize <= startSize || targetSize <= currentSize) {
                         estEl.textContent = 'Hedefe Ulaşıldı!';
                     } else {
-                        let monthsNeeded = Math.ceil((remainingCm * 10) / rate); 
-                        const estDate = new Date();
-                        estDate.setMonth(estDate.getMonth() + monthsNeeded);
+                        let totalMonthsNeeded = ((targetSize - startSize) * 10) / rate; 
+                        const estDate = new Date(dataManager.data.startDate);
+                        estDate.setDate(estDate.getDate() + Math.ceil(totalMonthsNeeded * 30.4375));
                         estEl.textContent = new Intl.DateTimeFormat('tr-TR', { month: 'long', year: 'numeric' }).format(estDate);
                     }
                 }
@@ -2152,6 +2168,8 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             if(e.target.id === 'timerDuration' || e.target.id === 'timerBreak') {
                 if (typeof updateTimerFeedback === 'function') updateTimerFeedback();
             }
+            // Add save to persist state locally
+            saveSettingsNow();
         });
         
         settingsContainer.addEventListener('change', (e) => {
@@ -2167,6 +2185,8 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                 document.getElementById('geminiConfig').style.display = val === 'gemini' ? 'block' : 'none';
                 document.getElementById('minimaxConfig').style.display = val === 'minimax' ? 'block' : 'none';
             }
+            // Add save to persist state locally
+            saveSettingsNow();
         });
     }
 
@@ -2264,7 +2284,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             try {
                 const registration = await navigator.serviceWorker.getRegistration();
                 if (registration) {
-                    btn.textContent = "🚀 Güncelleniyor (v3.0.1)...";
+                    btn.textContent = "🚀 Güncelleniyor (v3.0.2)...";
                     await registration.update();
                     
                     // Force cache clearing for PWA assets

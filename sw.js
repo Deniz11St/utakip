@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v301-local-only'; // v3.0.1: Yapay zeka versiyonu düzeltmeleri ve UI iyileştirmeleri
+const CACHE_NAME = 'utakip-v302-local-only'; // v3.0.2: Sayaç dinamikleştirildi, API Key kaydetme hatası giderildi
 const ASSETS = [
     './',
     './index.html',
