@@ -2265,7 +2265,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             try {
                 const registration = await navigator.serviceWorker.getRegistration();
                 if (registration) {
-                    btn.textContent = "🚀 Güncelleniyor (v2.4.2)...";
+                    btn.textContent = "🚀 Güncelleniyor (v3.0.0)...";
                     await registration.update();
                     
                     // Force cache clearing for PWA assets
