@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v304-local-only'; // v3.0.4: Kegel (Pelvik Taban) Egzersizi Butonu Eklendi
+const CACHE_NAME = 'utakip-v305-local-only'; // v3.0.5: Forced cache bust for kegel icon
 const ASSETS = [
     './',
     './index.html',
