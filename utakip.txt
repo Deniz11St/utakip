@@ -1,3 +1,8 @@
+firebase
 https://utakip-sync-default-rtdb.europe-west1.firebasedatabase.app
 AIzaSyBGrnSSeLSY_XvnhxZRjH8kk5uRb-JHdwk
 utakip-sync
+
+
+uTakip
+AIzaSyCn8xmQcxb-B5TfwCJWtyQAt8FhwI6k1Qk

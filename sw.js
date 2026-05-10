@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v303-local-only'; // v3.0.3: API Key hardcoded
+const CACHE_NAME = 'utakip-v304-local-only'; // v3.0.4: Kegel (Pelvik Taban) Egzersizi Butonu Eklendi
 const ASSETS = [
     './',
     './index.html',

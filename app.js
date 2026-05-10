@@ -112,10 +112,6 @@ class TrackerData {
         if (this.data.cloudSyncEnabled === undefined) this.data.cloudSyncEnabled = true;
         if (this.data.lastSyncTimestamp === undefined) this.data.lastSyncTimestamp = 0;
         
-        // API KEY OVERRIDE (Hardcoded user request)
-        this.data.geminiApiKey = 'AIzaSyAY4X11SOje4b4GfQBF8ENHl4HYZuM8-Ik';
-        this.data.geminiModelName = 'gemini-2.5-flash';
-        
         // AUTO-FILL removed
 
         // MIGRATION: Sessions data integrity
@@ -209,11 +205,16 @@ class TrackerData {
         // Migration & Initialization
         if (!entry || typeof entry !== 'object') {
             let w = false;
-            let b = false;
+            let k = false;
             if (entry === true || entry === 1) w = true;
-            if (entry === 2) b = true;
-            if (entry === 3) { w = true; b = true; }
-            entry = { warmup: w, bloodflow: b };
+            if (entry === 2) k = true;
+            if (entry === 3) { w = true; k = true; }
+            entry = { warmup: w, kegel: k };
+        }
+        
+        if (entry.bloodflow !== undefined && entry.kegel === undefined) {
+            entry.kegel = entry.bloodflow;
+            delete entry.bloodflow;
         }
         
         entry[type] = !entry[type];
@@ -1256,17 +1257,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     dateCol.appendChild(dayNumSpan);
 
-                    // Pompa Verilerini Hazırla
+                    // Pompa & Kegel Verilerini Hazırla
                     const pumpData = dataManager.data.dailyPump && dataManager.data.dailyPump[dateStr];
                     let isWarmup = false;
-                    let isBloodflow = false;
+                    let isKegel = false;
                     if (typeof pumpData === 'object') {
                         isWarmup = !!pumpData.warmup;
-                        isBloodflow = !!pumpData.bloodflow;
+                        isKegel = !!pumpData.kegel || !!pumpData.bloodflow;
                     } else if (pumpData) {
                         // Migration fallback
                         if (pumpData === true || pumpData === 1 || pumpData === 3) isWarmup = true;
-                        if (pumpData === 2 || pumpData === 3) isBloodflow = true;
+                        if (pumpData === 2 || pumpData === 3) isKegel = true;
                     }
 
                     // 1. Isınma Pompası (Mavi)
@@ -1282,18 +1283,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     };
                     dateCol.appendChild(warmupBtn);
 
-                    // 2. Kan Akışı Pompası (Mor)
-                    const bloodflowBtn = document.createElement('button');
-                    bloodflowBtn.className = `btn-pump-toggle ${isBloodflow ? 'state-bloodflow' : ''}`;
-                    bloodflowBtn.title = 'Kan Akışı Pompası (Seans Sonu)';
-                    bloodflowBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px">mode_fan</span>';
-                    bloodflowBtn.onclick = (e) => {
+                    // 2. Pelvik Taban Egzersizi (Kegel)
+                    const kegelBtn = document.createElement('button');
+                    kegelBtn.className = `btn-pump-toggle ${isKegel ? 'state-kegel' : ''}`;
+                    kegelBtn.title = 'Pelvik Taban Egzersizi (Kegel)';
+                    kegelBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px">self_improvement</span>';
+                    kegelBtn.onclick = (e) => {
                         e.stopPropagation();
-                        dataManager.toggleDailyPump(dateStr, 'bloodflow');
+                        dataManager.toggleDailyPump(dateStr, 'kegel');
                         updateCalendarView();
                         updateHomeView();
                     };
-                    dateCol.appendChild(bloodflowBtn);
+                    dateCol.appendChild(kegelBtn);
 
                     const editBtn = document.createElement('button');
                     editBtn.className = 'btn-day-edit';
@@ -1737,7 +1738,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // GEMINI API Integration
 async function askGemini(userMessage, context) {
-    const apiKey = dataManager.data.geminiApiKey || 'AIzaSyAY4X11SOje4b4GfQBF8ENHl4HYZuM8-Ik';
+    const apiKey = dataManager.data.geminiApiKey;
     const model = dataManager.data.geminiModelName || 'gemini-2.5-flash';
     if (!apiKey) return null;
 
@@ -1790,16 +1791,32 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
     const stage = dataManager.getStage();
     const name = dataManager.data.name || "Kullanıcı";
     
-    // Pump Data Context
-    const pumpCount = Object.values(dataManager.data.dailyPump || {}).filter(v => v).length;
-    const pumpStatus = dataManager.data.dailyPump[new Date().toISOString().split('T')[0]] ? "Bugün pompa yapıldı." : "Bugün pompa yapılmadı.";
+    // Pump & Kegel Data Context
+    const dailyPumpData = Object.values(dataManager.data.dailyPump || {});
+    let pumpCount = 0;
+    let kegelCount = 0;
+    
+    dailyPumpData.forEach(entry => {
+        if (typeof entry === 'object') {
+            if (entry.warmup) pumpCount++;
+            if (entry.kegel) kegelCount++;
+        } else if (entry) {
+            pumpCount++;
+        }
+    });
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todayPump = dataManager.data.dailyPump[todayStr] || {};
+    const pumpStatus = (todayPump.warmup || todayPump === true) ? "Bugün pompa yapıldı." : "Bugün pompa yapılmadı.";
+    const kegelStatus = todayPump.kegel ? "Bugün pelvik taban (Kegel) egzersizi yapıldı." : "Bugün Kegel yapılmadı.";
 
     // Geçmiş veri özeti (AI için)
     const monthlySummary = Object.keys(dataManager.data.monthlyWork || {}).map(m => `${m}: ${dataManager.data.monthlyWork[m]}dk çalışma`).join(', ');
 
     const systemContext = `Sen UTakip uygulamasının uzman gelişim koçusun. 
     Kullanıcı: ${name}, Yaş: ${dataManager.data.age}, Gelişim: ${totalGrowth} mm (Aşama ${stage}).
-    Pompa Verisi: Toplam ${pumpCount} gün pompa kullanıldı. ${pumpStatus}
+    Egzersiz Verisi: Toplam ${pumpCount} gün pompa, ${kegelCount} gün Kegel egzersizi yapıldı.
+    Bugün Durumu: ${pumpStatus} ${kegelStatus}
     Geçmiş Özet: ${monthlySummary || 'Yok'}.
     Kural: Kısa ve öz cevap ver. Tıbbi tavsiye verme.`;
 
@@ -2288,7 +2305,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             try {
                 const registration = await navigator.serviceWorker.getRegistration();
                 if (registration) {
-                    btn.textContent = "🚀 Güncelleniyor (v3.0.3)...";
+                    btn.textContent = "🚀 Güncelleniyor (v3.0.4)...";
                     await registration.update();
                     
                     // Force cache clearing for PWA assets

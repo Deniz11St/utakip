@@ -2230,7 +2230,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     box-shadow: 0 0 10px rgba(0, 191, 255, 0.2);
 }
 
-.btn-pump-toggle.state-bloodflow {
+.btn-pump-toggle.state-kegel {
     background: rgba(187, 134, 252, 0.15);
     color: #bb86fc;
     border-color: rgba(187, 134, 252, 0.4);
@@ -2244,7 +2244,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 
 .btn-pump-toggle.state-warmup,
-.btn-pump-toggle.state-bloodflow {
+.btn-pump-toggle.state-kegel {
     animation: pumpPop 0.3s ease-out;
 }
 
