@@ -1,333 +1,4 @@
-// --- CLOUD SYNC ENGINE v2.8.0 (Granüler Alan Bazlı) ---
-let firebaseApp = null;
-let firebaseDb = null;
-
-// ============================================================
-//  Her veri alanı bağımsız Firebase node'unda tutulur.
-//  Her node kendi _ts (timestamp) değerine sahiptir.
-//  Çakışmada EN YÜKSEK _ts kazanır.
-//  Bir cihazın boş verisi diğer cihazın verisini ASLA ezemez.
-// ============================================================
-
-const SYNC_FIELDS = ['sessions', 'dailyPump', 'restDays', 'notes', 'profile', 'monthlyData'];
-
-function _getSyncTimestamps() {
-    const raw = localStorage.getItem('_utakip_field_ts');
-    try { return raw ? JSON.parse(raw) : {}; } catch(e) { return {}; }
-}
-function _setSyncTimestamps(obj) {
-    localStorage.setItem('_utakip_field_ts', JSON.stringify(obj));
-}
-function _getFieldTs(field) { return _getSyncTimestamps()[field] || 0; }
-function _setFieldTs(field, ts) {
-    const all = _getSyncTimestamps();
-    all[field] = ts;
-    _setSyncTimestamps(all);
-}
-
-function _buildFieldPayload(field) {
-    const d = dataManager.data;
-    if (field === 'sessions')   return d.sessions   || {};
-    if (field === 'dailyPump')  return d.dailyPump  || {};
-    if (field === 'restDays')   return d.restDays   || {};
-    if (field === 'notes')      return d.notes      || {};
-    if (field === 'monthlyData') return {
-        monthlyTension: d.monthlyTension || {},
-        monthlySize:    d.monthlySize    || {},
-        monthlyWork:    d.monthlyWork    || {},
-        currentSize:    d.currentSize    || 0,
-        currentTension: d.currentTension || 0
-    };
-    if (field === 'profile') return {
-        name: d.name || '', age: d.age || 0,
-        startDate: d.startDate || '', startSize: d.startSize || 0,
-        targetSize: d.targetSize || 0, targetMonthlyGrowth: d.targetMonthlyGrowth || 2,
-        dailyGoalHours: d.dailyGoalHours || 6,
-        workCycleDays: d.workCycleDays || 5, restCycleDays: d.restCycleDays || 2,
-        timerSettings: d.timerSettings || {},
-        aiProvider: d.aiProvider || 'gemini', geminiModelName: d.geminiModelName || 'gemini-2.5-flash'
-    };
-    return null;
-}
-
-function _applyFieldPayload(field, payload) {
-    if (!payload) return;
-    const d = dataManager.data;
-    if (field === 'sessions')  { d.sessions  = payload; return; }
-    if (field === 'dailyPump') { d.dailyPump = payload; return; }
-    if (field === 'restDays')  { d.restDays  = payload; return; }
-    if (field === 'notes')     { d.notes     = payload; return; }
-    if (field === 'monthlyData') {
-        if (payload.monthlyTension !== undefined) d.monthlyTension = payload.monthlyTension;
-        if (payload.monthlySize    !== undefined) d.monthlySize    = payload.monthlySize;
-        if (payload.monthlyWork    !== undefined) d.monthlyWork    = payload.monthlyWork;
-        if (payload.currentSize    !== undefined) d.currentSize    = payload.currentSize;
-        if (payload.currentTension !== undefined) d.currentTension = payload.currentTension;
-        return;
-    }
-    if (field === 'profile') {
-        const keys = ['name','age','startDate','startSize','targetSize','targetMonthlyGrowth',
-                      'dailyGoalHours','workCycleDays','restCycleDays','timerSettings','aiProvider','geminiModelName'];
-        keys.forEach(k => { if (payload[k] !== undefined) d[k] = payload[k]; });
-    }
-}
-
-function _isFieldEmpty(field, payload) {
-    if (!payload) return true;
-    if (['sessions','dailyPump','restDays','notes'].includes(field))
-        return Object.keys(payload).length === 0;
-    if (field === 'profile') return !payload.name && !payload.startDate && !payload.startSize;
-    return false;
-}
-
-function _refreshAllViews() {
-    if (window.updateHomeView)     window.updateHomeView();
-    if (window.updateCalendarView) window.updateCalendarView();
-    if (window.updateTimerDisplay) window.updateTimerDisplay();
-    if (window.updateSettingsView) window.updateSettingsView();
-}
-
-function cloudSyncPushField(field, skipIfEmpty = true) {
-    if (!firebaseDb || !dataManager.data.cloudSyncEnabled || !dataManager.data.firebaseSyncId) return;
-    
-    // Kullanıcı işlemleri her zaman push edilmeli, pull işlemi push'u engellememeli.
-    // Loop koruması zaten transaction içindeki timestamp kontrolü ile sağlanıyor.
-    
-    const payload = _buildFieldPayload(field);
-    if (skipIfEmpty && _isFieldEmpty(field, payload)) {
-        console.log(`[Sync] ${field} boş, gönderim atlandı.`);
-        return;
-    }
-
-    const localTs = _getFieldTs(field);
-    const newTs   = Date.now();
-    const nodeRef = firebaseDb.ref(`users/${dataManager.data.firebaseSyncId}/${field}`);
-    
-    console.log(`[Sync] ${field} push başlatılıyor... (Lokal TS: ${localTs})`);
-    
-    nodeRef.transaction((currentNode) => {
-        if (currentNode === null) return { _ts: newTs, data: payload };
-        const remoteTs = currentNode._ts || 0;
-        
-        // Eğer buluttaki veri bizim lokalimizden daha yeniyse, ezme!
-        if (remoteTs > localTs) {
-            console.warn(`[Sync] ${field} çakışma: Bulut daha yeni (${remoteTs} > ${localTs}). Push iptal.`);
-            return undefined; 
-        }
-        return { _ts: newTs, data: payload };
-    }, (error, committed, snapshot) => {
-        if (error) {
-            console.error(`[Sync] ${field} push hatası:`, error);
-        } else if (!committed) {
-            // Çakışma oldu: Buluttaki veriyi çek ve güncelle
-            const node = snapshot.val();
-            if (node && node.data) {
-                console.log(`[Sync] ${field} çakışma sonrası taze veri çekiliyor...`);
-                _applyFieldPayload(field, node.data);
-                _setFieldTs(field, node._ts);
-                dataManager.sanitize();
-                dataManager.save(true);
-                _refreshAllViews();
-            }
-        } else {
-            _setFieldTs(field, newTs);
-            console.log(`[Sync] ${field} push BAŞARILI. (Yeni TS: ${newTs})`);
-        }
-    });
-}
-
-function cloudSyncPush() {
-    // Tüm alanları gönder (Değişiklik olanlar transaction'da başarılı olur)
-    SYNC_FIELDS.forEach(f => cloudSyncPushField(f, false)); // skipIfEmpty false: boşaltılan alanlar da silinsin
-}
-
-function _initGranularSync(uid) {
-    if (!firebaseDb) return;
-    const userRef = firebaseDb.ref(`users/${uid}`);
-
-    // ===== AŞAMA 0: ESKİ FORMAT MİGRASYONU =====
-    // Eski sistem tüm veriyi users/UID altına tek blok yazıyordu.
-    // Yeni sistem users/UID/sessions, users/UID/dailyPump vb. ayrı node'lar bekliyor.
-    // Önce eski format var mı kontrol et, varsa dönüştür.
-    userRef.once('value').then(rootSnap => {
-        const rootData = rootSnap.val();
-
-        // Eski format tespiti: lastSyncTimestamp varsa VE granüler node'lar yoksa
-        const isOldFormat = rootData &&
-            rootData.lastSyncTimestamp !== undefined &&
-            !rootData.sessions?._ts; // granüler node sessions._ts yoksa eski format
-
-        if (isOldFormat && rootData.sessions) {
-            console.log('[Sync] Eski format tespit edildi. Migrasyona başlanıyor...');
-            const now = Date.now();
-
-            // Eski blob'dan granüler payload'lar oluştur
-            const migration = {};
-            migration.sessions   = { _ts: now, data: rootData.sessions   || {} };
-            migration.dailyPump  = { _ts: now, data: rootData.dailyPump  || {} };
-            migration.restDays   = { _ts: now, data: rootData.restDays   || {} };
-            migration.notes      = { _ts: now, data: rootData.notes      || {} };
-            migration.monthlyData = { _ts: now, data: {
-                monthlyTension: rootData.monthlyTension || {},
-                monthlySize:    rootData.monthlySize    || {},
-                monthlyWork:    rootData.monthlyWork    || {},
-                currentSize:    rootData.currentSize    || 0,
-                currentTension: rootData.currentTension || 0
-            }};
-            migration.profile = { _ts: now, data: {
-                name: rootData.name || '', age: rootData.age || 0,
-                startDate: rootData.startDate || '', startSize: rootData.startSize || 0,
-                targetSize: rootData.targetSize || 0, targetMonthlyGrowth: rootData.targetMonthlyGrowth || 2,
-                dailyGoalHours: rootData.dailyGoalHours || 6,
-                workCycleDays: rootData.workCycleDays || 5, restCycleDays: rootData.restCycleDays || 2,
-                timerSettings: rootData.timerSettings || {},
-                aiProvider: rootData.aiProvider || 'gemini', geminiModelName: rootData.geminiModelName || 'gemini-2.5-flash'
-            }};
-
-            // Firebase'e yeni granüler yapıyı yaz (eski veriyi ezmeden, set yerine update kullan)
-            userRef.update(migration).then(() => {
-                console.log('[Sync] Migrasyon tamamlandı! Granüler node\'lar oluşturuldu.');
-                // Lokal timestamp'leri güncelle
-                SYNC_FIELDS.forEach(f => _setFieldTs(f, now));
-
-                // Eski blob'daki veriyi lokale de uygula (en güncel veri Firebase'deki blob)
-                _applyFieldPayload('sessions', rootData.sessions);
-                _applyFieldPayload('dailyPump', rootData.dailyPump);
-                _applyFieldPayload('restDays', rootData.restDays);
-                _applyFieldPayload('notes', rootData.notes);
-                _applyFieldPayload('monthlyData', migration.monthlyData.data);
-                _applyFieldPayload('profile', migration.profile.data);
-                dataManager.sanitize();
-                dataManager.save(true);
-                _refreshAllViews();
-
-                // Migrasyon sonrası normal gerçek zamanlı dinleyicileri kur
-                _setupRealtimeListeners(uid);
-            }).catch(e => console.error('[Sync] Migrasyon hatası:', e));
-
-        } else {
-            // Eski format yok veya zaten granüler → normal akışa devam
-            console.log('[Sync] Granüler format mevcut veya ilk kurulum. Normal sync başlatılıyor.');
-            _runGranularPullAndPush(uid);
-        }
-    }).catch(e => {
-        console.error('[Sync] Kök veri okuma hatası:', e);
-        _runGranularPullAndPush(uid);
-    });
-}
-
-// Normal granüler pull+push akışı (migrasyon sonrası veya zaten yeni format)
-function _runGranularPullAndPush(uid) {
-    const pulls = SYNC_FIELDS.map(field =>
-        firebaseDb.ref(`users/${uid}/${field}`).once('value').then(snap => {
-            const node = snap.val();
-            if (!node || !node._ts) return;
-            const remoteTs = node._ts || 0;
-            const localTs  = _getFieldTs(field);
-            if (remoteTs > localTs) {
-                _applyFieldPayload(field, node.data);
-                _setFieldTs(field, remoteTs);
-            }
-        }).catch(e => console.error(`[Sync] ${field} ilk çekim hatası:`, e))
-    );
-    Promise.all(pulls).then(() => {
-        console.log('[Sync] İlk pull tamamlandı. Listeners kuruluyor.');
-        dataManager.sanitize();
-        dataManager.save(true);
-        _refreshAllViews();
-        
-        // Gerçek zamanlı dinleyicileri kur
-        _setupRealtimeListeners(uid);
-    });
-}
-
-function _setupRealtimeListeners(uid) {
-    console.log(`[Sync] Gerçek zamanlı dinleyiciler kuruluyor (UID: ${uid})...`);
-    SYNC_FIELDS.forEach(field => {
-        firebaseDb.ref(`users/${uid}/${field}`).on('value', snap => {
-            // DİKKAT: window._cloudPullInProgress kontrolü kaldırıldı. 
-            // Timestamp kontrolü (remoteTs > localTs) zaten döngüleri engellemek için yeterlidir.
-            const node = snap.val();
-            if (!node || !node._ts) return;
-
-            const remoteTs = node._ts || 0;
-            const localTs  = _getFieldTs(field);
-
-            if (remoteTs > localTs) {
-                console.log(`[Sync] ${field} alanında güncelleme var (Bulut: ${remoteTs} > Lokal: ${localTs})`);
-                window._cloudPullInProgress = true;
-                _applyFieldPayload(field, node.data);
-                _setFieldTs(field, remoteTs);
-                dataManager.sanitize();
-                dataManager.save(true); // Lokal kaydet, push etme
-                _refreshAllViews();
-                setTimeout(() => { window._cloudPullInProgress = false; }, 600);
-            }
-        });
-    });
-}
-
-async function cloudSyncPullManual() {
-    if (!firebaseDb) return false;
-    const uid = dataManager.data.firebaseSyncId;
-    if (!uid) return false;
-    try {
-        window._cloudPullInProgress = true;
-        let anyData = false;
-        for (const field of SYNC_FIELDS) {
-            const snap = await firebaseDb.ref(`users/${uid}/${field}`).once('value');
-            const node = snap.val();
-            if (node && node.data) {
-                _applyFieldPayload(field, node.data);
-                _setFieldTs(field, node._ts || 0);
-                anyData = true;
-            }
-        }
-        if (anyData) { dataManager.sanitize(); dataManager.save(true); _refreshAllViews(); }
-        window._cloudPullInProgress = false;
-        return anyData;
-    } catch(e) {
-        console.error("Manual Pull Error:", e);
-        window._cloudPullInProgress = false;
-    }
-    return false;
-}
-
-function initCloudSync() {
-    const data = dataManager.data;
-    const firebaseConfig = {
-        apiKey:      data.firebaseApiKey,
-        databaseURL: data.firebaseDbUrl,
-        authDomain:  data.firebaseAuthDomain
-    };
-    try {
-        if (!window.firebase) { console.error("Firebase SDK not loaded."); return; }
-        if (!data.firebaseApiKey) { console.warn("Firebase API Key missing."); return; }
-        if (!firebase.apps.length) firebaseApp = firebase.initializeApp(firebaseConfig);
-        else firebaseApp = firebase.app();
-        if (data.firebaseDbUrl && data.firebaseDbUrl.startsWith('http')) {
-            firebaseDb = firebaseApp.database();
-        } else { console.warn("Firebase DB URL geçersiz."); return; }
-        if (!window.authListenerAttached) {
-            firebase.auth().onAuthStateChanged(user => {
-                const overlay = document.getElementById('authOverlay');
-                if (user) {
-                    if (overlay) overlay.classList.add('hidden');
-                    const emailEl = document.getElementById('displayUserEmail');
-                    if (emailEl) emailEl.textContent = user.email;
-                    dataManager.data.firebaseSyncId = user.uid;
-                    dataManager.save(true);
-                    _initGranularSync(user.uid); // v2.8.0 granüler sync
-                } else {
-                    if (overlay) overlay.classList.remove('hidden');
-                }
-            });
-            window.authListenerAttached = true;
-        }
-    } catch (e) {
-        console.error("Firebase Init Error:", e);
-    }
-}
+// --- CLOUD SYNC ENGINE REMOVED FOR STANDALONE MOBILE VERSION ---
 
 
 // Başarı bildirimi (Achievement Pop-up)
@@ -382,11 +53,7 @@ class TrackerData {
             },
             dailyPump: {}, // Format: "YYYY-MM-DD": true
             dailyScrewSize: {}, // Format: "YYYY-MM-DD": 14 (mm cinsinden vida boyutu)
-            firebaseApiKey: 'AIzaSyBGrnSSeLSY_XvnhxZRjH8kk5uRb-JHdwk',
-            firebaseDbUrl: 'https://utakip-sync-default-rtdb.europe-west1.firebasedatabase.app',
-            firebaseAuthDomain: 'utakip-sync.firebaseapp.com',
-            firebaseSyncId: '',
-            cloudSyncEnabled: true,
+            cloudSyncEnabled: false,
             lastSyncTimestamp: 0,
             activeSessionState: {
                 current: 1,
@@ -445,11 +112,6 @@ class TrackerData {
         if (this.data.cloudSyncEnabled === undefined) this.data.cloudSyncEnabled = true;
         if (this.data.lastSyncTimestamp === undefined) this.data.lastSyncTimestamp = 0;
         
-        // AUTO-FILL Missing Firebase Config (v2.5.7)
-        if (!this.data.firebaseApiKey) this.data.firebaseApiKey = 'AIzaSyBGrnSSeLSY_XvnhxZRjH8kk5uRb-JHdwk';
-        if (!this.data.firebaseDbUrl) this.data.firebaseDbUrl = 'https://utakip-sync-default-rtdb.europe-west1.firebasedatabase.app';
-        if (!this.data.firebaseAuthDomain) this.data.firebaseAuthDomain = 'utakip-sync.firebaseapp.com';
-
         // AUTO-FILL Missing Gemini API Key
         if (!this.data.geminiApiKey) this.data.geminiApiKey = 'AIzaSyAY4X11SOje4b4GfQBF8ENHl4HYZuM8-Ik';
 
@@ -490,14 +152,8 @@ class TrackerData {
         this.save();
     }
 
-    save(skipCloud = false) {
-        // Transaction (v2.6.2): lastSyncTimestamp'i BURADA güncellemiyoruz. cloudSyncPush başarılı olunca güncelleyecek.
-        // Bu sayede buluttaki veri bizden yeniyse (Conflict), eski timestamp'imizi bulutla karşılaştırıp ezilmesini engelleyebiliyoruz.
+    save() {
         localStorage.setItem('uTakipData', JSON.stringify(this.data));
-        
-        if (this.data.cloudSyncEnabled && !skipCloud) {
-            cloudSyncPush();
-        }
     }
 
     // Setters
@@ -520,11 +176,7 @@ class TrackerData {
         this.data.geminiModelName = modelName.trim() || 'gemini-1.5-flash';
         this.data.dailyGoalHours = parseFloat(dailyGoal) || 6;
         
-        this.data.firebaseApiKey = fbKey.trim() || 'AIzaSyBGrnSSeLSY_XvnhxZRjH8kk5uRb-JHdwk';
-        this.data.firebaseDbUrl = fbUrl.trim() || 'https://utakip-sync-default-rtdb.europe-west1.firebasedatabase.app';
-        this.data.firebaseAuthDomain = (fbAuth || '').trim() || 'utakip-sync.firebaseapp.com';
-        this.data.firebaseSyncId = fbId.trim();
-        this.data.cloudSyncEnabled = !!fbEnabled;
+        this.data.cloudSyncEnabled = false;
 
         this.data.workCycleDays = parseInt(workCycle) || 5;
         this.data.restCycleDays = parseInt(restCycle) || 2;
@@ -772,60 +424,6 @@ document.addEventListener('DOMContentLoaded', () => {
     window.updateCoachSectionView = updateCoachSectionView;
 
     dataManager = new TrackerData();
-    initCloudSync();
-
-    // --- AUTH UI LOGIC (v2.5.0) ---
-    let authMode = 'login';
-    const btnToggleAuth = document.getElementById('btnToggleAuthMode');
-    const btnAuthAction = document.getElementById('btnAuthAction');
-
-    if (btnToggleAuth) {
-        btnToggleAuth.addEventListener('click', () => {
-            authMode = authMode === 'login' ? 'register' : 'login';
-            document.getElementById('authTitle').textContent = authMode === 'login' ? 'Hoş Geldiniz' : 'Hesap Oluştur';
-            document.getElementById('authSubtitle').textContent = authMode === 'login' ? 'Gelişiminizi bulut ile senkronize edin.' : 'Verileriniz her zaman güvende kalır.';
-            btnAuthAction.textContent = authMode === 'login' ? 'GİRİŞ YAP' : 'KAYIT OL';
-            document.getElementById('authFooterText').textContent = authMode === 'login' ? 'Hesabınız yok mu?' : 'Zaten hesabınız var mı?';
-            btnToggleAuth.textContent = authMode === 'login' ? 'Kayıt Ol' : 'Giriş Yap';
-            
-
-        });
-    }
-
-    if (btnAuthAction) {
-        btnAuthAction.addEventListener('click', async () => {
-            const email = document.getElementById('authEmail').value.trim();
-            const password = document.getElementById('authPassword').value;
-            const errorEl = document.getElementById('authError');
-            if (errorEl) errorEl.textContent = "";
-
-            if (!email || !password) {
-                if (errorEl) errorEl.textContent = "Lütfen e-posta ve şifre girin.";
-                return;
-            }
-
-            btnAuthAction.disabled = true;
-            const originalText = btnAuthAction.textContent;
-            btnAuthAction.textContent = "İşleniyor...";
-
-            try {
-                if (authMode === 'login') {
-                    await firebase.auth().signInWithEmailAndPassword(email, password);
-                } else {
-                    await firebase.auth().createUserWithEmailAndPassword(email, password);
-                    showSuccessAchievement("Kayıt Başarılı", "Hesabınız oluşturuldu.", "✨");
-                }
-            } catch (e) {
-                console.error("Auth Error:", e);
-                if (errorEl) errorEl.textContent = e.message;
-            } finally {
-                btnAuthAction.disabled = false;
-                btnAuthAction.textContent = originalText;
-            }
-        });
-    }
-
-
 
     // --- AUTOMATED UPDATE LOGIC (v2.5.8 Fix) ---
     function checkSystemUpdate() {
@@ -1475,35 +1073,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    document.getElementById('btnForceCloudPull')?.addEventListener('click', async function() {
-        if (!confirm('Lokal verileriniz silinecek ve buluttaki verileriniz çekilecek. Onaylıyor musunuz?')) return;
-        
-        const btn = this;
-        const originalText = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '<span class="material-symbols-outlined rotating">sync</span> Senkronize Ediliyor...';
-        
-        try {
-            // 1. Lokal timestamp'leri sıfırla (Böylece buluttaki her şeyi 'yeni' görecek)
-            localStorage.removeItem('_utakip_field_ts');
-            
-            // 2. Firebase'den taze çekim yap
-            const success = await cloudSyncPullManual();
-            
-            if (success) {
-                alert('Veriler başarıyla buluttan çekildi!');
-            } else {
-                alert('Bulutta veri bulunamadı veya bağlantı hatası oluştu.');
-            }
-        } catch (e) {
-            console.error(e);
-            alert('Hata: ' + e.message);
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = originalText;
-            window.location.reload(); // Her şeyi temizleyip yeniden başlatmak en güvenlisi
-        }
-    });
+    // btnForceCloudPull listener removed
 
     document.getElementById('btnSaveJournal')?.addEventListener('click', () => {
         const pump = document.getElementById('jPump').checked;
@@ -2553,12 +2123,6 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         const modelName = document.getElementById('geminiModelName').value;
         const dailyGoal = document.getElementById('dailyGoalHours').value;
         
-        const fbKey = dataManager.data.firebaseApiKey;
-        const fbUrl = dataManager.data.firebaseDbUrl;
-        const fbAuth = dataManager.data.firebaseAuthDomain;
-        const fbId = dataManager.data.firebaseSyncId;
-        const fbEnabled = dataManager.data.cloudSyncEnabled;
-
         const workCycle = document.getElementById('workCycleDays').value;
         const restCycle = document.getElementById('restCycleDays').value;
 
@@ -2570,10 +2134,8 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         const tVib = document.getElementById('notifVibrate').checked;
 
         // Verileri Kaydet
-        dataManager.setBaseSettings(name, age, date, size, target, growth, apiKey, modelName, dailyGoal, aiProvider, minimaxKey, fbKey, fbUrl, fbId, fbEnabled, workCycle, restCycle, fbAuth);
+        dataManager.setBaseSettings(name, age, date, size, target, growth, apiKey, modelName, dailyGoal, aiProvider, minimaxKey, '', '', '', false, workCycle, restCycle, '');
         dataManager.setTimerSettings(tCount, tDur, tBreak, tSound, tVib);
-
-        if (fbEnabled && !firebaseApp) initCloudSync();
 
         updateHomeView();
         updateCalendarView();
@@ -2635,51 +2197,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         URL.revokeObjectURL(url);
     });
 
-    document.getElementById('btnTestCloud')?.addEventListener('click', async () => {
-        const btn = document.getElementById('btnTestCloud');
-        const originalText = btn.textContent;
-        btn.textContent = "⏳ Bağlanıyor...";
-        btn.disabled = true;
-
-        const fbKey = document.getElementById('firebaseApiKey').value;
-        const fbUrl = document.getElementById('firebaseDbUrl').value;
-        const fbAuth = document.getElementById('firebaseAuthDomain').value;
-        const fbId = document.getElementById('firebaseSyncId').value;
-
-        if (!fbKey || !fbUrl || !fbId) {
-            alert("Lütfen tüm Firebase alanlarını doldurun.");
-            btn.textContent = originalText;
-            btn.disabled = false;
-            return;
-        }
-
-        // Geçici olarak ayarları uygula
-        dataManager.data.firebaseApiKey = fbKey;
-        dataManager.data.firebaseDbUrl = fbUrl;
-        dataManager.data.firebaseAuthDomain = fbAuth;
-        dataManager.data.firebaseSyncId = fbId;
-        dataManager.data.cloudSyncEnabled = true;
-
-        initCloudSync();
-        
-        setTimeout(async () => {
-             const success = await cloudSyncPullManual();
-             if (success) {
-                 showSuccessAchievement("Bağlantı Başarılı", "Veriler buluttan çekildi.", "☁️");
-                 btn.textContent = "✅ Bağlantı Hazır";
-             } else {
-                 try {
-                     cloudSyncPush();
-                     showSuccessAchievement("Bağlantı Başarılı", "Yeni bulut profili oluşturuldu.", "☁️");
-                     btn.textContent = "✅ Bağlantı Hazır";
-                 } catch (e) {
-                     alert("❌ Bağlantı Hatası: " + e.message);
-                     btn.textContent = originalText;
-                 }
-             }
-             btn.disabled = false;
-        }, 1500);
-    });
+    // btnTestCloud listener removed
 
     document.getElementById('btnCancelSession')?.addEventListener('click', () => {
         if (confirm("Mevcut seansı kaydetmeden iptal etmek istediğinize emin misiniz?")) {
@@ -2727,25 +2245,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                     // bu verinin daha yeni görünmesini garanti ediyoruz.
                     importedData.lastSyncTimestamp = Date.now() + 2000;
                     localStorage.setItem('uTakipData', JSON.stringify(importedData));
-                    
-                    // KRİTİK: Yenilenmeden ÖNCE Firebase'e push yap.
-                    // Bu sayede bilgisayar arka planda push yapmadan önce biz önce yazıyoruz.
-                    // Firebase bağlantısı varsa push et ve 1.5s bekle, yoksa hemen yenile.
-                    if (firebaseDb && importedData.firebaseSyncId) {
-                        const importRef = firebaseDb.ref('users/' + importedData.firebaseSyncId);
-                        importRef.set(importedData)
-                            .then(() => {
-                                console.log("Import: Data pushed to Firebase before reload.");
-                                location.reload();
-                            })
-                            .catch((err) => {
-                                console.warn("Import: Firebase push failed, reloading anyway:", err);
-                                location.reload();
-                            });
-                    } else {
-                        // Firebase yok, doğrudan yenile
-                        location.reload();
-                    }
+                    location.reload();
                 }
             } catch (err) {
                 alert('İçe Aktarma Hatası: ' + err.message);

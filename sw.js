@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v283-v2.8.3'; // v2.8.3: Senkronizasyon bloklama sorunları tamamen giderildi
+const CACHE_NAME = 'utakip-v300-local-only'; // v3.0.0: Firebase ve senkronizasyon tamamen kaldırıldı
 const ASSETS = [
     './',
     './index.html',

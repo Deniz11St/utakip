@@ -12,10 +12,7 @@
     <link rel="stylesheet" href="styles.css?v=282">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
-    <!-- Firebase SDK Compat (v9) -->
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <!-- Firebase SDK removed for standalone mobile version -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
     <script>
@@ -61,55 +58,7 @@
         </div>
     </div>
 
-    <!-- Auth Overlay (v2.5.0) -->
-    <div id="authOverlay" class="auth-overlay hidden">
-        <div class="auth-card">
-            <img src="icon.png" alt="Logo" class="auth-logo">
-            <div id="authTitle" class="auth-title">Hoş Geldiniz</div>
-            <div id="authSubtitle" class="auth-subtitle">Gelişiminizi bulut ile senkronize edin.</div>
-            
-            <div class="auth-form">
-                <div class="auth-input-wrapper">
-                    <span class="material-symbols-outlined">mail</span>
-                    <input type="email" id="authEmail" class="auth-input" placeholder="E-posta Adresi">
-                </div>
-                <div class="auth-input-wrapper">
-                    <span class="material-symbols-outlined">lock</span>
-                    <input type="password" id="authPassword" class="auth-input" placeholder="Şifre">
-                </div>
-                <button id="btnAuthAction" class="btn-primary auth-btn">GİRİŞ YAP</button>
-                
-            </div>
-            
-            <div id="authError" class="auth-error"></div>
-            
-            <div class="auth-footer">
-                <span id="authFooterText">Hesabınız yok mu?</span>
-                <span id="btnToggleAuthMode" class="auth-link">Kayıt Ol</span>
-            </div>
-
-            <!-- Giriş Yapamayanlar İçin Gizli Ayar Paneli (v2.5.2) -->
-            <div id="authSettingsTrigger" style="margin-top: 30px; font-size: 11px; color: rgba(255,255,255,0.2); cursor: pointer; text-decoration: underline;">
-                Bulut Ayarlarını Yapılandır
-            </div>
-
-            <div id="authSettingsPanel" style="display: none; margin-top: 20px; padding: 20px; background: rgba(0,0,0,0.4); border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); width: 100%; text-align: left;">
-                <div class="input-group" style="margin-bottom: 12px;">
-                    <label style="font-size: 11px;">Firebase API Key</label>
-                    <input type="password" id="authSetupKey" class="auth-input" style="height: 40px; padding-left: 12px !important; font-size: 12px;">
-                </div>
-                <div class="input-group" style="margin-bottom: 12px;">
-                    <label style="font-size: 11px;">Auth Domain</label>
-                    <input type="text" id="authSetupDomain" class="auth-input" style="height: 40px; padding-left: 12px !important; font-size: 12px;" placeholder="projeniz.firebaseapp.com">
-                </div>
-                <div class="input-group" style="margin-bottom: 12px;">
-                    <label style="font-size: 11px;">Database URL</label>
-                    <input type="text" id="authSetupUrl" class="auth-input" style="height: 40px; padding-left: 12px !important; font-size: 12px;" placeholder="https://projeniz.firebaseio.com">
-                </div>
-                <button id="btnSaveAuthSetup" class="btn-primary" style="height: 40px; font-size: 12px;">AYARLARI KAYDET VE YENİLE</button>
-            </div>
-        </div>
-    </div>
+    <!-- Auth Overlay Removed -->
 
     <div class="app-container">
         <!-- Views -->
@@ -345,15 +294,7 @@
                     <div class="card settings-section" id="profileSettingsSection">
                         <h3><span class="material-symbols-outlined">person</span> Profil ve Başlangıç Verileri</h3>
                         
-                        <div class="input-group" style="margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 15px;">
-                            <label style="opacity: 0.6; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Bağlı Hesap</label>
-                            <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 5px;">
-                                <span id="displayUserEmail" style="font-weight: 600; color: var(--accent-color);">Yükleniyor...</span>
-                                <button id="btnQuickSignOut" class="btn-secondary" style="height: 32px; padding: 0 12px; font-size: 11px; border-radius: 8px;">
-                                    <span class="material-symbols-outlined" style="font-size: 16px;">logout</span> Çıkış
-                                </button>
-                            </div>
-                        </div>
+                        <!-- User email display removed -->
 
                         <div class="input-group">
                             <label for="userName">İsim / Rumuz</label>
@@ -645,15 +586,7 @@
                             <button id="btnUpdateApp" class="btn-primary" style="width: 100%; display: none; margin-top: 15px;">🚀 Yeni Sürümü İndir ve Kur</button>
                         </div>
 
-                        <div style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px;">
-                            <h4 style="margin: 0 0 10px 0; font-size: 14px; color: #ffca28;">🆘 Senkronizasyon Sorunu mu Var?</h4>
-                            <p style="font-size: 12px; color: rgba(255,255,255,0.6); margin-bottom: 15px;">
-                                Eğer cihazlar arasında veri uyuşmazlığı yaşıyorsanız, bu buton lokal verilerinizi buluttaki en güncel verilerle değiştirmeye zorlar.
-                            </p>
-                            <button id="btnForceCloudPull" class="btn-secondary" style="width: 100%; background: rgba(255, 202, 40, 0.1); border-color: rgba(255, 202, 40, 0.3); color: #ffca28;">
-                                <span class="material-symbols-outlined" style="font-size: 18px;">cloud_download</span> Zorla Buluttan Veri Çek
-                            </button>
-                        </div>
+                        <!-- Cloud Sync Section Removed -->
                     </div>
                 </section>
 
