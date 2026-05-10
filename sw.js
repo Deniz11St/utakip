@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v300-local-only'; // v3.0.0: Firebase ve senkronizasyon tamamen kaldırıldı
+const CACHE_NAME = 'utakip-v301-local-only'; // v3.0.1: Yapay zeka versiyonu düzeltmeleri ve UI iyileştirmeleri
 const ASSETS = [
     './',
     './index.html',

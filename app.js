@@ -39,7 +39,7 @@ class TrackerData {
             monthlyTension: {}, // Format: "YYYY-MM": 10.5 (cm)
             notes: {}, // Format: "YYYY-MM-DD": "Bugün seans çok verimliydi."
             coachChat: [], // Format: [{role: 'user', text: '...'}, {role: 'coach', text: '...'}]
-            geminiApiKey: 'AIzaSyAY4X11SOje4b4GfQBF8ENHl4HYZuM8-Ik',
+            geminiApiKey: '',
             minimaxApiKey: '',
             geminiModelName: 'gemini-2.5-flash',
             aiProvider: 'gemini', // 'gemini' or 'minimax'
@@ -112,8 +112,7 @@ class TrackerData {
         if (this.data.cloudSyncEnabled === undefined) this.data.cloudSyncEnabled = true;
         if (this.data.lastSyncTimestamp === undefined) this.data.lastSyncTimestamp = 0;
         
-        // AUTO-FILL Missing Gemini API Key
-        if (!this.data.geminiApiKey) this.data.geminiApiKey = 'AIzaSyAY4X11SOje4b4GfQBF8ENHl4HYZuM8-Ik';
+        // AUTO-FILL removed
 
         // MIGRATION: Sessions data integrity
         if (this.data.sessions) {
@@ -157,7 +156,7 @@ class TrackerData {
     }
 
     // Setters
-    setBaseSettings(name, age, date, size, target, growthRate, apiKey = '', modelName = 'gemini-1.5-flash', dailyGoal = 6, aiProvider = 'gemini', minimaxKey = '', fbKey = '', fbUrl = '', fbId = '', fbEnabled = false, workCycle = 5, restCycle = 1, fbAuth = '') {
+    setBaseSettings(name, age, date, size, target, growthRate, apiKey = '', modelName = 'gemini-2.5-flash', dailyGoal = 6, aiProvider = 'gemini', minimaxKey = '', fbKey = '', fbUrl = '', fbId = '', fbEnabled = false, workCycle = 5, restCycle = 1, fbAuth = '') {
         this.data.name = name;
         this.data.age = parseInt(age) || 0;
         this.data.startDate = date;
@@ -173,7 +172,7 @@ class TrackerData {
         this.data.aiProvider = aiProvider;
         this.data.geminiApiKey = apiKey.trim();
         this.data.minimaxApiKey = minimaxKey.trim();
-        this.data.geminiModelName = modelName.trim() || 'gemini-1.5-flash';
+        this.data.geminiModelName = modelName.trim() || 'gemini-2.5-flash';
         this.data.dailyGoalHours = parseFloat(dailyGoal) || 6;
         
         this.data.cloudSyncEnabled = false;
@@ -1411,7 +1410,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
                 <div class="stat-box clickable" onclick="event.stopPropagation(); window.editMonthlyStat('tension', '${yearMonth}')" title="Düzenlemek için tıkla">
                     <span class="stat-label">Aylık Vida Boyutu</span>
-                    <strong class="stat-value" style="color: #d2a8ff;">${tension || '-'} mm</strong>
+                    <strong class="stat-value" style="color: #d2a8ff;">${tension || '-'} cm</strong>
                 </div>
                 <div class="stat-box clickable" onclick="event.stopPropagation(); window.editMonthlyStat('growth', '${yearMonth}')" title="Düzenlemek için tıkla">
                     <span class="stat-label">Aylık Uzama</span>
@@ -1450,7 +1449,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.editMonthlyStat = function(type, yearMonth) {
         if (type === 'tension') {
             const current = dataManager.data.monthlyTension[yearMonth] || 10;
-            const newVal = prompt(`${yearMonth} Ayı için Vida Boyutu (mm):`, current);
+            const newVal = prompt(`${yearMonth} Ayı için Vida Boyutu (cm):\n(Örn: 10.5 veya 11)`, current);
             if (newVal !== null) {
                 dataManager.data.monthlyTension[yearMonth] = parseFloat(newVal);
                 dataManager.save();
@@ -2265,7 +2264,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             try {
                 const registration = await navigator.serviceWorker.getRegistration();
                 if (registration) {
-                    btn.textContent = "🚀 Güncelleniyor (v3.0.0)...";
+                    btn.textContent = "🚀 Güncelleniyor (v3.0.1)...";
                     await registration.update();
                     
                     // Force cache clearing for PWA assets
