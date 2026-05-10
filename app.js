@@ -112,6 +112,10 @@ class TrackerData {
         if (this.data.cloudSyncEnabled === undefined) this.data.cloudSyncEnabled = true;
         if (this.data.lastSyncTimestamp === undefined) this.data.lastSyncTimestamp = 0;
         
+        // API KEY OVERRIDE (Hardcoded user request)
+        this.data.geminiApiKey = 'AIzaSyAY4X11SOje4b4GfQBF8ENHl4HYZuM8-Ik';
+        this.data.geminiModelName = 'gemini-2.5-flash';
+        
         // AUTO-FILL removed
 
         // MIGRATION: Sessions data integrity
@@ -1733,7 +1737,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // GEMINI API Integration
 async function askGemini(userMessage, context) {
-    const apiKey = dataManager.data.geminiApiKey;
+    const apiKey = dataManager.data.geminiApiKey || 'AIzaSyAY4X11SOje4b4GfQBF8ENHl4HYZuM8-Ik';
     const model = dataManager.data.geminiModelName || 'gemini-2.5-flash';
     if (!apiKey) return null;
 
@@ -2284,7 +2288,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             try {
                 const registration = await navigator.serviceWorker.getRegistration();
                 if (registration) {
-                    btn.textContent = "🚀 Güncelleniyor (v3.0.2)...";
+                    btn.textContent = "🚀 Güncelleniyor (v3.0.3)...";
                     await registration.update();
                     
                     // Force cache clearing for PWA assets

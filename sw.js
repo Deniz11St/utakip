@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v302-local-only'; // v3.0.2: Sayaç dinamikleştirildi, API Key kaydetme hatası giderildi
+const CACHE_NAME = 'utakip-v303-local-only'; // v3.0.3: API Key hardcoded
 const ASSETS = [
     './',
     './index.html',
