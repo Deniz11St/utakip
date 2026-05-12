@@ -1466,22 +1466,126 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // --- GENERIC STAT MODAL LOGIC (Boyut, Vida, Uzama) ---
+    let currentStatYearMonth = null;
+    let currentStatType = null;
+    
+    window.openMonthlyStatModal = function(yearMonth, type, currentValue) {
+        currentStatYearMonth = yearMonth;
+        currentStatType = type;
+        
+        const overlay = document.getElementById('monthlyStatModalOverlay');
+        const dateLabel = document.getElementById('monthlyStatModalTargetDate');
+        const titleSpan = document.getElementById('monthlyStatModalTitle');
+        const iconSpan = document.getElementById('monthlyStatModalIcon');
+        const unitLabel = document.getElementById('statUnitLabel');
+        const intLabel = document.getElementById('statIntLabel');
+        const decLabel = document.getElementById('statDecLabel');
+        const intInput = document.getElementById('int_stat');
+        const decInput = document.getElementById('dec_stat');
+        const valLabel = document.getElementById('statTotalValueLabel');
+
+        let title = "Veri Girişi";
+        let icon = "straighten";
+        let unit = "cm";
+
+        if (type === 'tension') {
+            title = "Aylık Vida Boyutu";
+            icon = "compress";
+            intLabel.textContent = "TAM (cm)";
+            decLabel.textContent = "ONDALIK (mm)";
+        } else if (type === 'size') {
+            title = "Ay Sonu Boyutu";
+            intLabel.textContent = "TAM (cm)";
+            decLabel.textContent = "ONDALIK (mm)";
+        } else if (type === 'growth') {
+            title = "Aylık Uzama";
+            unit = "mm";
+            intLabel.textContent = "TAM (mm)";
+            decLabel.textContent = "ONDALIK (mm)";
+        }
+
+        titleSpan.textContent = title;
+        iconSpan.textContent = icon;
+        unitLabel.textContent = unit;
+
+        try {
+            const parts = yearMonth.split('-');
+            const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1);
+            dateLabel.textContent = new Intl.DateTimeFormat('tr-TR', { month: 'long', year: 'numeric' }).format(d);
+        } catch(e) {
+            dateLabel.textContent = yearMonth;
+        }
+        
+        const val = parseFloat(currentValue) || 0;
+        const integerPart = Math.floor(val);
+        const decimalPart = Math.round((val - integerPart) * 10);
+        
+        intInput.value = integerPart;
+        decInput.value = decimalPart;
+        valLabel.textContent = val.toFixed(1);
+
+        overlay.classList.add('show');
+    };
+
+    function closeMonthlyStatModal() {
+        document.getElementById('monthlyStatModalOverlay').classList.remove('show');
+    }
+    
+    document.getElementById('btnCancelStat')?.addEventListener('click', closeMonthlyStatModal);
+    
+    document.getElementById('btnSaveStat')?.addEventListener('click', () => {
+        const intVal = parseInt(document.getElementById('int_stat').value) || 0;
+        const decVal = parseInt(document.getElementById('dec_stat').value) || 0;
+        const finalVal = intVal + (decVal / 10);
+
+        if (currentStatType === 'size') {
+            dataManager.data.monthlySize[currentStatYearMonth] = finalVal;
+            const allMonths = Object.keys(dataManager.data.monthlySize).sort();
+            if (allMonths[allMonths.length - 1] === currentStatYearMonth) {
+                dataManager.data.currentSize = finalVal;
+            }
+        } else if (currentStatType === 'tension') {
+            dataManager.data.monthlyTension[currentStatYearMonth] = finalVal;
+        } else if (currentStatType === 'growth') {
+            const sizes = { "0000-00": dataManager.data.startSize }; 
+            Object.keys(dataManager.data.monthlySize).forEach(k => sizes[k] = dataManager.data.monthlySize[k]);
+            const sortedKeys = Object.keys(sizes).sort();
+            const currentIndex = sortedKeys.indexOf(currentStatYearMonth);
+            const prevKey = currentIndex > 0 ? sortedKeys[currentIndex - 1] : "0000-00";
+            const prevSize = sizes[prevKey];
+            dataManager.data.monthlySize[currentStatYearMonth] = prevSize + (finalVal / 10);
+            
+            const allMonths = Object.keys(dataManager.data.monthlySize).sort();
+            if (allMonths[allMonths.length - 1] === currentStatYearMonth) {
+                dataManager.data.currentSize = dataManager.data.monthlySize[currentStatYearMonth];
+            }
+        }
+
+        dataManager.save();
+        updateCalendarView();
+        if (typeof updateHomeView === 'function') updateHomeView();
+        closeMonthlyStatModal();
+    });
+
+    ['int_stat', 'dec_stat'].forEach(id => {
+        document.getElementById(id)?.addEventListener('change', () => {
+            const intVal = parseInt(document.getElementById('int_stat').value) || 0;
+            const decVal = parseInt(document.getElementById('dec_stat').value) || 0;
+            document.getElementById('statTotalValueLabel').textContent = (intVal + (decVal / 10)).toFixed(1);
+        });
+    });
+
     // --- MANUEL STAT DÜZENLEME (TAKAVİM ÖZETİ) ---
     window.editMonthlyStat = function(type, yearMonth) {
         if (type === 'tension') {
             const current = dataManager.data.monthlyTension[yearMonth] || 10;
-            const newVal = prompt(`${yearMonth} Ayı için Vida Boyutu (cm):\n(Örn: 10.5 veya 11)`, current);
-            if (newVal !== null) {
-                dataManager.data.monthlyTension[yearMonth] = parseFloat(newVal);
-                dataManager.save();
-                updateCalendarView();
-            }
+            openMonthlyStatModal(yearMonth, 'tension', current);
         } else if (type === 'work') {
             const current = dataManager.data.monthlyWork[yearMonth] || 0;
             if (typeof openMonthlyWorkModal === 'function') {
                 openMonthlyWorkModal(yearMonth, current);
             } else {
-                // Fallback in case modal logic isn't loaded
                 const newVal = prompt(`${yearMonth} Ayı için Toplam Çalışma Süresi (Dakika):\n(Örn: 5 saat için 300 yazın)`, current);
                 if (newVal !== null) {
                     const mins = parseInt(newVal);
@@ -1496,36 +1600,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (type === 'size' || type === 'growth') {
             const currentSize = dataManager.data.monthlySize[yearMonth] || dataManager.data.startSize;
             const growth = dataManager.getMonthlyGrowth(yearMonth);
-            
-            const msg = type === 'size' 
-                ? `${yearMonth} Ay Sonu Boyutu (cm):` 
-                : `${yearMonth} Aylık Toplam Uzama (mm):`;
             const defaultVal = type === 'size' ? currentSize : growth;
-            
-            const newVal = prompt(msg, defaultVal);
-            if (newVal !== null) {
-                const val = parseFloat(newVal);
-                if (type === 'size') {
-                    dataManager.data.monthlySize[yearMonth] = val;
-                } else {
-                    const sizes = { "0000-00": dataManager.data.startSize }; 
-                    Object.keys(dataManager.data.monthlySize).forEach(k => sizes[k] = dataManager.data.monthlySize[k]);
-                    const sortedKeys = Object.keys(sizes).sort();
-                    const currentIndex = sortedKeys.indexOf(yearMonth);
-                    const prevKey = currentIndex > 0 ? sortedKeys[currentIndex - 1] : "0000-00";
-                    const prevSize = sizes[prevKey];
-                    dataManager.data.monthlySize[yearMonth] = prevSize + (val / 10);
-                }
-                
-                const allMonths = Object.keys(dataManager.data.monthlySize).sort();
-                if (allMonths[allMonths.length - 1] === yearMonth) {
-                    dataManager.data.currentSize = dataManager.data.monthlySize[yearMonth];
-                }
-
-                dataManager.save();
-                updateCalendarView();
-                if (typeof updateHomeView === 'function') updateHomeView();
-            }
+            openMonthlyStatModal(yearMonth, type, defaultVal);
         }
     };
 

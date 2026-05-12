@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v308-swipe-charts'; // v3.0.8: Tooltip fix
+const CACHE_NAME = 'utakip-v309-stat-modals'; // v3.0.9: Added interactive modals for all stats
 const ASSETS = [
     './',
     './index.html',
