@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v305-local-only'; // v3.0.5: Forced cache bust for kegel icon
+const CACHE_NAME = 'utakip-v308-swipe-charts'; // v3.0.8: Tooltip fix
 const ASSETS = [
     './',
     './index.html',

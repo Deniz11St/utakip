@@ -1628,7 +1628,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                 label += ': ';
                             }
                             if (context.parsed.y !== null) {
-                                label += context.parsed.y + (label.includes('Saat') ? ' Saat' : ' cm');
+                                const isTime = label.toLowerCase().includes('çalışma') || label.toLowerCase().includes('saat');
+                                label += context.parsed.y + (isTime ? ' Saat' : ' cm');
                             }
                             return label;
                         }
