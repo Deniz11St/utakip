@@ -1478,16 +1478,19 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } else if (type === 'work') {
             const current = dataManager.data.monthlyWork[yearMonth] || 0;
-            const h = Math.floor(current / 60);
-            const m = current % 60;
-            const newVal = prompt(`${yearMonth} Ayı için Toplam Çalışma Süresi (Dakika):\n(Örn: 5 saat için 300 yazın)`, current);
-            if (newVal !== null) {
-                const mins = parseInt(newVal);
-                if (!isNaN(mins)) {
-                    dataManager.data.monthlyWork[yearMonth] = mins;
-                    dataManager.save();
-                    updateCalendarView();
-                    updateHomeView();
+            if (typeof openMonthlyWorkModal === 'function') {
+                openMonthlyWorkModal(yearMonth, current);
+            } else {
+                // Fallback in case modal logic isn't loaded
+                const newVal = prompt(`${yearMonth} Ayı için Toplam Çalışma Süresi (Dakika):\n(Örn: 5 saat için 300 yazın)`, current);
+                if (newVal !== null) {
+                    const mins = parseInt(newVal);
+                    if (!isNaN(mins)) {
+                        dataManager.data.monthlyWork[yearMonth] = mins;
+                        dataManager.save();
+                        updateCalendarView();
+                        if (typeof updateHomeView === 'function') updateHomeView();
+                    }
                 }
             }
         } else if (type === 'size' || type === 'growth') {
@@ -1532,26 +1535,62 @@ document.addEventListener('DOMContentLoaded', () => {
         const summaryText = document.getElementById('chartSummaryText');
         
         const startSize = dataManager.data.startSize || 0;
-        const monthlyData = dataManager.data.monthlySize || {};
+        const monthlySizeData = dataManager.data.monthlySize || {};
+        const monthlyTensionData = dataManager.data.monthlyTension || {};
+        const monthlyWorkData = dataManager.data.monthlyWork || {};
         
         let labels = ['Başlangıç'];
-        let values = [startSize];
+        let sizeValues = [startSize];
+        let tensionValues = [null]; 
+        let workValues = [null];
         
-        const sortedMonths = Object.keys(monthlyData).sort();
+        // Tüm ayları birleştirelim (Boyut, Vida ve Çalışma Süresi olanlar ve seansları olanlar)
+        const allMonthsSet = new Set([
+            ...Object.keys(monthlySizeData), 
+            ...Object.keys(monthlyTensionData),
+            ...Object.keys(monthlyWorkData)
+        ]);
+        
+        // Seanslardan da ayları bulalım
+        Object.keys(dataManager.data.sessions || {}).forEach(dateStr => {
+            allMonthsSet.add(dateStr.substring(0, 7)); // 'YYYY-MM'
+        });
+
+        const sortedMonths = Array.from(allMonthsSet).sort();
+        
         sortedMonths.forEach(m => {
             labels.push(m);
-            values.push(monthlyData[m]);
+            sizeValues.push(monthlySizeData[m] !== undefined ? monthlySizeData[m] : null);
+            tensionValues.push(monthlyTensionData[m] !== undefined ? monthlyTensionData[m] : null);
+            
+            // Çalışma süresi hesaplama (dakika)
+            let wMins = monthlyWorkData[m] || 0;
+            if (wMins === 0 && dataManager.data.sessions) {
+                Object.keys(dataManager.data.sessions).forEach(dateStr => {
+                    if (dateStr.startsWith(m)) {
+                        wMins += dataManager.data.sessions[dateStr].reduce((sum, s) => sum + (s.mins || 0), 0);
+                    }
+                });
+            }
+            
+            // Saate çevir (örnek: 45.5 saat)
+            workValues.push(wMins > 0 ? parseFloat((wMins / 60).toFixed(1)) : null);
         });
         
         if (sortedMonths.length === 0) {
-            summaryText.textContent = "Henüz grafik oluşturmak için yeterli aylık veri (Ay Sonu Boyutu) bulunmuyor. Ayarlar sekmesinden 'Güncel Boyut'unuzu her ay kaydetmeyi unutmayın.";
+            summaryText.textContent = "Henüz grafik oluşturmak için yeterli veri bulunmuyor. Lütfen ölçümlerinizi ve çalışma sürelerinizi girmeye başlayın.";
             return;
         }
 
-        const firstVal = values[0];
-        const lastVal = values[values.length - 1];
+        const firstVal = startSize;
+        let lastVal = startSize;
+        const sortedSizeKeys = Object.keys(monthlySizeData).sort();
+        if (sortedSizeKeys.length > 0) {
+            lastVal = monthlySizeData[sortedSizeKeys[sortedSizeKeys.length - 1]];
+        }
+        
         const totalGain = (lastVal - firstVal) * 10;
-        summaryText.innerHTML = `Sürecine <strong>${firstVal} cm</strong> ile başladın. Şu anki güncel durumun <strong>${lastVal} cm</strong>. Toplamda <strong>${totalGain.toFixed(1)} mm</strong> gelişim kaydettin. ${totalGain > 0 ? 'Harika bir ivme yakalamışsın!' : 'Tutarlı kalarak grafiği yukarı taşımaya devam et.'}`;
+        summaryText.innerHTML = `Sürecine <strong>${firstVal} cm</strong> ile başladın. Şu anki güncel durumun <strong>${lastVal} cm</strong>. Toplamda <strong>${totalGain.toFixed(1)} mm</strong> gelişim kaydettin. <br><small style="opacity:0.8;">(Grafikteki yeşil sütunlar o ay <strong>Kaç Saat</strong> çalıştığını, kesik kırmızı çizgi <strong>Vida Boyutunu (Gerginliği)</strong> temsil eder. Böylece Efor, Kuvvet ve Sonuç üçgenini aynı anda görebilirsin.)</small>`;
 
         if (growthChartInstance) growthChartInstance.destroy();
         
@@ -1564,26 +1603,75 @@ document.addEventListener('DOMContentLoaded', () => {
             type: 'line',
             data: {
                 labels: labels,
-                datasets: [{
-                    label: 'Boyut (cm)',
-                    data: values,
-                    borderColor: '#a5d6ff',
-                    backgroundColor: 'rgba(165, 214, 255, 0.1)',
-                    borderWidth: 3,
-                    pointBackgroundColor: '#a5d6ff',
-                    pointRadius: 5,
-                    fill: true,
-                    tension: 0.3
-                }]
+                datasets: [
+                    {
+                        type: 'bar',
+                        label: 'Çalışma (Saat)',
+                        data: workValues,
+                        backgroundColor: 'rgba(74, 222, 128, 0.25)', // Soft green
+                        borderColor: 'rgba(74, 222, 128, 0.8)',
+                        borderWidth: 1,
+                        yAxisID: 'y1',
+                        order: 3 // Draw behind lines
+                    },
+                    {
+                        type: 'line',
+                        label: 'Boyut (cm)',
+                        data: sizeValues,
+                        borderColor: '#a5d6ff',
+                        backgroundColor: 'rgba(165, 214, 255, 0.1)',
+                        borderWidth: 3,
+                        pointBackgroundColor: '#a5d6ff',
+                        pointRadius: 5,
+                        fill: true,
+                        tension: 0.3,
+                        spanGaps: true,
+                        yAxisID: 'y',
+                        order: 1
+                    },
+                    {
+                        type: 'line',
+                        label: 'Vida / Gerginlik (cm)',
+                        data: tensionValues,
+                        borderColor: '#ff7b72',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        pointBackgroundColor: '#ff7b72',
+                        pointStyle: 'rectRot',
+                        pointRadius: 5,
+                        fill: false,
+                        tension: 0.3,
+                        spanGaps: true,
+                        yAxisID: 'y',
+                        order: 2
+                    }
+                ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
                 scales: {
                     y: {
-                        beginAtZero: false,
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        title: { display: true, text: 'Boyut (cm)', color: 'rgba(255,255,255,0.6)', font: {size: 10} },
                         grid: { color: 'rgba(255,255,255,0.05)' },
                         ticks: { color: 'rgba(255,255,255,0.6)' }
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        title: { display: true, text: 'Süre (Saat)', color: 'rgba(74, 222, 128, 0.6)', font: {size: 10} },
+                        beginAtZero: true,
+                        grid: { drawOnChartArea: false }, // Prevent grid line overlap
+                        ticks: { color: 'rgba(74, 222, 128, 0.8)' }
                     },
                     x: {
                         grid: { display: false },
@@ -1591,7 +1679,31 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 },
                 plugins: {
-                    legend: { display: false }
+                    legend: { 
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            color: 'rgba(255,255,255,0.8)',
+                            usePointStyle: true,
+                            boxWidth: 8,
+                            padding: 15
+                        }
+                    },
+                    tooltip: {
+                        usePointStyle: true,
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    label += context.parsed.y + (context.dataset.yAxisID === 'y1' ? ' Saat' : ' cm');
+                                }
+                                return label;
+                            }
+                        }
+                    }
                 }
             }
         });
@@ -2926,43 +3038,6 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         showSuccessAchievement("Not Kaydedildi", "Günlük notun başarıyla güncellendi.", "📝");
     });
 
-    document.querySelectorAll('.modal-stepper-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            
-            const dir = parseInt(btn.getAttribute('data-modal-dir')) || 0;
-            const activeBox = document.querySelector('.edit-modal .dual-box.active');
-            if(!activeBox) return;
-            
-            const targetId = activeBox.getAttribute('data-modal-target');
-            const inputField = document.getElementById(targetId);
-            if (!inputField) return;
-
-            let currentVal = parseInt(inputField.value) || 0;
-            const stepSize = (targetId === 'm_edit') ? 5 : 1;
-            
-            currentVal += (dir * stepSize);
-            
-            if (currentVal < 0) currentVal = 0;
-            if (targetId === 'm_edit' && currentVal > 59) currentVal = 55;
-            if (targetId === 'h_edit' && currentVal > 23) currentVal = 23;
-            
-            inputField.value = currentVal;
-            
-            const hVal = parseInt(document.getElementById('h_edit').value) || 0;
-            const mVal = parseInt(document.getElementById('m_edit').value) || 0;
-            document.getElementById('editTotalMinsLabel').textContent = (hVal * 60) + mVal;
-        });
-    });
-
-    document.querySelectorAll('.edit-modal .dual-box').forEach(box => {
-        box.addEventListener('click', () => {
-            document.querySelectorAll('.edit-modal .dual-box').forEach(b => b.classList.remove('active'));
-            box.classList.add('active');
-        });
-    });
-
     document.getElementById('btnCancelEdit')?.addEventListener('click', closeEditModal);
     editModal.addEventListener('click', (e) => {
         if(e.target === editModal) closeEditModal();
@@ -2981,6 +3056,59 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             updateHomeView();
             showSuccessAchievement("Başarılı!", "Tarihe yeni seans eklendi.", "📅");
         }
+    });
+
+    /* --- MONTHLY WORK MODAL LOGIC --- */
+    let currentMonthlyWorkYearMonth = null;
+    const monthlyWorkModal = document.getElementById('monthlyWorkModalOverlay');
+
+    window.openMonthlyWorkModal = function(yearMonth, currentMins) {
+        currentMonthlyWorkYearMonth = yearMonth;
+        const h = Math.floor(currentMins / 60);
+        const m = currentMins % 60;
+        document.getElementById('h_monthly').value = h;
+        document.getElementById('m_monthly').value = m;
+        document.getElementById('monthlyTotalMinsLabel').textContent = currentMins;
+        
+        let displayMonth = yearMonth;
+        try {
+            const parts = yearMonth.split('-');
+            if (parts.length === 2) {
+                const y = parseInt(parts[0]);
+                const mIndex = parseInt(parts[1]) - 1;
+                displayMonth = new Intl.DateTimeFormat('tr-TR', { month: 'long', year: 'numeric' }).format(new Date(y, mIndex));
+            }
+        } catch(e) {}
+        
+        document.getElementById('monthlyWorkModalTargetDate').textContent = displayMonth;
+        if (monthlyWorkModal) monthlyWorkModal.classList.add('show');
+    };
+
+    function closeMonthlyWorkModal() {
+        if (monthlyWorkModal) monthlyWorkModal.classList.remove('show');
+        currentMonthlyWorkYearMonth = null;
+    }
+
+    // Interactive Time Inputs initialized later
+
+    document.getElementById('btnCancelMonthlyWork')?.addEventListener('click', closeMonthlyWorkModal);
+    monthlyWorkModal?.addEventListener('click', (e) => {
+        if(e.target === monthlyWorkModal) closeMonthlyWorkModal();
+    });
+
+    document.getElementById('btnSaveMonthlyWork')?.addEventListener('click', () => {
+        if(!currentMonthlyWorkYearMonth) return;
+        const h = parseInt(document.getElementById('h_monthly').value) || 0;
+        const m = parseInt(document.getElementById('m_monthly').value) || 0;
+        const totalMins = (h * 60) + m;
+
+        dataManager.data.monthlyWork[currentMonthlyWorkYearMonth] = totalMins;
+        dataManager.save();
+        updateCalendarView();
+        if (typeof updateHomeView === 'function') updateHomeView();
+        
+        closeMonthlyWorkModal();
+        showSuccessAchievement("Başarılı!", "Aylık çalışma süresi kaydedildi.", "📅");
     });
 
     function manualSaveAndEndSession() {
@@ -3144,6 +3272,90 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
 
     // Initialize interactive inputs
     initInteractiveInputs();
+
+    function initInteractiveTimeInputs() {
+        const inputs = document.querySelectorAll('.interactive-time-input');
+        
+        inputs.forEach(input => {
+            const container = input.parentElement; // The .dual-box
+
+            // Click to increment by 1
+            container.addEventListener('click', (e) => {
+                if (container.dataset.isDragging === "true") {
+                    container.dataset.isDragging = "false";
+                    return;
+                }
+                handleTimeStep(input, 1, 1);
+            });
+
+            // Wheel support
+            container.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const delta = e.deltaY < 0 ? 1 : -1;
+                handleTimeStep(input, delta);
+            }, { passive: false });
+
+            // Touch support
+            let touchStartY = 0;
+            const threshold = 10;
+
+            container.addEventListener('touchstart', (e) => {
+                touchStartY = e.touches[0].clientY;
+                container.dataset.isDragging = "false";
+            }, { passive: true });
+
+            container.addEventListener('touchmove', (e) => {
+                const currentY = e.touches[0].clientY;
+                const diff = touchStartY - currentY;
+
+                if (Math.abs(diff) > threshold) {
+                    container.dataset.isDragging = "true";
+                    const delta = diff > 0 ? 1 : -1;
+                    handleTimeStep(input, delta);
+                    touchStartY = currentY;
+                    if (e.cancelable) e.preventDefault();
+                }
+            }, { passive: false });
+        });
+
+        function handleTimeStep(input, direction, overrideStep = null) {
+            const step = overrideStep || parseFloat(input.step) || 1;
+            const min = !isNaN(parseFloat(input.min)) ? parseFloat(input.min) : 0;
+            const max = !isNaN(parseFloat(input.max)) ? parseFloat(input.max) : Infinity;
+            
+            let val = parseFloat(input.value) || 0;
+            val += (direction * step);
+
+            if (val < min) val = min;
+            
+            if (val > max) {
+                val = max;
+                if (max === 59 && step > 1) {
+                    val = max - (max % step); // e.g. 55
+                }
+            }
+            
+            input.value = val;
+            
+            // Recalculate totals
+            if (input.id === 'h_monthly' || input.id === 'm_monthly') {
+                const h = parseInt(document.getElementById('h_monthly').value) || 0;
+                const m = parseInt(document.getElementById('m_monthly').value) || 0;
+                const totalEl = document.getElementById('monthlyTotalMinsLabel');
+                if (totalEl) totalEl.textContent = (h * 60) + m;
+            } else if (input.id === 'h_edit' || input.id === 'm_edit') {
+                const h = parseInt(document.getElementById('h_edit').value) || 0;
+                const m = parseInt(document.getElementById('m_edit').value) || 0;
+                const totalEl = document.getElementById('editTotalMinsLabel');
+                if (totalEl) totalEl.textContent = (h * 60) + m;
+            }
+            
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    }
+
+    initInteractiveTimeInputs();
 
     // --- SMART CYCLE SLIDER LOGIC (v2.0.0) ---
     function initSmartCycleSliders() {

@@ -8,8 +8,8 @@
     <meta name="theme-color" content="#0d1117">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>UTakip - Extender Tracker v3.0.5</title>
-    <link rel="stylesheet" href="styles.css?v=305">
+    <title>UTakip - Extender Tracker v3.0.6</title>
+    <link rel="stylesheet" href="styles.css?v=306">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
     <!-- Firebase SDK removed for standalone mobile version -->
@@ -19,7 +19,7 @@
         // Sadece HTTP/HTTPS veya localhost üzerinden çalışırken SW kaydet (Local file:// hatasını önlemek için)
         if ('serviceWorker' in navigator && (window.location.protocol.startsWith('http') || window.location.hostname === 'localhost')) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js?v=305').then(reg => {
+                navigator.serviceWorker.register('sw.js?v=306').then(reg => {
                     // Check for updates periodically
                     setInterval(() => { reg.update(); }, 1000 * 60 * 60); // Her saat başı kontrol
                 }).catch(e => console.log('SW registration skipped or failed.'));
@@ -161,12 +161,12 @@
                     <div id="manualTimeSection" class="input-group" style="margin-bottom: 20px; display: none;">
                         <div class="dual-stepper-container time-stepper-full" id="timeEntryDualStepper">
                             <div class="dual-stepper-inner">
-                                <div class="dual-box" data-target="inputHours">
-                                    <input type="number" id="inputHours" value="0" readonly>
+                                <div class="dual-box" data-target="inputHours" style="cursor:pointer;" title="Tıkla: +1, Kaydır: Hızlı Değiştir">
+                                    <input type="number" id="inputHours" class="interactive-time-input" step="1" min="0" value="0" readonly>
                                 </div>
                                 <div class="dual-divider" style="opacity: 0.8; font-size: 40px; font-weight: 800; color: #58a6ff; margin: 0 10px;">:</div>
-                                <div class="dual-box" data-target="inputMinutes">
-                                    <input type="number" id="inputMinutes" value="0" readonly>
+                                <div class="dual-box" data-target="inputMinutes" style="cursor:pointer;" title="Tıkla: +1, Kaydır: Hızlı Değiştir">
+                                    <input type="number" id="inputMinutes" class="interactive-time-input" step="5" min="0" max="59" value="0" readonly>
                                 </div>
                             </div>
                         </div>
@@ -695,26 +695,56 @@
             
             <div class="modal-body">
                 <div class="dual-stepper-container" style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1);">
-                    <button class="modal-stepper-btn" data-modal-dir="-1" style="width: 44px; height: 44px; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 20px; cursor: pointer;">−</button>
                     <div class="dual-stepper-inner">
-                        <div class="dual-box" data-modal-target="h_edit">
+                        <div class="dual-box" data-modal-target="h_edit" style="cursor:pointer;" title="Tıkla: +1, Kaydır: Hızlı Değiştir">
                             <div class="dual-label">SAAT</div>
-                            <input type="number" id="h_edit" value="0" readonly>
+                            <input type="number" id="h_edit" class="interactive-time-input" step="1" min="0" value="0" readonly>
                         </div>
                         <div class="dual-divider">:</div>
-                        <div class="dual-box" data-modal-target="m_edit">
+                        <div class="dual-box" data-modal-target="m_edit" style="cursor:pointer;" title="Tıkla: +1, Kaydır: Hızlı Değiştir">
                             <div class="dual-label">DAKİKA</div>
-                            <input type="number" id="m_edit" value="0" readonly>
+                            <input type="number" id="m_edit" class="interactive-time-input" step="5" min="0" max="59" value="0" readonly>
                         </div>
                     </div>
-                    <button class="modal-stepper-btn" data-modal-dir="1" style="width: 44px; height: 44px; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 20px; cursor: pointer;">+</button>
                 </div>
-                <div class="modal-hint">Toplam: <span id="editTotalMinsLabel">0</span> dk</div>
+                <div class="modal-hint" style="margin-top:10px;">Toplam: <span id="editTotalMinsLabel">0</span> dk</div>
             </div>
 
             <div class="modal-footer">
                 <button id="btnCancelEdit" class="btn-secondary">KAPAT</button>
                 <button id="btnSaveEditModal" class="btn-primary">💾 KAYDET</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Aylık Çalışma Süresi Modalı -->
+    <div id="monthlyWorkModalOverlay" class="modal-overlay">
+        <div class="edit-modal">
+            <div class="modal-header">
+                <h3><span class="material-symbols-outlined">edit_calendar</span> Aylık Toplam Süre</h3>
+                <div id="monthlyWorkModalTargetDate" class="modal-date-label">Ocak 2024</div>
+            </div>
+            
+            <div class="modal-body">
+                <div class="dual-stepper-container" style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1);">
+                    <div class="dual-stepper-inner">
+                        <div class="dual-box active" data-monthly-target="h_monthly" style="cursor:pointer;" title="Tıkla: +1, Kaydır: Hızlı Değiştir">
+                            <div class="dual-label">SAAT</div>
+                            <input type="number" id="h_monthly" class="interactive-time-input" step="1" min="0" value="0" readonly>
+                        </div>
+                        <div class="dual-divider">:</div>
+                        <div class="dual-box" data-monthly-target="m_monthly" style="cursor:pointer;" title="Tıkla: +1, Kaydır: Hızlı Değiştir">
+                            <div class="dual-label">DAKİKA</div>
+                            <input type="number" id="m_monthly" class="interactive-time-input" step="5" min="0" max="59" value="0" readonly>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-hint" style="margin-top:10px;">Toplam: <span id="monthlyTotalMinsLabel">0</span> dk</div>
+            </div>
+
+            <div class="modal-footer">
+                <button id="btnCancelMonthlyWork" class="btn-secondary">İPTAL</button>
+                <button id="btnSaveMonthlyWork" class="btn-primary">💾 KAYDET</button>
             </div>
         </div>
     </div>
@@ -762,6 +792,6 @@
         </div>
     </div>
     
-    <script src="app.js?v=305"></script>
+    <script src="app.js?v=306"></script>
 </body>
 </html>
