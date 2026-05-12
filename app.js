@@ -1529,9 +1529,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    let growthChartInstance = null;
+    let chartInstances = { size: null, tension: null, work: null };
+    
     function updateChartView() {
-        const ctx = document.getElementById('growthChart').getContext('2d');
+        const ctxSize = document.getElementById('sizeChart').getContext('2d');
+        const ctxTension = document.getElementById('tensionChart').getContext('2d');
+        const ctxWork = document.getElementById('workChart').getContext('2d');
         const summaryText = document.getElementById('chartSummaryText');
         
         const startSize = dataManager.data.startSize || 0;
@@ -1544,14 +1547,13 @@ document.addEventListener('DOMContentLoaded', () => {
         let tensionValues = [null]; 
         let workValues = [null];
         
-        // Tüm ayları birleştirelim (Boyut, Vida ve Çalışma Süresi olanlar ve seansları olanlar)
+        // Tüm ayları birleştirelim
         const allMonthsSet = new Set([
             ...Object.keys(monthlySizeData), 
             ...Object.keys(monthlyTensionData),
             ...Object.keys(monthlyWorkData)
         ]);
         
-        // Seanslardan da ayları bulalım
         Object.keys(dataManager.data.sessions || {}).forEach(dateStr => {
             allMonthsSet.add(dateStr.substring(0, 7)); // 'YYYY-MM'
         });
@@ -1563,7 +1565,6 @@ document.addEventListener('DOMContentLoaded', () => {
             sizeValues.push(monthlySizeData[m] !== undefined ? monthlySizeData[m] : null);
             tensionValues.push(monthlyTensionData[m] !== undefined ? monthlyTensionData[m] : null);
             
-            // Çalışma süresi hesaplama (dakika)
             let wMins = monthlyWorkData[m] || 0;
             if (wMins === 0 && dataManager.data.sessions) {
                 Object.keys(dataManager.data.sessions).forEach(dateStr => {
@@ -1572,8 +1573,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
             }
-            
-            // Saate çevir (örnek: 45.5 saat)
             workValues.push(wMins > 0 ? parseFloat((wMins / 60).toFixed(1)) : null);
         });
         
@@ -1590,122 +1589,130 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         const totalGain = (lastVal - firstVal) * 10;
-        summaryText.innerHTML = `Sürecine <strong>${firstVal} cm</strong> ile başladın. Şu anki güncel durumun <strong>${lastVal} cm</strong>. Toplamda <strong>${totalGain.toFixed(1)} mm</strong> gelişim kaydettin. <br><small style="opacity:0.8;">(Grafikteki yeşil sütunlar o ay <strong>Kaç Saat</strong> çalıştığını, kesik kırmızı çizgi <strong>Vida Boyutunu (Gerginliği)</strong> temsil eder. Böylece Efor, Kuvvet ve Sonuç üçgenini aynı anda görebilirsin.)</small>`;
+        summaryText.innerHTML = `Sürecine <strong>${firstVal} cm</strong> ile başladın. Şu anki güncel durumun <strong>${lastVal} cm</strong>. Toplamda <strong>${totalGain.toFixed(1)} mm</strong> gelişim kaydettin.<br><small style="opacity:0.8;">Detaylı istatistikler (Boyut, Gerginlik ve Efor) için yukarıdaki grafikleri sağa/sola kaydırarak incele.</small>`;
 
-        if (growthChartInstance) growthChartInstance.destroy();
+        if (chartInstances.size) chartInstances.size.destroy();
+        if (chartInstances.tension) chartInstances.tension.destroy();
+        if (chartInstances.work) chartInstances.work.destroy();
         
         if (typeof Chart === 'undefined') {
             summaryText.textContent = "Grafik kütüphanesi yüklenemedi. Lütfen internet bağlantınızı kontrol edin.";
             return;
         }
 
-        growthChartInstance = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [
-                    {
-                        type: 'bar',
-                        label: 'Çalışma (Saat)',
-                        data: workValues,
-                        backgroundColor: 'rgba(74, 222, 128, 0.25)', // Soft green
-                        borderColor: 'rgba(74, 222, 128, 0.8)',
-                        borderWidth: 1,
-                        yAxisID: 'y1',
-                        order: 3 // Draw behind lines
-                    },
-                    {
-                        type: 'line',
-                        label: 'Boyut (cm)',
-                        data: sizeValues,
-                        borderColor: '#a5d6ff',
-                        backgroundColor: 'rgba(165, 214, 255, 0.1)',
-                        borderWidth: 3,
-                        pointBackgroundColor: '#a5d6ff',
-                        pointRadius: 5,
-                        fill: true,
-                        tension: 0.3,
-                        spanGaps: true,
-                        yAxisID: 'y',
-                        order: 1
-                    },
-                    {
-                        type: 'line',
-                        label: 'Vida / Gerginlik (cm)',
-                        data: tensionValues,
-                        borderColor: '#ff7b72',
-                        backgroundColor: 'transparent',
-                        borderWidth: 2,
-                        borderDash: [5, 5],
-                        pointBackgroundColor: '#ff7b72',
-                        pointStyle: 'rectRot',
-                        pointRadius: 5,
-                        fill: false,
-                        tension: 0.3,
-                        spanGaps: true,
-                        yAxisID: 'y',
-                        order: 2
-                    }
-                ]
+        const getCommonOptions = () => ({
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: {
-                    mode: 'index',
-                    intersect: false,
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    grid: { color: 'rgba(255,255,255,0.05)' },
+                    ticks: { color: 'rgba(255,255,255,0.6)' }
                 },
-                scales: {
-                    y: {
-                        type: 'linear',
-                        display: true,
-                        position: 'left',
-                        title: { display: true, text: 'Boyut (cm)', color: 'rgba(255,255,255,0.6)', font: {size: 10} },
-                        grid: { color: 'rgba(255,255,255,0.05)' },
-                        ticks: { color: 'rgba(255,255,255,0.6)' }
-                    },
-                    y1: {
-                        type: 'linear',
-                        display: true,
-                        position: 'right',
-                        title: { display: true, text: 'Süre (Saat)', color: 'rgba(74, 222, 128, 0.6)', font: {size: 10} },
-                        beginAtZero: true,
-                        grid: { drawOnChartArea: false }, // Prevent grid line overlap
-                        ticks: { color: 'rgba(74, 222, 128, 0.8)' }
-                    },
-                    x: {
-                        grid: { display: false },
-                        ticks: { color: 'rgba(255,255,255,0.6)' }
-                    }
-                },
-                plugins: {
-                    legend: { 
-                        display: true,
-                        position: 'top',
-                        labels: {
-                            color: 'rgba(255,255,255,0.8)',
-                            usePointStyle: true,
-                            boxWidth: 8,
-                            padding: 15
-                        }
-                    },
-                    tooltip: {
-                        usePointStyle: true,
-                        callbacks: {
-                            label: function(context) {
-                                let label = context.dataset.label || '';
-                                if (label) {
-                                    label += ': ';
-                                }
-                                if (context.parsed.y !== null) {
-                                    label += context.parsed.y + (context.dataset.yAxisID === 'y1' ? ' Saat' : ' cm');
-                                }
-                                return label;
+                x: {
+                    grid: { display: false },
+                    ticks: { color: 'rgba(255,255,255,0.6)' }
+                }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
                             }
+                            if (context.parsed.y !== null) {
+                                label += context.parsed.y + (label.includes('Saat') ? ' Saat' : ' cm');
+                            }
+                            return label;
                         }
                     }
                 }
             }
+        });
+
+        // 1. BOYUT GRAFİĞİ
+        chartInstances.size = new Chart(ctxSize, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Boyut',
+                    data: sizeValues,
+                    borderColor: '#a5d6ff',
+                    backgroundColor: 'rgba(165, 214, 255, 0.1)',
+                    borderWidth: 3,
+                    pointBackgroundColor: '#a5d6ff',
+                    pointRadius: 5,
+                    fill: true,
+                    tension: 0.3,
+                    spanGaps: true
+                }]
+            },
+            options: getCommonOptions()
+        });
+
+        // 2. VİDA / GERGİNLİK GRAFİĞİ
+        chartInstances.tension = new Chart(ctxTension, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Vida / Gerginlik',
+                    data: tensionValues,
+                    borderColor: '#ff7b72',
+                    backgroundColor: 'transparent',
+                    borderWidth: 3,
+                    borderDash: [5, 5],
+                    pointBackgroundColor: '#ff7b72',
+                    pointStyle: 'rectRot',
+                    pointRadius: 6,
+                    fill: false,
+                    tension: 0.3,
+                    spanGaps: true
+                }]
+            },
+            options: getCommonOptions()
+        });
+
+        // 3. ÇALIŞMA SÜRESİ GRAFİĞİ
+        const workOptions = getCommonOptions();
+        workOptions.scales.y.beginAtZero = true;
+        chartInstances.work = new Chart(ctxWork, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Çalışma',
+                    data: workValues,
+                    backgroundColor: 'rgba(74, 222, 128, 0.25)',
+                    borderColor: 'rgba(74, 222, 128, 0.8)',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: workOptions
+        });
+
+        initChartSlider();
+    }
+
+    function initChartSlider() {
+        const slider = document.getElementById('chartSlider');
+        const dots = document.querySelectorAll('#chartDots .dot');
+        if(!slider || !dots.length) return;
+
+        slider.addEventListener('scroll', () => {
+            const index = Math.round(slider.scrollLeft / slider.clientWidth);
+            dots.forEach((dot, i) => {
+                dot.classList.toggle('active', i === index);
+            });
         });
     }
 

@@ -1427,11 +1427,62 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     font-size: 12px !important;
 }
 
-/* Chart Styles */
+/* Chart Styles & Slider */
+.chart-slider-container {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    gap: 0;
+    scrollbar-width: none;
+    width: 100%;
+}
+
+.chart-slider-container::-webkit-scrollbar {
+    display: none;
+}
+
+.chart-slide {
+    flex: 0 0 100%;
+    width: 100%;
+    scroll-snap-align: center;
+    display: flex;
+    flex-direction: column;
+}
+
+.slide-title {
+    text-align: center;
+    font-size: 13px;
+    margin-bottom: 5px;
+    font-weight: 600;
+}
+
 .chart-container {
     height: 240px;
     position: relative;
     width: 100%;
+}
+
+.slider-dots {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 15px;
+}
+
+.slider-dots .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    transition: 0.3s;
+}
+
+.slider-dots .dot.active {
+    background: var(--primary-color);
+    width: 24px;
+    border-radius: 4px;
 }
 
 /* Encyclopedia Modern Styles */

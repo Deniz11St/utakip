@@ -8,8 +8,8 @@
     <meta name="theme-color" content="#0d1117">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>UTakip - Extender Tracker v3.0.6</title>
-    <link rel="stylesheet" href="styles.css?v=306">
+    <title>UTakip - Extender Tracker v3.0.7</title>
+    <link rel="stylesheet" href="styles.css?v=307">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
     <!-- Firebase SDK removed for standalone mobile version -->
@@ -19,7 +19,7 @@
         // Sadece HTTP/HTTPS veya localhost üzerinden çalışırken SW kaydet (Local file:// hatasını önlemek için)
         if ('serviceWorker' in navigator && (window.location.protocol.startsWith('http') || window.location.hostname === 'localhost')) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js?v=306').then(reg => {
+                navigator.serviceWorker.register('sw.js?v=307').then(reg => {
                     // Check for updates periodically
                     setInterval(() => { reg.update(); }, 1000 * 60 * 60); // Her saat başı kontrol
                 }).catch(e => console.log('SW registration skipped or failed.'));
@@ -209,9 +209,32 @@
 
                 <!-- Grafikler -->
                 <div class="card chart-card">
-                    <h3><span class="material-symbols-outlined">trending_up</span> Gelişim Grafiği İvmesi</h3>
-                    <div class="chart-container">
-                        <canvas id="growthChart"></canvas>
+                    <h3><span class="material-symbols-outlined">trending_up</span> Gelişim İstatistikleri</h3>
+                    <p style="font-size: 11px; color: rgba(255,255,255,0.4); text-align: center; margin-bottom: 10px; margin-top: -5px;">Grafikler arasında geçiş yapmak için kaydırın</p>
+                    <div class="chart-slider-container" id="chartSlider">
+                        <div class="chart-slide">
+                            <h4 class="slide-title" style="color: #a5d6ff;">Boyut İlerlemesi (cm)</h4>
+                            <div class="chart-container">
+                                <canvas id="sizeChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="chart-slide">
+                            <h4 class="slide-title" style="color: #ff7b72;">Uygulanan Vida / Gerginlik (cm)</h4>
+                            <div class="chart-container">
+                                <canvas id="tensionChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="chart-slide">
+                            <h4 class="slide-title" style="color: #4ade80;">Aylık Çalışma (Saat)</h4>
+                            <div class="chart-container">
+                                <canvas id="workChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="slider-dots" id="chartDots">
+                        <span class="dot active"></span>
+                        <span class="dot"></span>
+                        <span class="dot"></span>
                     </div>
                 </div>
                 <div class="card stat-summary-card">
@@ -792,6 +815,6 @@
         </div>
     </div>
     
-    <script src="app.js?v=306"></script>
+    <script src="app.js?v=307"></script>
 </body>
 </html>
