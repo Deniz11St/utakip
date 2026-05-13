@@ -573,6 +573,26 @@ document.addEventListener('DOMContentLoaded', () => {
         switchView('journal');
     });
 
+    // Koç Mesajı "Okudum" Butonu
+    document.getElementById('btnMarkCoachRead')?.addEventListener('click', () => {
+        const coachMsgEl = document.getElementById('coachMessage');
+        const coachReadBtn = document.getElementById('btnMarkCoachRead');
+        const coachReadLabel = document.getElementById('btnCoachReadLabel');
+        if (!coachMsgEl || coachReadBtn.classList.contains('is-read')) return;
+
+        const todayKey = new Date().toISOString().split('T')[0];
+        // Mevcut mesajı kilitle
+        localStorage.setItem('coachReadDate', todayKey);
+        localStorage.setItem('coachLockedMessage', coachMsgEl.innerHTML);
+
+        // Butonu "Okundu" moduna al
+        coachReadBtn.classList.add('is-read');
+        if (coachReadLabel) coachReadLabel.textContent = 'Okundu ✓';
+
+        // Hafif titreşim geri bildirimi
+        if ('vibrate' in navigator) navigator.vibrate(10);
+    });
+
     // --- EMERGENCY AUTH SETUP (v2.5.2) ---
     document.getElementById('authSettingsTrigger')?.addEventListener('click', () => {
         const panel = document.getElementById('authSettingsPanel');
@@ -910,7 +930,33 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const coachMsgEl = document.getElementById('coachMessage');
-        coachMsgEl.innerHTML = generateCoachAdvice();
+        const coachReadBtn = document.getElementById('btnMarkCoachRead');
+        const coachReadRow = document.getElementById('coachReadRow');
+        const coachReadLabel = document.getElementById('btnCoachReadLabel');
+
+        // Bugünün tarihi (YYYY-MM-DD)
+        const todayKey = new Date().toISOString().split('T')[0];
+        const savedReadDate = localStorage.getItem('coachReadDate');
+        const lockedMsg = localStorage.getItem('coachLockedMessage');
+
+        if (savedReadDate === todayKey && lockedMsg) {
+            // Bugün okunmuş: kilitli mesajı göster, butonu "Okundu" yap
+            coachMsgEl.innerHTML = lockedMsg;
+            if (coachReadRow) coachReadRow.style.display = 'flex';
+            if (coachReadBtn) {
+                coachReadBtn.classList.add('is-read');
+                if (coachReadLabel) coachReadLabel.textContent = 'Okundu ✓';
+            }
+        } else {
+            // Yeni mesaj üret
+            const freshMsg = generateCoachAdvice();
+            coachMsgEl.innerHTML = freshMsg;
+            if (coachReadRow) coachReadRow.style.display = 'flex';
+            if (coachReadBtn) {
+                coachReadBtn.classList.remove('is-read');
+                if (coachReadLabel) coachReadLabel.textContent = 'Okudum';
+            }
+        }
         
         const startCm = dataManager.data.startSize;
         const targetCm = dataManager.data.targetSize > 0 ? dataManager.data.targetSize : startCm + 5;

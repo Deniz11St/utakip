@@ -1163,6 +1163,41 @@ input:checked + .slider:before {
     font-style: italic;
 }
 
+/* Koç "Okudum" Butonu */
+.btn-coach-read {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    letter-spacing: 0.3px;
+}
+
+.btn-coach-read:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.25);
+    color: var(--text-primary);
+}
+
+.btn-coach-read:active {
+    transform: scale(0.95);
+}
+
+.btn-coach-read.is-read {
+    background: rgba(46, 204, 113, 0.12);
+    border-color: rgba(46, 204, 113, 0.35);
+    color: #2ecc71;
+    cursor: default;
+    pointer-events: none;
+}
+
 
 /* --- SMART CYCLE SLIDER (v2.0.0) --- */
 .cycle-sliders-container {

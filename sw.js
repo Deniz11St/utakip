@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v309-stat-modals'; // v3.0.9: Added interactive modals for all stats
+const CACHE_NAME = 'utakip-v310'; // v3.1.0: Version update and GitHub push
 const ASSETS = [
     './',
     './index.html',
