@@ -19,7 +19,7 @@
         // Sadece HTTP/HTTPS veya localhost üzerinden çalışırken SW kaydet (Local file:// hatasını önlemek için)
         if ('serviceWorker' in navigator && (window.location.protocol.startsWith('http') || window.location.hostname === 'localhost')) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js?v=310').then(reg => {
+                navigator.serviceWorker.register('sw.js?v=311').then(reg => {
                     // Check for updates periodically
                     setInterval(() => { reg.update(); }, 1000 * 60 * 60); // Her saat başı kontrol
                 }).catch(e => console.log('SW registration skipped or failed.'));
@@ -882,6 +882,6 @@
         </div>
     </div>
     
-    <script src="app.js?v=309"></script>
+    <script src="app.js?v=311"></script>
 </body>
 </html>
