@@ -4,12 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <!-- PWA Settings -->
+    <script>
+        window.onerror = function(msg, url, lineNo, columnNo, error) {
+            document.body.innerHTML = '<div style="background:red;color:white;font-size:20px;padding:20px;position:absolute;z-index:9999;width:100%;height:100%;">ERROR: ' + msg + ' at line ' + lineNo + '</div>' + document.body.innerHTML;
+        };
+    </script>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0d1117">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>UTakip - Extender Tracker v3.1.1</title>
-    <link rel="stylesheet" href="styles.css?v=311">
+    <link rel="stylesheet" href="styles.css?v=312">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
     <!-- Firebase SDK removed for standalone mobile version -->
@@ -19,7 +24,7 @@
         // Sadece HTTP/HTTPS veya localhost üzerinden çalışırken SW kaydet (Local file:// hatasını önlemek için)
         if ('serviceWorker' in navigator && (window.location.protocol.startsWith('http') || window.location.hostname === 'localhost')) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js?v=311').then(reg => {
+                navigator.serviceWorker.register('sw.js?v=312').then(reg => {
                     // Check for updates periodically
                     setInterval(() => { reg.update(); }, 1000 * 60 * 60); // Her saat başı kontrol
                 }).catch(e => console.log('SW registration skipped or failed.'));
@@ -85,7 +90,7 @@
                                 <div id="displayStreakValue" class="header-info-value">0</div>
                                 <div id="displayStreakSub" class="header-info-sub">Geçen Gün</div>
                             </div>
-
+                        </div>
                     </div>
                 </header>
 
@@ -882,6 +887,6 @@
         </div>
     </div>
     
-    <script src="app.js?v=311"></script>
+    <script src="app.js?v=312"></script>
 </body>
 </html>

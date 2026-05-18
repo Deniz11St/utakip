@@ -4258,3 +4258,122 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         }
     }, { passive: true });
 });
+
+function updateRoadmapView() {
+    const container = document.getElementById('roadmapContainer');
+    const roadmapAdviceText = document.getElementById('roadmapAdviceText');
+    if (!container || !roadmapAdviceText) return;
+
+    if (!dataManager.data.startDate) {
+        container.innerHTML = '<p style="padding:20px; text-align:center; opacity:0.5;">Lütfen önce Ayarlar sayfasından Başlangıç Tarihinizi girin.</p>';
+        return;
+    }
+
+    const startSize = parseFloat(dataManager.data.startSize) || 0;
+    const targetSize = parseFloat(dataManager.data.targetSize) || 0;
+    const rate = parseFloat(dataManager.data.targetMonthlyGrowth) || 2;
+    
+    // Geçen Ay
+    const start = new Date(dataManager.data.startDate);
+    const today = new Date();
+    const monthDiff = (today.getFullYear() - start.getFullYear()) * 12 + (today.getMonth() - start.getMonth());
+    const currentActiveMonth = Math.max(1, monthDiff + 1);
+
+    // Ne kadar sürecek?
+    let activeMonthsNeeded = 0;
+    if (targetSize > startSize) {
+        activeMonthsNeeded = ((targetSize - startSize) * 10) / rate;
+    }
+    const maxMonths = Math.ceil(Math.max(1, activeMonthsNeeded));
+
+    let html = '';
+    
+    // Toplam timeline oluştur
+    let displayMonth = 1;
+    let nodeIndex = 0;
+
+    for (let m = 1; m <= maxMonths; m++) {
+        let isCurrent = (displayMonth === currentActiveMonth);
+        let isPast = (displayMonth < currentActiveMonth);
+        let statusClass = isPast ? 'past' : (isCurrent ? 'current' : 'future');
+        let icon = isPast ? 'check_circle' : (isCurrent ? 'directions_run' : 'radio_button_unchecked');
+        
+        let title = `Aktif Gelişim (${displayMonth}. Ay)`;
+        let desc = "Bu ay istikrarlı çalışmaya devam edin. Her 10 günde bir ölçüm yaparak gelişimi takip edin.";
+        
+        if (m === 1) {
+            title = "Alışma Evresi (1. Ay)";
+            desc = "Düşük gerginlikte günde 2-4 saat kullanın. Dokularınız alete alışıyor.";
+        }
+
+        html += `
+            <div class="roadmap-node ${statusClass}">
+                ${nodeIndex > 0 ? `<div class="roadmap-line ${isPast || isCurrent ? 'active' : ''}"></div>` : ''}
+                <div class="roadmap-icon"><span class="material-symbols-outlined">${icon}</span></div>
+                <div class="roadmap-content">
+                    <div class="roadmap-month">${displayMonth}. Ay</div>
+                    <div class="roadmap-title">${title}</div>
+                    <div class="roadmap-desc">${desc}</div>
+                </div>
+            </div>
+        `;
+        displayMonth++;
+        nodeIndex++;
+
+        // Her 6 ayda bir mola!
+        if (m % 6 === 0) {
+            let molaIsCurrent = (displayMonth === currentActiveMonth);
+            let molaIsPast = (displayMonth < currentActiveMonth);
+            let molaStatus = molaIsPast ? 'past' : (molaIsCurrent ? 'current' : 'future');
+            let molaIcon = molaIsPast ? 'check_circle' : (molaIsCurrent ? 'bedtime' : 'radio_button_unchecked');
+            
+            html += `
+                <div class="roadmap-node ${molaStatus}">
+                    <div class="roadmap-line ${molaIsPast || molaIsCurrent ? 'active' : ''}"></div>
+                    <div class="roadmap-icon"><span class="material-symbols-outlined">${molaIcon}</span></div>
+                    <div class="roadmap-content">
+                        <div class="roadmap-month">${displayMonth}. Ay (Mola)</div>
+                        <div class="roadmap-title">De-conditioning (15 Gün Ara)</div>
+                        <div class="roadmap-desc">Vücudunuzun alete bağışıklık kazanmasını engellemek için 10-15 gün tamamen ara verin. Büyüme (plato) duraklamasını önler.</div>
+                    </div>
+                </div>
+            `;
+            // Mola ayını sayaca ekliyoruz
+            displayMonth++;
+            nodeIndex++;
+        }
+    }
+
+    // Kalıcılık Evresi
+    let cemIsCurrent = (currentActiveMonth >= displayMonth);
+    let cemStatus = cemIsCurrent ? 'current' : 'future';
+    let cemIcon = cemIsCurrent ? 'fitness_center' : 'radio_button_unchecked';
+    
+    html += `
+        <div class="roadmap-node ${cemStatus}">
+            <div class="roadmap-line ${cemIsCurrent ? 'active' : ''}"></div>
+            <div class="roadmap-icon"><span class="material-symbols-outlined">${cemIcon}</span></div>
+            <div class="roadmap-content">
+                <div class="roadmap-month">${displayMonth}. Ay - ${displayMonth+5}. Ay</div>
+                <div class="roadmap-title">Kalıcılık (Cementing) Evresi</div>
+                <div class="roadmap-desc">Hedefinize ulaştınız! Geri çekilmeyi (elastic recoil) önlemek için 6 ay boyunca günde 2-3 saat koruma amaçlı takmaya devam edin.</div>
+            </div>
+        </div>
+    `;
+
+    container.innerHTML = html;
+    
+    // Geri bildirim mesajını da güncelle
+    if (roadmapAdviceText) {
+        if (currentActiveMonth === 1) {
+            roadmapAdviceText.textContent = "Şu an alışma evresindesiniz. Lütfen dokuları zorlamadan düşük gerginlikte ilerleyin.";
+        } else if ((currentActiveMonth) % 7 === 0) { // Her 6 aydan sonraki ay
+            roadmapAdviceText.textContent = "Mola (De-conditioning) zamanı! Platoya girmemek için bu 15 gün cihazı tamamen bırakın.";
+        } else if (currentActiveMonth >= displayMonth) {
+            roadmapAdviceText.textContent = "Tebrikler, hedefe ulaştınız! Şimdi kazanımlarınızı kalıcılaştırmak için 6 aylık Cementing sürecindesiniz.";
+        } else {
+            roadmapAdviceText.textContent = `Şu an aktif gelişim aşamasındasınız. Ayda ortalama ${rate}mm büyüme hedefiyle devam edin!`;
+        }
+    }
+}
+

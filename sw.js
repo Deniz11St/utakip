@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v311'; // v3.1.1: Version update and GitHub push
+const CACHE_NAME = 'utakip-v312'; // v3.1.2: Version update and GitHub push
 const ASSETS = [
     './',
     './index.html',
