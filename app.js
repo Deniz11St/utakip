@@ -426,6 +426,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.updateSettingsView = updateSettingsView;
     window.updateJournalView = updateJournalView;
     window.updateCoachSectionView = updateCoachSectionView;
+    window.updateRoadmapView = updateRoadmapView;
 
     dataManager = new TrackerData();
 
@@ -566,11 +567,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if(target === 'journal') updateJournalView();
         if(target === 'coach') updateCoachSectionView();
         if(target === 'settings') updateSettingsView();
+        if(target === 'roadmap') updateRoadmapView();
     }
 
     // Home Page Journal Button
     document.getElementById('btnHomeOpenJournal')?.addEventListener('click', () => {
         switchView('journal');
+    });
+
+    // Roadmap Back Button
+    document.getElementById('btnRoadmapBack')?.addEventListener('click', () => {
+        switchView('home');
     });
 
     // Koç Mesajı "Okudum" Butonu
@@ -587,7 +594,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Butonu "Okundu" moduna al
         coachReadBtn.classList.add('is-read');
-        if (coachReadLabel) coachReadLabel.textContent = 'Okundu ✓';
+        if (coachReadLabel) coachReadLabel.textContent = 'Okundu';
 
         // Hafif titreşim geri bildirimi
         if ('vibrate' in navigator) navigator.vibrate(10);
@@ -877,14 +884,17 @@ document.addEventListener('DOMContentLoaded', () => {
                         displayStreakSub.textContent = 'Kalan Gün';
                     } else {
                         // Toplam gereken ay (başlangıç boyutundan hedefe)
-                        let totalMonthsNeeded = ((targetSize - startSize) * 10) / rate;
+                        let activeMonthsNeeded = ((targetSize - startSize) * 10) / rate;
+                        let breaks = Math.floor(activeMonthsNeeded / 6);
+                        let totalMonthsWithBreaks = activeMonthsNeeded + (breaks * 0.5);
                         
-                        // Orijinal hedef tarihi: Başlangıç + Gereken Ay
+                        // Orijinal hedef tarihi: Başlangıç + Gereken Ay + 6 Ay Kalıcılık
                         let targetDate = new Date(dataManager.data.startDate);
                         
                         // Ay küsuratını güne çevirerek ekle (daha hassas)
-                        let totalDaysNeeded = Math.ceil(totalMonthsNeeded * 30.4375);
+                        let totalDaysNeeded = Math.ceil(totalMonthsWithBreaks * 30.4375);
                         targetDate.setDate(targetDate.getDate() + totalDaysNeeded);
+                        targetDate.setMonth(targetDate.getMonth() + 6); // + 6 ay cementing
                         
                         // Kalan gün = Hedef Tarih - Bugün
                         let remainingTime = targetDate.getTime() - today.getTime();
@@ -902,6 +912,32 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const estFinal = document.getElementById('estFinal');
+        const roadmapCurrentMonth = document.getElementById('roadmapCurrentMonth');
+        const btnOpenRoadmap = document.getElementById('btnOpenRoadmap');
+
+        if (roadmapCurrentMonth && btnOpenRoadmap) {
+            if (dataManager.data.startDate) {
+                btnOpenRoadmap.style.display = 'flex';
+                
+                const start = new Date(dataManager.data.startDate);
+                const today = new Date();
+                const monthDiff = (today.getFullYear() - start.getFullYear()) * 12 + (today.getMonth() - start.getMonth());
+                
+                // If it's the very first month, it's Month 1
+                let activeMonthNumber = monthDiff + 1;
+                if (activeMonthNumber < 1) activeMonthNumber = 1;
+
+                roadmapCurrentMonth.textContent = activeMonthNumber + '. Ay';
+
+                btnOpenRoadmap.onclick = () => {
+                    switchView('roadmap');
+                };
+
+            } else {
+                btnOpenRoadmap.style.display = 'none';
+            }
+        }
+
         if (estFinal) {
             if (dataManager.data.targetSize && dataManager.data.targetSize > 0) {
                 estFinal.style.display = 'block';
@@ -918,10 +954,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (targetSize <= startSize || targetSize <= currentSize) {
                         estEl.textContent = 'Hedefe Ulaşıldı!';
                     } else {
-                        let totalMonthsNeeded = ((targetSize - startSize) * 10) / rate; 
+                        let activeMonthsNeeded = ((targetSize - startSize) * 10) / rate;
+                        let breaks = Math.floor(activeMonthsNeeded / 6);
+                        let totalMonthsWithBreaks = activeMonthsNeeded + (breaks * 0.5);
+                        
                         const estDate = new Date(dataManager.data.startDate);
-                        estDate.setDate(estDate.getDate() + Math.ceil(totalMonthsNeeded * 30.4375));
-                        estEl.textContent = new Intl.DateTimeFormat('tr-TR', { month: 'long', year: 'numeric' }).format(estDate);
+                        estDate.setDate(estDate.getDate() + Math.ceil(totalMonthsWithBreaks * 30.4375));
+                        estDate.setMonth(estDate.getMonth() + 6); // + 6 ay kalıcılık evresi
+                        
+                        estEl.textContent = new Intl.DateTimeFormat('tr-TR', { month: 'long', year: 'numeric' }).format(estDate) + ' (Kalıcılık Dahil)';
                     }
                 }
             } else {
@@ -945,7 +986,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (coachReadRow) coachReadRow.style.display = 'flex';
             if (coachReadBtn) {
                 coachReadBtn.classList.add('is-read');
-                if (coachReadLabel) coachReadLabel.textContent = 'Okundu ✓';
+                if (coachReadLabel) coachReadLabel.textContent = 'Okundu';
             }
         } else {
             // Yeni mesaj üret
@@ -967,19 +1008,27 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!window.rulerTimer) window.rulerTimer = null;
         const dateOpts = { day: '2-digit', month: 'long', year: 'numeric' };
 
+        function calculateEstimatedDate(currentCm, targetCm, rate) {
+            if (targetCm <= currentCm) return new Date();
+            const mmDiff = (targetCm - currentCm) * 10;
+            const activeMonths = mmDiff / rate;
+            const breaks = Math.floor(activeMonths / 6);
+            const totalMonths = activeMonths + (breaks * 0.5); // Her 6 ayda 15 gün (0.5 ay) mola
+            const daysNeeded = totalMonths * 30.4375;
+            const date = new Date();
+            date.setDate(date.getDate() + daysNeeded);
+            return date;
+        }
+
         function updateDefaultEstimates() {
             const rawRate = dataManager.data.targetMonthlyGrowth || 2;
             const currentSize = parseFloat(dataManager.data.currentSize) || parseFloat(dataManager.data.startSize);
             let next1Cm = (Math.floor(currentSize * 2) + 1) / 2;
             let next2Cm = next1Cm + 0.5;
-            const mmDiff1 = Math.max(0, (next1Cm - currentSize) * 10);
-            const daysNeeded1 = (mmDiff1 / rawRate) * 30.4375;
-            const date1 = new Date();
-            date1.setDate(date1.getDate() + daysNeeded1);
-            const mmDiff2 = Math.max(0, (next2Cm - currentSize) * 10);
-            const daysNeeded2 = (mmDiff2 / rawRate) * 30.4375;
-            const date2 = new Date();
-            date2.setDate(date2.getDate() + daysNeeded2);
+            
+            const date1 = calculateEstimatedDate(currentSize, next1Cm, rawRate);
+            const date2 = calculateEstimatedDate(currentSize, next2Cm, rawRate);
+            
             estMidEl.innerHTML = `🎯 Sıradaki Hedef (<b>${next1Cm.toFixed(1)} cm</b>): ${date1.toLocaleDateString('tr-TR', dateOpts)}`;
             estEndEl.innerHTML = `🏆 Sonraki Hedef (<b>${next2Cm.toFixed(1)} cm</b>): ${date2.toLocaleDateString('tr-TR', dateOpts)}`;
         }
@@ -988,12 +1037,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (window.rulerTimer) clearTimeout(window.rulerTimer);
             const currentSize = parseFloat(dataManager.data.currentSize) || parseFloat(dataManager.data.startSize);
             const rate = dataManager.data.targetMonthlyGrowth || 2;
-            const mmDiff = Math.max(0, (targetCmValue - currentSize) * 10);
-            const targetDate = new Date();
-            const daysNeeded = (mmDiff / rate) * 30.4375;
-            targetDate.setDate(targetDate.getDate() + daysNeeded);
+            
+            const targetDate = calculateEstimatedDate(currentSize, targetCmValue, rate);
+            
             estMidEl.innerHTML = `🔎 <b>${targetCmValue.toFixed(1)} cm</b> Sorgusu: ${targetDate.toLocaleDateString('tr-TR', dateOpts)}`;
-            estEndEl.innerHTML = `<span style="opacity: 0.5;">(Tahmini varış süresidir)</span>`;
+            estEndEl.innerHTML = `<span style="opacity: 0.5;">(Mola süreleri dahildir)</span>`;
             window.rulerTimer = setTimeout(() => { updateDefaultEstimates(); }, 3500);
         };
 

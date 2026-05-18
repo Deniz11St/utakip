@@ -2582,3 +2582,107 @@ input:focus, select:focus, textarea:focus {
     border-color: rgba(255, 255, 255, 0.05) !important;
     box-shadow: none !important;
 }
+
+/* Roadmap CSS */
+.roadmap-info-card {
+    margin-bottom: 20px;
+}
+
+.roadmap-timeline-card {
+    padding: 0;
+    overflow: hidden;
+}
+
+.roadmap-container {
+    display: flex;
+    flex-direction: column;
+    padding: 20px 0;
+}
+
+.roadmap-node {
+    display: flex;
+    position: relative;
+    padding: 0 20px;
+}
+
+.roadmap-icon {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 40px;
+    z-index: 2;
+    background: var(--surface-color);
+}
+
+.roadmap-icon span {
+    font-size: 28px;
+}
+
+.roadmap-node.future .roadmap-icon span {
+    color: var(--text-secondary);
+    opacity: 0.5;
+}
+
+.roadmap-node.past .roadmap-icon span {
+    color: #3fb950;
+}
+
+.roadmap-node.current .roadmap-icon span {
+    color: #4ade80;
+    animation: pulseRoadmapIcon 2s infinite;
+    filter: drop-shadow(0 0 8px rgba(74, 222, 128, 0.4));
+}
+
+@keyframes pulseRoadmapIcon {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+.roadmap-line {
+    position: absolute;
+    top: -50%;
+    left: 39px;
+    width: 2px;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.1);
+    z-index: 1;
+}
+
+.roadmap-line.active {
+    background: linear-gradient(to bottom, #3fb950, #4ade80);
+}
+
+.roadmap-content {
+    padding: 10px 0 30px 15px;
+    flex: 1;
+}
+
+.roadmap-month {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-weight: 700;
+    margin-bottom: 2px;
+}
+
+.roadmap-node.current .roadmap-month {
+    color: #4ade80;
+}
+
+.roadmap-title {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    color: var(--text-primary);
+}
+
+.roadmap-desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.roadmap-node.future .roadmap-title,
+.roadmap-node.future .roadmap-desc {
+    opacity: 0.5;
+}
