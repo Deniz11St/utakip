@@ -4027,7 +4027,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                 const originalText = verText.textContent;
                 verText.style.color = '#2ecc71'; // Yeşil renk
                 verText.style.fontWeight = '700';
-                verText.textContent = '✅ Uygulamanız v2.4.1 sürümüne güncellendi!';
+                verText.textContent = '✅ Uygulamanız v3.1.3 sürümüne güncellendi!';
                 
                 setTimeout(() => {
                     verText.style.color = '';
@@ -4279,6 +4279,8 @@ function updateRoadmapView() {
     const monthDiff = (today.getFullYear() - start.getFullYear()) * 12 + (today.getMonth() - start.getMonth());
     const currentActiveMonth = Math.max(1, monthDiff + 1);
 
+    const turkishMonths = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+
     // Ne kadar sürecek?
     let activeMonthsNeeded = 0;
     if (targetSize > startSize) {
@@ -4298,12 +4300,20 @@ function updateRoadmapView() {
         let statusClass = isPast ? 'past' : (isCurrent ? 'current' : 'future');
         let icon = isPast ? 'check_circle' : (isCurrent ? 'directions_run' : 'radio_button_unchecked');
         
-        let title = `Aktif Gelişim (${displayMonth}. Ay)`;
-        let desc = "Bu ay istikrarlı çalışmaya devam edin. Her 10 günde bir ölçüm yaparak gelişimi takip edin.";
+        const nodeDate = new Date(start);
+        nodeDate.setMonth(start.getMonth() + displayMonth - 1);
+        const dateStr = `${turkishMonths[nodeDate.getMonth()]} ${nodeDate.getFullYear()}`;
+
+        let title = "Aktif Gelişim";
+        let desc = isPast 
+            ? `${displayMonth}. Ay Aktif Gelişim sürecini geride bıraktınız. İstikrarlı egzersizleriniz sayesinde dokulardaki genişleme kalıcılaşmaya başladı ve yeni hücre oluşumu (mitoz) tetiklendi. Harika bir iş çıkardınız!`
+            : "Bu ay istikrarlı çalışmaya devam edin. Her 10 günde bir ölçüm yaparak gelişimi takip edin.";
         
         if (m === 1) {
-            title = "Alışma Evresi (1. Ay)";
-            desc = "Düşük gerginlikte günde 2-4 saat kullanın. Dokularınız alete alışıyor.";
+            title = "Alışma Evresi";
+            desc = isPast 
+                ? "Alışma evresini başarıyla tamamladınız! Dokularınız cihaza ve gerginliğe mükemmel uyum sağladı. Artık büyümenin başlayacağı asıl aktif gelişim dönemine hazırsınız."
+                : "Düşük gerginlikte günde 2-4 saat kullanın. Dokularınız alete alışıyor.";
         }
 
         html += `
@@ -4311,8 +4321,8 @@ function updateRoadmapView() {
                 ${nodeIndex > 0 ? `<div class="roadmap-line ${isPast || isCurrent ? 'active' : ''}"></div>` : ''}
                 <div class="roadmap-icon"><span class="material-symbols-outlined">${icon}</span></div>
                 <div class="roadmap-content">
-                    <div class="roadmap-month">${displayMonth}. Ay</div>
-                    <div class="roadmap-title">${title}</div>
+                    <div class="roadmap-month">(${displayMonth}. Ay) ${dateStr}</div>
+                    <div class="roadmap-title">${title}:</div>
                     <div class="roadmap-desc">${desc}</div>
                 </div>
             </div>
@@ -4327,14 +4337,22 @@ function updateRoadmapView() {
             let molaStatus = molaIsPast ? 'past' : (molaIsCurrent ? 'current' : 'future');
             let molaIcon = molaIsPast ? 'check_circle' : (molaIsCurrent ? 'bedtime' : 'radio_button_unchecked');
             
+            const molaDate = new Date(start);
+            molaDate.setMonth(start.getMonth() + displayMonth - 1);
+            const molaDateStr = `${turkishMonths[molaDate.getMonth()]} ${molaDate.getFullYear()}`;
+
+            let molaDesc = molaIsPast
+                ? "Mola dönemini başarıyla tamamladınız! Dokularınız dinlendi, cihazın gerilimine karşı oluşabilecek bağışıklık (plato etkisi) sıfırlandı ve hücreleriniz sonraki gelişim dönemi için maksimum duyarlılığa ulaştı."
+                : "Vücudunuzun alete bağışıklık kazanmasını engellemek için 10-15 gün tamamen ara verin. Büyüme (plato) duraklamasını önler.";
+            
             html += `
                 <div class="roadmap-node ${molaStatus}">
                     <div class="roadmap-line ${molaIsPast || molaIsCurrent ? 'active' : ''}"></div>
                     <div class="roadmap-icon"><span class="material-symbols-outlined">${molaIcon}</span></div>
                     <div class="roadmap-content">
-                        <div class="roadmap-month">${displayMonth}. Ay (Mola)</div>
-                        <div class="roadmap-title">De-conditioning (15 Gün Ara)</div>
-                        <div class="roadmap-desc">Vücudunuzun alete bağışıklık kazanmasını engellemek için 10-15 gün tamamen ara verin. Büyüme (plato) duraklamasını önler.</div>
+                        <div class="roadmap-month">(${displayMonth}. Ay) ${molaDateStr}</div>
+                        <div class="roadmap-title">De-conditioning (15 Gün Ara):</div>
+                        <div class="roadmap-desc">${molaDesc}</div>
                     </div>
                 </div>
             `;
@@ -4345,18 +4363,29 @@ function updateRoadmapView() {
     }
 
     // Kalıcılık Evresi
-    let cemIsCurrent = (currentActiveMonth >= displayMonth);
-    let cemStatus = cemIsCurrent ? 'current' : 'future';
-    let cemIcon = cemIsCurrent ? 'fitness_center' : 'radio_button_unchecked';
+    let cemIsCurrent = (currentActiveMonth >= displayMonth && currentActiveMonth <= displayMonth + 5);
+    let cemIsPast = (currentActiveMonth > displayMonth + 5);
+    let cemStatus = cemIsPast ? 'past' : (cemIsCurrent ? 'current' : 'future');
+    let cemIcon = cemIsPast ? 'check_circle' : (cemIsCurrent ? 'fitness_center' : 'radio_button_unchecked');
+    
+    const cemStartDate = new Date(start);
+    cemStartDate.setMonth(start.getMonth() + displayMonth - 1);
+    const cemEndDate = new Date(start);
+    cemEndDate.setMonth(start.getMonth() + displayMonth + 4);
+    const cemDateStr = `${turkishMonths[cemStartDate.getMonth()]} ${cemStartDate.getFullYear()} - ${turkishMonths[cemEndDate.getMonth()]} ${cemEndDate.getFullYear()}`;
+
+    let cemDesc = cemIsPast
+        ? "Kalıcılık (Cementing) evresini tamamlayarak tüm süreci başarıyla noktaladınız! Kazandığınız yeni dokular artık tamamen kalıcı hale geldi. Sabrınız ve disiplininiz için tebrikler!"
+        : "Hedefinize ulaştınız! Geri çekilmeyi (elastic recoil) önlemek için 6 ay boyunca günde 2-3 saat koruma amaçlı takmaya devam edin.";
     
     html += `
         <div class="roadmap-node ${cemStatus}">
-            <div class="roadmap-line ${cemIsCurrent ? 'active' : ''}"></div>
+            <div class="roadmap-line ${cemIsPast || cemIsCurrent ? 'active' : ''}"></div>
             <div class="roadmap-icon"><span class="material-symbols-outlined">${cemIcon}</span></div>
             <div class="roadmap-content">
-                <div class="roadmap-month">${displayMonth}. Ay - ${displayMonth+5}. Ay</div>
-                <div class="roadmap-title">Kalıcılık (Cementing) Evresi</div>
-                <div class="roadmap-desc">Hedefinize ulaştınız! Geri çekilmeyi (elastic recoil) önlemek için 6 ay boyunca günde 2-3 saat koruma amaçlı takmaya devam edin.</div>
+                <div class="roadmap-month">(${displayMonth}. Ay - ${displayMonth+5}. Ay) ${cemDateStr}</div>
+                <div class="roadmap-title">Kalıcılık (Cementing) Evresi:</div>
+                <div class="roadmap-desc">${cemDesc}</div>
             </div>
         </div>
     `;
