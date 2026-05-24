@@ -2930,20 +2930,48 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
 
         const state = dataManager.data.activeSessionState;
         
-        // --- DİNAMİK ARAYÜZ YENİDEN SIRALAMA (DOM REORDERING) (v3.1.7) ---
+        // --- DİNAMİK ARAYÜZ YENİDEN SIRALAMA (DOM REORDERING - FLIP ANIMATION) (v3.1.8) ---
         const coachCard = document.querySelector('.coach-summary-card');
         const goalCard = document.querySelector('.goal-card');
         if (card && coachCard && goalCard) {
-            if (state.mode === 'work' || state.mode === 'break') {
-                // Sayaç çalışıyorsa: Sanal Koç kartının üstüne yerleştir
-                if (card.previousElementSibling !== null && card.nextElementSibling !== coachCard) {
+            const isTargetTop = state.mode === 'work' || state.mode === 'break';
+            const isCurrentlyTop = card.nextElementSibling === coachCard;
+            const isCurrentlyBottom = goalCard.nextElementSibling === card;
+
+            // Sadece konum gerçekten değişecekse animasyonu tetikle
+            if ((isTargetTop && !isCurrentlyTop) || (!isTargetTop && !isCurrentlyBottom)) {
+                // 1. FIRST: Elemanın ilk konumunu piksel cinsinden kaydet
+                const first = card.getBoundingClientRect();
+
+                // 2. DOM TAŞIMA: Elemanın yerini ağaç üzerinde fiziksel olarak değiştir
+                if (isTargetTop) {
                     coachCard.parentNode.insertBefore(card, coachCard);
-                }
-            } else {
-                // Sayaç hazır veya bittiğinde: Orijinal yerine (goal-card'ın altına) yerleştir
-                if (goalCard.nextElementSibling !== card) {
+                } else {
                     goalCard.parentNode.insertBefore(card, goalCard.nextSibling);
                 }
+
+                // 3. LAST: Elemanın yeni taşındığı konumunu kaydet
+                const last = card.getBoundingClientRect();
+
+                // 4. INVERT: Aradaki dikey farkı (piksel mesafesini) hesapla
+                const deltaY = first.top - last.top;
+
+                // Elemanı anında eski konumuna görsel olarak geri götür (animasyonsuz / geçişsiz)
+                card.style.transition = 'none';
+                card.style.transform = `translateY(${deltaY}px)`;
+                
+                // Reflow (Yeniden çizim) tetikle ki tarayıcı bu transformu milisaniyede algılasın
+                card.offsetHeight;
+
+                // 5. PLAY: Geçiş stilini aktif et ve sıfır konumuna (yeni yerine) pürüzsüzce süzdür
+                card.style.transition = 'transform 0.65s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.4s ease';
+                card.style.transform = 'translateY(0)';
+
+                // Animasyon bittikten sonra stilleri temizle (Hover ve Active efektleriyle çakışmaması için)
+                setTimeout(() => {
+                    card.style.transition = '';
+                    card.style.transform = '';
+                }, 700);
             }
         }
 

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v317'; // v3.1.7: Dynamic DOM reordering for timer card and version update
+const CACHE_NAME = 'utakip-v318'; // v3.1.8: FLIP animation for layout change and version update
 const ASSETS = [
     './',
     './index.html',
