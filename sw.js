@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v319'; // v3.1.9: Double rAF for FLIP timing fix and version update
+const CACHE_NAME = 'utakip-v320'; // v3.2.0: Choreographed UFO flight layout transition, version update
 const ASSETS = [
     './',
     './index.html',

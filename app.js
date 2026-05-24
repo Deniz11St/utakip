@@ -2930,7 +2930,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
 
         const state = dataManager.data.activeSessionState;
         
-        // --- DİNAMİK ARAYÜZ YENİDEN SIRALAMA (DOM REORDERING - FLIP ANIMATION) (v3.1.8) ---
+        // --- DİNAMİK ARAYÜZ YENİDEN SIRALAMA (DOM REORDERING - KOREOGRAFİLİ UFO FLIP) (v3.2.0) ---
         const coachCard = document.querySelector('.coach-summary-card');
         const goalCard = document.querySelector('.goal-card');
         if (card && coachCard && goalCard) {
@@ -2940,42 +2940,64 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
 
             // Sadece konum gerçekten değişecekse animasyonu tetikle
             if ((isTargetTop && !isCurrentlyTop) || (!isTargetTop && !isCurrentlyBottom)) {
-                // 1. FIRST: Elemanın ilk konumunu piksel cinsinden kaydet
-                const first = card.getBoundingClientRect();
-
-                // 2. DOM TAŞIMA: Elemanın yerini ağaç üzerinde fiziksel olarak değiştir
-                if (isTargetTop) {
-                    coachCard.parentNode.insertBefore(card, coachCard);
-                } else {
-                    goalCard.parentNode.insertBefore(card, goalCard.nextSibling);
-                }
-
-                // 3. LAST: Elemanın yeni taşındığı konumunu kaydet
-                const last = card.getBoundingClientRect();
-
-                // 4. INVERT: Aradaki dikey farkı (piksel mesafesini) hesapla
-                const deltaY = first.top - last.top;
-
-                // Elemanı anında eski konumuna görsel olarak geri götür (animasyonsuz / geçişsiz)
-                card.style.transition = 'none';
-                card.style.transform = `translateY(${deltaY}px)`;
                 
-                // Reflow (Yeniden çizim) tetikle ki tarayıcı bu transformu milisaniyede algılasın
-                card.offsetHeight;
+                const triggerFlipFlight = () => {
+                    // 1. FIRST: Elemanın havaya kalkmış durumdaki konumunu kaydet
+                    const first = card.getBoundingClientRect();
 
-                // 5. PLAY: Bir sonraki çizim karesinde (Next Frame) geçişi başlat ve sıfır konumuna pürüzsüzce süzdür
-                requestAnimationFrame(() => {
+                    // 2. DOM TAŞIMA: Elemanı fiziksel olarak yeni konumuna taşı
+                    if (isTargetTop) {
+                        coachCard.parentNode.insertBefore(card, coachCard);
+                    } else {
+                        goalCard.parentNode.insertBefore(card, goalCard.nextSibling);
+                    }
+
+                    // 3. LAST: Elemanın yeni taşındığı yerdeki konumunu al
+                    const last = card.getBoundingClientRect();
+
+                    // 4. INVERT: Aradaki dikey farkı (piksel mesafesini) hesapla
+                    const deltaY = first.top - last.top;
+
+                    // Elemanı anında eski konumuna görsel olarak geri götür (animasyonsuz / geçişsiz)
+                    card.style.transition = 'none';
+                    card.style.transform = `translateY(${deltaY}px)`;
+                    
+                    // Reflow tetikle
+                    card.offsetHeight;
+
+                    // 5. PLAY: 2.0 saniye süren pürüzsüz bir süzülüşle uçuşu başlat (Double requestAnimationFrame)
                     requestAnimationFrame(() => {
-                        card.style.transition = 'transform 0.75s cubic-bezier(0.25, 1, 0.3, 1), opacity 0.5s ease-out';
-                        card.style.transform = 'translateY(0)';
+                        requestAnimationFrame(() => {
+                            card.style.transition = 'transform 2.0s cubic-bezier(0.25, 1, 0.25, 1), box-shadow 0.8s ease, scale 0.8s ease';
+                            card.style.transform = 'translateY(0)';
+                        });
                     });
-                });
 
-                // Animasyon bittikten sonra stilleri temizle (Hover ve Active efektleriyle çakışmaması için)
-                setTimeout(() => {
-                    card.style.transition = '';
-                    card.style.transform = '';
-                }, 850);
+                    // 6. LANDING: Uçuş tamamlandığında (2.0s) yumuşak iniş yap ve odak modunu kapat
+                    setTimeout(() => {
+                        card.classList.remove('elevated-ufo');
+                        document.getElementById('home').classList.remove('home-focus-active');
+                        card.style.transition = '';
+                        card.style.transform = '';
+                    }, 2050);
+                };
+
+                if (isTargetTop) {
+                    // Başlatırken: Önce havaya yüksel (UFO Modu), 1.2 saniye havada asılı kal, sonra uç!
+                    card.classList.add('elevated-ufo');
+                    document.getElementById('home').classList.add('home-focus-active');
+                    
+                    // Hafif sarsıntı/yükseliş titreşimi
+                    if ('vibrate' in navigator) navigator.vibrate([10, 50, 15]);
+
+                    setTimeout(() => {
+                        triggerFlipFlight();
+                    }, 1200); // 1.2 Saniye Havada Asılı Kalma (Hover Pause)
+                } else {
+                    // Durdururken/Kaydederken: Doğrudan pürüzsüzce aşağı süzülerek orijinal yerine yerleş
+                    card.classList.add('elevated-ufo'); // İnerken de derinlik hissi için ufo sınıfını ekle
+                    triggerFlipFlight();
+                }
             }
         }
 

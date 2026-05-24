@@ -2730,3 +2730,34 @@ input:focus, select:focus, textarea:focus {
 .timer-part-static {
     opacity: 0.5;
 }
+
+/* ============================================
+   KOREOGRAFİLİ UÇAN DAİRE (UFO) GEÇİŞ STİLLERİ
+   ============================================ */
+/* Sayaç kartı geçiş yumuşaklığı */
+.timer-card {
+    transition: transform 2.0s cubic-bezier(0.25, 1, 0.25, 1), 
+                box-shadow 0.6s cubic-bezier(0.25, 1, 0.25, 1), 
+                scale 0.6s cubic-bezier(0.25, 1, 0.25, 1);
+}
+
+/* Yükseltilmiş Uçan Daire (UFO) Durumu */
+.timer-card.elevated-ufo {
+    scale: 1.04;
+    box-shadow: 0 30px 80px rgba(88, 166, 255, 0.35), 0 0 40px rgba(88, 166, 255, 0.15) !important;
+    z-index: 9999;
+}
+
+/* Diğer kartların silikleşme ve bulanıklaşma geçişleri */
+.card:not(.timer-card) {
+    transition: opacity 0.8s cubic-bezier(0.25, 1, 0.25, 1), 
+                filter 0.8s cubic-bezier(0.25, 1, 0.25, 1);
+}
+
+/* Odak modu aktifken diğer tüm kartları silikleştir ve bulanıklaştır */
+.home-focus-active .card:not(.timer-card),
+.home-focus-active .view-header {
+    opacity: 0.15;
+    filter: blur(2px) grayscale(50%);
+    pointer-events: none; /* Yanlış tıklamaları engelle */
+}
