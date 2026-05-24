@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v314'; // v3.1.4: Retroactive timer feature and version update
+const CACHE_NAME = 'utakip-v315'; // v3.1.5: Gesture-based retroactive timer and version update
 const ASSETS = [
     './',
     './index.html',

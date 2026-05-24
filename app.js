@@ -2906,6 +2906,9 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
     let timerInterval = null;
 
     function updateTimerDisplay() {
+        const tHour = document.getElementById('timerHour');
+        const tMin = document.getElementById('timerMin');
+        const tSec = document.getElementById('timerSec');
         const display = document.getElementById('timerDisplay');
         const btnSession = document.getElementById('btnStartSession');
         const btnBreak = document.getElementById('btnStartBreak');
@@ -2923,7 +2926,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         const btnToggleManual = document.getElementById('btnToggleManual');
         const btnTogglePump = document.getElementById('btnTogglePump');
 
-        if (!display || !btnSession || !btnBreak || !info || !card || !manualSection || !metaSection) return;
+        if (!tHour || !tMin || !tSec || !display || !btnSession || !btnBreak || !info || !card || !manualSection || !metaSection) return;
 
         const state = dataManager.data.activeSessionState;
         const isManualMode = card.classList.contains('mode-manual') || card.classList.contains('is-manual-view');
@@ -2940,8 +2943,6 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         if (pumpSection) pumpSection.style.display = 'none';
         if (btnStartPump) btnStartPump.style.display = 'none';
         if (btnCancel) btnCancel.style.display = 'none';
-        const retroSection = document.getElementById('retroactiveAdjustSection');
-        if (retroSection) retroSection.style.display = 'none';
 
         // --- 2. MODLARI AYRI AYRI İŞLE (EXCLUSIVITY) ---
 
@@ -3028,19 +3029,14 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
 
         if (state.mode === 'ready') {
             const offsetMs = state.offsetMs || 0;
-            if (offsetMs > 0) {
-                const totalSecs = Math.floor(offsetMs / 1000);
-                const h = Math.floor(totalSecs / 3600);
-                const m = Math.floor((totalSecs % 3600) / 60);
-                const s = totalSecs % 60;
-                display.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-            } else {
-                display.textContent = '00:00:00';
-            }
+            const totalSecs = Math.floor(offsetMs / 1000);
+            const h = Math.floor(totalSecs / 3600);
+            const m = Math.floor((totalSecs % 3600) / 60);
+            const s = totalSecs % 60;
+            tHour.textContent = String(h).padStart(2, '0');
+            tMin.textContent = String(m).padStart(2, '0');
+            tSec.textContent = String(s).padStart(2, '0');
             display.style.opacity = '1';
-            
-            const retroSection = document.getElementById('retroactiveAdjustSection');
-            if (retroSection) retroSection.style.display = 'flex';
             
             btnSession.style.display = 'block';
             btnSession.textContent = '▶ Seans Başlat';
@@ -3068,7 +3064,9 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             const h = Math.floor(totalSecs / 3600);
             const m = Math.floor((totalSecs % 3600) / 60);
             const s = totalSecs % 60;
-            display.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+            tHour.textContent = String(h).padStart(2, '0');
+            tMin.textContent = String(m).padStart(2, '0');
+            tSec.textContent = String(s).padStart(2, '0');
             display.style.opacity = '0.4'; 
             
             btnSession.style.display = 'none';
@@ -3093,7 +3091,9 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         const h = Math.floor(totalSecs / 3600);
         const m = Math.floor((totalSecs % 3600) / 60);
         const s = totalSecs % 60;
-        display.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+        tHour.textContent = String(h).padStart(2, '0');
+        tMin.textContent = String(m).padStart(2, '0');
+        tSec.textContent = String(s).padStart(2, '0');
         display.style.opacity = '1';
 
         btnFinalize.style.display = 'none';
@@ -3357,27 +3357,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         releaseWakeLock();
     }
 
-    // --- GERİYE DÖNÜK SAYAÇ AYARLAMA OLAY DİNLEYİCİLERİ ---
-    const handleRetroAdjust = (mins) => {
-        const state = dataManager.data.activeSessionState;
-        if (!state.offsetMs) state.offsetMs = 0;
-        
-        // Sınırlar: 0 ile 12 saat (43200000 ms)
-        const diffMs = mins * 60 * 1000;
-        let newOffset = state.offsetMs + diffMs;
-        
-        if (newOffset < 0) newOffset = 0;
-        if (newOffset > 12 * 60 * 60 * 1000) newOffset = 12 * 60 * 60 * 1000;
-        
-        state.offsetMs = newOffset;
-        dataManager.save();
-        updateTimerDisplay();
-    };
-
-    document.getElementById('btnRetroSub15')?.addEventListener('click', () => handleRetroAdjust(-15));
-    document.getElementById('btnRetroSub5')?.addEventListener('click', () => handleRetroAdjust(-5));
-    document.getElementById('btnRetroAdd5')?.addEventListener('click', () => handleRetroAdjust(5));
-    document.getElementById('btnRetroAdd15')?.addEventListener('click', () => handleRetroAdjust(15));
+    // (Eski buton olay dinleyicileri kaldırıldı)
 
     document.getElementById('btnStartSession')?.addEventListener('click', () => {
         const state = dataManager.data.activeSessionState;
@@ -4096,6 +4076,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
     
     // UI Durumunu Senkronize Et
     updateTimerDisplay();
+    initTimerPartInteractions();
 
     // --- MANUEL SAYAÇ: SWIPE, WHEEL & TAP ETKİLEŞİMİ ---
     (function initManualStepperSwipe() {
@@ -4444,5 +4425,92 @@ function updateRoadmapView() {
             roadmapAdviceText.textContent = `Şu an aktif gelişim aşamasındasınız. Ayda ortalama ${rate}mm büyüme hedefiyle devam edin!`;
         }
     }
+}
+
+// --- GERİYE DÖNÜK SAYAÇ DOKUNMATİK VE HAREKET ETKİLEŞİM MOTORU (v3.1.5) ---
+function initTimerPartInteractions() {
+    const tHour = document.getElementById('timerHour');
+    const tMin = document.getElementById('timerMin');
+    if (!tHour || !tMin) return;
+
+    const handlePartAdjust = (part, direction, isClick = false) => {
+        const state = dataManager.data.activeSessionState;
+        if (state.mode !== 'ready') return; // Sadece hazır modda çalışır
+
+        let currentOffset = state.offsetMs || 0;
+        let h = Math.floor(currentOffset / 3600000);
+        let m = Math.floor((currentOffset % 3600000) / 60000);
+
+        if (part === 'hour') {
+            const step = 1;
+            if (direction > 0) {
+                h = (h + step) % 13;
+            } else {
+                h = (h - step + 13) % 13;
+            }
+        } else if (part === 'min') {
+            const step = isClick ? 5 : 10;
+            if (direction > 0) {
+                m = (m + step) % 60;
+            } else {
+                m = (m - step + 60) % 60;
+            }
+        }
+
+        state.offsetMs = (h * 3600000) + (m * 60000);
+        dataManager.save();
+        updateTimerDisplay();
+
+        // Hafif titreşim geri bildirimi
+        if ('vibrate' in navigator) navigator.vibrate(5);
+    };
+
+    // --- Tıklama (Tap) Olayları ---
+    tHour.addEventListener('click', () => handlePartAdjust('hour', 1, true));
+    tMin.addEventListener('click', () => handlePartAdjust('min', 1, true));
+
+    // --- Tekerlek (Wheel) Olayları ---
+    const preventDefaultAndAdjust = (e, part) => {
+        const state = dataManager.data.activeSessionState;
+        if (state.mode !== 'ready') return;
+        
+        e.preventDefault();
+        const direction = e.deltaY < 0 ? 1 : -1;
+        handlePartAdjust(part, direction, false);
+    };
+
+    tHour.addEventListener('wheel', (e) => preventDefaultAndAdjust(e, 'hour'), { passive: false });
+    tMin.addEventListener('wheel', (e) => preventDefaultAndAdjust(e, 'min'), { passive: false });
+
+    // --- Dokunmatik Sürükleme (Touch Gestures) ---
+    const setupTouchGesture = (element, part) => {
+        let touchStartY = 0;
+        const threshold = 15; // 15px dikey harekette tetiklenir
+
+        element.addEventListener('touchstart', (e) => {
+            const state = dataManager.data.activeSessionState;
+            if (state.mode !== 'ready') return;
+            touchStartY = e.touches[0].clientY;
+        }, { passive: true });
+
+        element.addEventListener('touchmove', (e) => {
+            const state = dataManager.data.activeSessionState;
+            if (state.mode !== 'ready') return;
+
+            const currentY = e.touches[0].clientY;
+            const diffY = touchStartY - currentY; // Yukarı kaydırma pozitiftir (değer artmalı)
+
+            if (Math.abs(diffY) > threshold) {
+                const direction = diffY > 0 ? 1 : -1;
+                handlePartAdjust(part, direction, false);
+                touchStartY = currentY; // Sürekli sürükleme için referansı güncelle
+
+                if (e.cancelable) e.preventDefault();
+            }
+        }, { passive: false });
+    };
+
+    setupTouchGesture(tHour, 'hour');
+    setupTouchGesture(tMin, 'min');
 }
 

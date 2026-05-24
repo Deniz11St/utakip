@@ -2688,49 +2688,44 @@ input:focus, select:focus, textarea:focus {
 }
 
 /* ============================================
-   GERİYE DÖNÜK SAYAÇ AYARLAMA STİLLERİ
+   İNTERAKTİF SAYAÇ HANELERİ STİLLERİ
    ============================================ */
-.retroactive-adjust {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 8px;
-    margin-top: 15px;
-    margin-bottom: 5px;
-    animation: fadeIn 0.3s ease-out;
-}
-
-.btn-retro {
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    color: var(--text-secondary);
-    padding: 8px 12px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+.interactive-timer-part {
+    display: inline-block;
+    padding: 0 4px;
+    border-radius: 8px;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     user-select: none;
     -webkit-tap-highlight-color: transparent;
 }
 
-.btn-retro:hover {
-    background: rgba(88, 166, 255, 0.1);
-    border-color: rgba(88, 166, 255, 0.3);
-    color: #58a6ff;
+/* Sadece seans hazır (ready) moddayken etkileşim göster */
+.mode-ready .interactive-timer-part {
+    cursor: ns-resize;
+    color: #a5d6ff;
+    text-shadow: 0 0 10px rgba(165, 214, 255, 0.25);
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px dashed rgba(165, 214, 255, 0.15);
+}
+
+.mode-ready .interactive-timer-part:hover {
+    color: #fff;
+    background: rgba(88, 166, 255, 0.12);
+    border-color: rgba(88, 166, 255, 0.4);
+    text-shadow: 0 0 15px rgba(88, 166, 255, 0.5);
     transform: translateY(-1px);
 }
 
-.btn-retro:active {
-    transform: translateY(1px);
+.mode-ready .interactive-timer-part:active {
+    transform: scale(0.95) translateY(0);
     background: rgba(88, 166, 255, 0.2);
 }
 
-.retro-label {
-    font-size: 11px;
-    font-weight: 700;
-    color: rgba(255, 255, 255, 0.35);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    padding: 0 4px;
+.timer-colon {
+    opacity: 0.8;
+    padding: 0 2px;
+}
+
+.timer-part-static {
+    opacity: 0.5;
 }
