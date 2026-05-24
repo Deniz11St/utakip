@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v313'; // v3.1.3: Version update and GitHub push
+const CACHE_NAME = 'utakip-v314'; // v3.1.4: Retroactive timer feature and version update
 const ASSETS = [
     './',
     './index.html',

@@ -59,6 +59,7 @@ class TrackerData {
                 current: 1,
                 mode: 'ready', // 'ready', 'work', 'break'
                 startTime: 0,
+                offsetMs: 0,
                 lastModeChange: 0
             },
             workCycleDays: 5,
@@ -101,7 +102,9 @@ class TrackerData {
         }
         
         if (!this.data.activeSessionState) {
-            this.data.activeSessionState = { current: 1, mode: 'ready', startTime: 0, lastModeChange: 0 };
+            this.data.activeSessionState = { current: 1, mode: 'ready', startTime: 0, offsetMs: 0, lastModeChange: 0 };
+        } else if (this.data.activeSessionState.offsetMs === undefined) {
+            this.data.activeSessionState.offsetMs = 0;
         }
 
         // Defaults for primitives
@@ -145,6 +148,7 @@ class TrackerData {
             current: 1,
             mode: 'ready',
             startTime: 0,
+            offsetMs: 0,
             lastModeChange: Date.now()
         };
         this.data.timerStartTime = 0;
@@ -2936,6 +2940,8 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         if (pumpSection) pumpSection.style.display = 'none';
         if (btnStartPump) btnStartPump.style.display = 'none';
         if (btnCancel) btnCancel.style.display = 'none';
+        const retroSection = document.getElementById('retroactiveAdjustSection');
+        if (retroSection) retroSection.style.display = 'none';
 
         // --- 2. MODLARI AYRI AYRI İŞLE (EXCLUSIVITY) ---
 
@@ -3021,8 +3027,20 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         }
 
         if (state.mode === 'ready') {
-            display.textContent = '00:00:00';
+            const offsetMs = state.offsetMs || 0;
+            if (offsetMs > 0) {
+                const totalSecs = Math.floor(offsetMs / 1000);
+                const h = Math.floor(totalSecs / 3600);
+                const m = Math.floor((totalSecs % 3600) / 60);
+                const s = totalSecs % 60;
+                display.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+            } else {
+                display.textContent = '00:00:00';
+            }
             display.style.opacity = '1';
+            
+            const retroSection = document.getElementById('retroactiveAdjustSection');
+            if (retroSection) retroSection.style.display = 'flex';
             
             btnSession.style.display = 'block';
             btnSession.textContent = '▶ Seans Başlat';
@@ -3339,6 +3357,28 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         releaseWakeLock();
     }
 
+    // --- GERİYE DÖNÜK SAYAÇ AYARLAMA OLAY DİNLEYİCİLERİ ---
+    const handleRetroAdjust = (mins) => {
+        const state = dataManager.data.activeSessionState;
+        if (!state.offsetMs) state.offsetMs = 0;
+        
+        // Sınırlar: 0 ile 12 saat (43200000 ms)
+        const diffMs = mins * 60 * 1000;
+        let newOffset = state.offsetMs + diffMs;
+        
+        if (newOffset < 0) newOffset = 0;
+        if (newOffset > 12 * 60 * 60 * 1000) newOffset = 12 * 60 * 60 * 1000;
+        
+        state.offsetMs = newOffset;
+        dataManager.save();
+        updateTimerDisplay();
+    };
+
+    document.getElementById('btnRetroSub15')?.addEventListener('click', () => handleRetroAdjust(-15));
+    document.getElementById('btnRetroSub5')?.addEventListener('click', () => handleRetroAdjust(-5));
+    document.getElementById('btnRetroAdd5')?.addEventListener('click', () => handleRetroAdjust(5));
+    document.getElementById('btnRetroAdd15')?.addEventListener('click', () => handleRetroAdjust(15));
+
     document.getElementById('btnStartSession')?.addEventListener('click', () => {
         const state = dataManager.data.activeSessionState;
 
@@ -3353,7 +3393,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             }
             
             state.mode = 'work';
-            state.startTime = Date.now();
+            state.startTime = Date.now() - (state.offsetMs || 0);
             state.notified = false;
             dataManager.save();
             startTimerUI();

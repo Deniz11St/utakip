@@ -2686,3 +2686,51 @@ input:focus, select:focus, textarea:focus {
 .roadmap-node.future .roadmap-desc {
     opacity: 0.5;
 }
+
+/* ============================================
+   GERİYE DÖNÜK SAYAÇ AYARLAMA STİLLERİ
+   ============================================ */
+.retroactive-adjust {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    margin-top: 15px;
+    margin-bottom: 5px;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.btn-retro {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--text-secondary);
+    padding: 8px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.btn-retro:hover {
+    background: rgba(88, 166, 255, 0.1);
+    border-color: rgba(88, 166, 255, 0.3);
+    color: #58a6ff;
+    transform: translateY(-1px);
+}
+
+.btn-retro:active {
+    transform: translateY(1px);
+    background: rgba(88, 166, 255, 0.2);
+}
+
+.retro-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.35);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 0 4px;
+}
