@@ -2963,15 +2963,19 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                 // Reflow (Yeniden çizim) tetikle ki tarayıcı bu transformu milisaniyede algılasın
                 card.offsetHeight;
 
-                // 5. PLAY: Geçiş stilini aktif et ve sıfır konumuna (yeni yerine) pürüzsüzce süzdür
-                card.style.transition = 'transform 0.65s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.4s ease';
-                card.style.transform = 'translateY(0)';
+                // 5. PLAY: Bir sonraki çizim karesinde (Next Frame) geçişi başlat ve sıfır konumuna pürüzsüzce süzdür
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        card.style.transition = 'transform 0.75s cubic-bezier(0.25, 1, 0.3, 1), opacity 0.5s ease-out';
+                        card.style.transform = 'translateY(0)';
+                    });
+                });
 
                 // Animasyon bittikten sonra stilleri temizle (Hover ve Active efektleriyle çakışmaması için)
                 setTimeout(() => {
                     card.style.transition = '';
                     card.style.transform = '';
-                }, 700);
+                }, 850);
             }
         }
 

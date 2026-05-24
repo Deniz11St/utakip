@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v318'; // v3.1.8: FLIP animation for layout change and version update
+const CACHE_NAME = 'utakip-v319'; // v3.1.9: Double rAF for FLIP timing fix and version update
 const ASSETS = [
     './',
     './index.html',
