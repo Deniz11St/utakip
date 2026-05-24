@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v315'; // v3.1.5: Gesture-based retroactive timer and version update
+const CACHE_NAME = 'utakip-v316'; // v3.1.6: Touch scroll lock UX fix and version update
 const ASSETS = [
     './',
     './index.html',

@@ -4497,6 +4497,9 @@ function initTimerPartInteractions() {
             const state = dataManager.data.activeSessionState;
             if (state.mode !== 'ready') return;
 
+            // Parmak hareket ettiği an sayfa kaydırma olayını (Default Scroll) hemen bloke et!
+            if (e.cancelable) e.preventDefault();
+
             const currentY = e.touches[0].clientY;
             const diffY = touchStartY - currentY; // Yukarı kaydırma pozitiftir (değer artmalı)
 
@@ -4504,8 +4507,6 @@ function initTimerPartInteractions() {
                 const direction = diffY > 0 ? 1 : -1;
                 handlePartAdjust(part, direction, false);
                 touchStartY = currentY; // Sürekli sürükleme için referansı güncelle
-
-                if (e.cancelable) e.preventDefault();
             }
         }, { passive: false });
     };

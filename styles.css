@@ -2706,6 +2706,7 @@ input:focus, select:focus, textarea:focus {
     text-shadow: 0 0 10px rgba(165, 214, 255, 0.25);
     background: rgba(255, 255, 255, 0.02);
     border: 1px dashed rgba(165, 214, 255, 0.15);
+    touch-action: none; /* Mobil kaydırmayı engeller */
 }
 
 .mode-ready .interactive-timer-part:hover {
