@@ -2929,6 +2929,24 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         if (!tHour || !tMin || !tSec || !display || !btnSession || !btnBreak || !info || !card || !manualSection || !metaSection) return;
 
         const state = dataManager.data.activeSessionState;
+        
+        // --- DİNAMİK ARAYÜZ YENİDEN SIRALAMA (DOM REORDERING) (v3.1.7) ---
+        const coachCard = document.querySelector('.coach-summary-card');
+        const goalCard = document.querySelector('.goal-card');
+        if (card && coachCard && goalCard) {
+            if (state.mode === 'work' || state.mode === 'break') {
+                // Sayaç çalışıyorsa: Sanal Koç kartının üstüne yerleştir
+                if (card.previousElementSibling !== null && card.nextElementSibling !== coachCard) {
+                    coachCard.parentNode.insertBefore(card, coachCard);
+                }
+            } else {
+                // Sayaç hazır veya bittiğinde: Orijinal yerine (goal-card'ın altına) yerleştir
+                if (goalCard.nextElementSibling !== card) {
+                    goalCard.parentNode.insertBefore(card, goalCard.nextSibling);
+                }
+            }
+        }
+
         const isManualMode = card.classList.contains('mode-manual') || card.classList.contains('is-manual-view');
         const isPumpMode = card.classList.contains('mode-pump');
 

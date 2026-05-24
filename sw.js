@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v316'; // v3.1.6: Touch scroll lock UX fix and version update
+const CACHE_NAME = 'utakip-v317'; // v3.1.7: Dynamic DOM reordering for timer card and version update
 const ASSETS = [
     './',
     './index.html',
