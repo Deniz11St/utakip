@@ -64,7 +64,8 @@ class TrackerData {
             },
             workCycleDays: 5,
             restCycleDays: 2,
-            monthlyWork: {} // Format: "YYYY-MM": minutes
+            monthlyWork: {}, // Format: "YYYY-MM": minutes
+            monthlyNotes: {} // Format: "YYYY-MM": "Bu ayki not..."
         };
         const raw = localStorage.getItem('uTakipData');
         try {
@@ -89,7 +90,7 @@ class TrackerData {
         // Ensure core objects exist
         const ensureObjects = [
             'sessions', 'monthlyTension', 'monthlySize', 'notes', 
-            'dailyPump', 'dailyScrewSize', 'monthlyWork', 'restDays'
+            'dailyPump', 'dailyScrewSize', 'monthlyWork', 'restDays', 'monthlyNotes'
         ];
         ensureObjects.forEach(k => {
             if (!this.data[k] || typeof this.data[k] !== 'object') this.data[k] = {};
@@ -221,7 +222,19 @@ class TrackerData {
             delete entry.bloodflow;
         }
         
-        entry[type] = !entry[type];
+        if (type === 'warmup') {
+            if (!entry.warmup) {
+                entry.warmup = 1;
+            } else if (entry.warmup === true || entry.warmup === 1) {
+                entry.warmup = 2;
+            } else if (entry.warmup === 2) {
+                entry.warmup = false;
+            } else {
+                entry.warmup = 1;
+            }
+        } else {
+            entry[type] = !entry[type];
+        }
         this.data.dailyPump[dateStr] = entry;
         this.save();
         return entry[type];
@@ -1295,6 +1308,21 @@ document.addEventListener('DOMContentLoaded', () => {
             h3.textContent = `${monthName} Takvimi`;
             headerCard.appendChild(h3);
 
+            // Aylık Not Butonu (Yeni)
+            const monthlyNoteBtn = document.createElement('button');
+            monthlyNoteBtn.className = 'btn-monthly-note-toggle';
+            monthlyNoteBtn.title = 'Aylık Not Ekle / Düzenle';
+            monthlyNoteBtn.innerHTML = '<span class="material-symbols-outlined">edit_note</span>';
+            const hasMonthlyNote = dataManager.data.monthlyNotes && dataManager.data.monthlyNotes[yearMonth];
+            if (hasMonthlyNote) {
+                monthlyNoteBtn.classList.add('active');
+            }
+            monthlyNoteBtn.onclick = (e) => {
+                e.stopPropagation(); // Akordeonun açılıp kapanmasını engeller
+                openMonthlyNoteOverlay(yearMonth);
+            };
+            headerCard.appendChild(monthlyNoteBtn);
+
             const daysInMonth = new Date(y, m + 1, 0).getDate();
             let monthTotalMins = 0;
             const daysHTMLArray = [];
@@ -1357,21 +1385,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     // Pompa & Kegel Verilerini Hazırla
                     const pumpData = dataManager.data.dailyPump && dataManager.data.dailyPump[dateStr];
-                    let isWarmup = false;
+                    let warmupVal = 0; // 0: kapalı, 1: mavi, 2: mor
                     let isKegel = false;
                     if (typeof pumpData === 'object') {
-                        isWarmup = !!pumpData.warmup;
+                        if (pumpData.warmup === true || pumpData.warmup === 1) {
+                            warmupVal = 1;
+                        } else if (pumpData.warmup === 2) {
+                            warmupVal = 2;
+                        }
                         isKegel = !!pumpData.kegel || !!pumpData.bloodflow;
                     } else if (pumpData) {
                         // Migration fallback
-                        if (pumpData === true || pumpData === 1 || pumpData === 3) isWarmup = true;
+                        if (pumpData === true || pumpData === 1 || pumpData === 3) warmupVal = 1;
                         if (pumpData === 2 || pumpData === 3) isKegel = true;
                     }
 
-                    // 1. Isınma Pompası (Mavi)
+                    // 1. Isınma Pompası (Mavi / Mor)
                     const warmupBtn = document.createElement('button');
-                    warmupBtn.className = `btn-pump-toggle ${isWarmup ? 'state-warmup' : ''}`;
-                    warmupBtn.title = 'Isınma Pompası (Başlangıç)';
+                    let warmupClass = '';
+                    if (warmupVal === 1) {
+                        warmupClass = 'state-warmup';
+                    } else if (warmupVal === 2) {
+                        warmupClass = 'state-warmup-double';
+                    }
+                    warmupBtn.className = `btn-pump-toggle ${warmupClass}`;
+                    warmupBtn.title = warmupVal === 2 ? 'Pompa Kullanıldı (2 Seans)' : 'Isınma Pompası';
                     warmupBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px">mode_fan</span>';
                     warmupBtn.onclick = (e) => {
                         e.stopPropagation();
@@ -2107,11 +2145,18 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
     // Geçmiş veri özeti (AI için)
     const monthlySummary = Object.keys(dataManager.data.monthlyWork || {}).map(m => `${m}: ${dataManager.data.monthlyWork[m]}dk çalışma`).join(', ');
 
+    // Aylık Gözlem Notları özeti (AI için)
+    const monthlyNotesSummary = Object.keys(dataManager.data.monthlyNotes || {})
+        .filter(m => dataManager.data.monthlyNotes[m] && dataManager.data.monthlyNotes[m].trim() !== "")
+        .map(m => `${m} Notu: "${dataManager.data.monthlyNotes[m]}"`)
+        .join(' | ');
+
     const systemContext = `Sen UTakip uygulamasının uzman gelişim koçusun. 
     Kullanıcı: ${name}, Yaş: ${dataManager.data.age}, Gelişim: ${totalGrowth} mm (Aşama ${stage}).
     Egzersiz Verisi: Toplam ${pumpCount} gün pompa, ${kegelCount} gün Kegel egzersizi yapıldı.
     Bugün Durumu: ${pumpStatus} ${kegelStatus}
     Geçmiş Özet: ${monthlySummary || 'Yok'}.
+    Kullanıcının Aylık Notları: ${monthlyNotesSummary || 'Yok'}.
     Kural: Kısa ve öz cevap ver. Tıbbi tavsiye verme.`;
 
     const provider = dataManager.data.aiProvider || 'gemini';
@@ -2599,7 +2644,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             try {
                 const registration = await navigator.serviceWorker.getRegistration();
                 if (registration) {
-                    btn.textContent = "🚀 Güncelleniyor (v3.0.5)...";
+                    btn.textContent = "🚀 Güncelleniyor (v3.3.0)...";
                     await registration.update();
                     
                     // Force cache clearing for PWA assets
@@ -2822,19 +2867,10 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
     document.getElementById('btnFinalizeSession')?.addEventListener('click', () => {
         const state = dataManager.data.activeSessionState;
         const elapsedMs = state.frozenElapsed || (Date.now() - state.startTime);
-        const totalMins = Math.floor(elapsedMs / 60000);
         const diffStr = document.getElementById('inputDifficulty').value;
         const noteStr = document.getElementById('inputNote').value;
 
-        if (totalMins > 0) {
-            const today = new Date();
-            const offset = today.getTimezoneOffset() * 60000;
-            const localISOTime = (new Date(today - offset)).toISOString().split('T')[0];
-            
-            if (dataManager.addSession(localISOTime, totalMins, diffStr, noteStr)) {
-                showSuccessAchievement("Seans Kaydedildi", `${totalMins} dakika günlüğe eklendi.`, "✅");
-            }
-        }
+        saveSessionWithMidnightSplit(state.startTime, elapsedMs, diffStr, noteStr);
         
         // Reset and animate back to ready
         const card = document.getElementById('timerCard');
@@ -2930,7 +2966,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
 
         const state = dataManager.data.activeSessionState;
         
-        // --- DİNAMİK ARAYÜZ YENİDEN SIRALAMA (DOM REORDERING - KOREOGRAFİLİ UFO FLIP) (v3.2.0) ---
+        // --- DİNAMİK ARAYÜZ YENİDEN SIRALAMA (DOM REORDERING - KOREOGRAFİLİ UFO FLIP) (v3.3.0) ---
         const coachCard = document.querySelector('.coach-summary-card');
         const goalCard = document.querySelector('.goal-card');
         if (card && coachCard && goalCard) {
@@ -3326,6 +3362,52 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         }
     });
 
+    /* --- MONTHLY NOTE MODAL LOGIC --- */
+    let currentMonthlyNoteYearMonth = null;
+    const monthlyNoteModal = document.getElementById('monthlyNoteModalOverlay');
+
+    window.openMonthlyNoteOverlay = function(yearMonth) {
+        currentMonthlyNoteYearMonth = yearMonth;
+        const noteText = dataManager.data.monthlyNotes ? (dataManager.data.monthlyNotes[yearMonth] || "") : "";
+        document.getElementById('monthlyNoteModalText').value = noteText;
+        
+        let displayMonth = yearMonth;
+        try {
+            const parts = yearMonth.split('-');
+            if (parts.length === 2) {
+                const y = parseInt(parts[0]);
+                const mIndex = parseInt(parts[1]) - 1;
+                displayMonth = new Intl.DateTimeFormat('tr-TR', { month: 'long', year: 'numeric' }).format(new Date(y, mIndex));
+            }
+        } catch(e) {}
+        
+        document.getElementById('monthlyNoteModalTargetDate').textContent = displayMonth;
+        if (monthlyNoteModal) monthlyNoteModal.classList.add('show');
+    };
+
+    function closeMonthlyNoteModal() {
+        if (monthlyNoteModal) monthlyNoteModal.classList.remove('show');
+        currentMonthlyNoteYearMonth = null;
+    }
+
+    document.getElementById('btnCancelMonthlyNote')?.addEventListener('click', closeMonthlyNoteModal);
+    monthlyNoteModal?.addEventListener('click', (e) => {
+        if(e.target === monthlyNoteModal) closeMonthlyNoteModal();
+    });
+
+    document.getElementById('btnSaveMonthlyNote')?.addEventListener('click', () => {
+        if(!currentMonthlyNoteYearMonth) return;
+        const text = document.getElementById('monthlyNoteModalText').value;
+        
+        if (!dataManager.data.monthlyNotes) dataManager.data.monthlyNotes = {};
+        dataManager.data.monthlyNotes[currentMonthlyNoteYearMonth] = text;
+        dataManager.save();
+        
+        updateCalendarView();
+        closeMonthlyNoteModal();
+        showSuccessAchievement("Başarılı!", "Aylık gözlem notu kaydedildi.", "📝");
+    });
+
     /* --- MONTHLY WORK MODAL LOGIC --- */
     let currentMonthlyWorkYearMonth = null;
     const monthlyWorkModal = document.getElementById('monthlyWorkModalOverlay');
@@ -3379,25 +3461,59 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         showSuccessAchievement("Başarılı!", "Aylık çalışma süresi kaydedildi.", "📅");
     });
 
+    function saveSessionWithMidnightSplit(startTime, elapsedMs, diffStr, noteStr) {
+        const totalMins = Math.floor(elapsedMs / 60000);
+        if (totalMins <= 0) return false;
+
+        const endTime = startTime + elapsedMs;
+        const startDate = new Date(startTime);
+        const endDate = new Date(endTime);
+        
+        const startOffset = startDate.getTimezoneOffset() * 60000;
+        const startDateStr = (new Date(startDate.getTime() - startOffset)).toISOString().split('T')[0];
+        const endOffset = endDate.getTimezoneOffset() * 60000;
+        const endDateStr = (new Date(endDate.getTime() - endOffset)).toISOString().split('T')[0];
+
+        if (startDateStr !== endDateStr) {
+            const midnight = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 0, 0, 0, 0);
+            const midnightMs = midnight.getTime();
+            
+            const minsBefore = Math.floor((midnightMs - startTime) / 60000);
+            const minsAfter = totalMins - minsBefore;
+            
+            let success = false;
+            if (minsBefore > 0) {
+                success = dataManager.addSession(startDateStr, minsBefore, diffStr, noteStr ? `${noteStr} (Gece yarısından önce)` : 'Gece yarısından önce');
+            }
+            if (minsAfter > 0) {
+                const secondSuccess = dataManager.addSession(endDateStr, minsAfter, diffStr, noteStr ? `${noteStr} (Gece yarısından sonra)` : 'Gece yarısından sonra');
+                success = success || secondSuccess;
+            }
+            
+            if (success) {
+                showSuccessAchievement("Seans Kaydedildi", `Süre bölündü: ${minsBefore} dk (${startDateStr}) ve ${minsAfter} dk (${endDateStr})`, "✅");
+                return true;
+            }
+            return false;
+        } else {
+            if (dataManager.addSession(startDateStr, totalMins, diffStr, noteStr)) {
+                showSuccessAchievement("Seans Kaydedildi", `${totalMins} dakika günlüğe eklendi.`, "✅");
+                return true;
+            }
+            return false;
+        }
+    }
+
     function manualSaveAndEndSession() {
         const state = dataManager.data.activeSessionState;
         const elapsedMs = Date.now() - state.startTime;
         
         if (timerInterval) clearInterval(timerInterval);
         
-        const totalMins = Math.floor(elapsedMs / 60000);
         const diffStr = document.getElementById('inputDifficulty').value;
         const noteStr = document.getElementById('inputNote').value;
 
-        if (totalMins > 0) {
-            const today = new Date();
-            const offset = today.getTimezoneOffset() * 60000;
-            const localISOTime = (new Date(today - offset)).toISOString().split('T')[0];
-            
-            if (dataManager.addSession(localISOTime, totalMins, diffStr, noteStr)) {
-                showSuccessAchievement("Seans Kaydedildi", `${totalMins} dakika günlüğe eklendi.`, "✅");
-            }
-        }
+        saveSessionWithMidnightSplit(state.startTime, elapsedMs, diffStr, noteStr);
         
         const card = document.getElementById('timerCard');
         if(card) {
@@ -4119,7 +4235,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                 const originalText = verText.textContent;
                 verText.style.color = '#2ecc71'; // Yeşil renk
                 verText.style.fontWeight = '700';
-                verText.textContent = '✅ Uygulamanız v3.1.3 sürümüne güncellendi!';
+                verText.textContent = '✅ Uygulamanız v3.3.0 sürümüne güncellendi!';
                 
                 setTimeout(() => {
                     verText.style.color = '';

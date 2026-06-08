@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v320'; // v3.2.0: Choreographed UFO flight layout transition, version update
+const CACHE_NAME = 'utakip-v330'; // v3.3.0: Midnight session splitting and monthly AI notes
 const ASSETS = [
     './',
     './index.html',
