@@ -1602,8 +1602,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         const seg = document.createElement('div');
                         seg.className = 'tube-segment';
                         
-                        // 3 saatlik aralıklarla saat numarası (0, 3, 6, 9, 12, 15, 18, 21)
-                        if (h % 3 === 0) {
+                        // 4 saatlik aralıklarla saat numarası (0, 4, 8, 12, 16, 20)
+                        if (h % 4 === 0) {
                             const lbl = document.createElement('span');
                             lbl.className = 'tube-hour-label';
                             lbl.textContent = h;
