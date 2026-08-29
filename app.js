@@ -1247,6 +1247,8 @@ document.addEventListener('DOMContentLoaded', () => {
         return `${m} dk`;
     }
 
+    const activeTimelineMonths = new Set();
+
     function updateCalendarView() {
         const container = document.getElementById('calendarAccordionContainer');
         if(!container) return; // safety
@@ -1309,14 +1311,30 @@ document.addEventListener('DOMContentLoaded', () => {
             h3.textContent = `${monthName} Takvimi`;
             headerCard.appendChild(h3);
 
-            // 24 Saatlik Seans Tüpleri Butonu (v3.4.0)
+            // 24 Saatlik Seans Tüpleri Butonu (Sayfa içi toggle modu v3.5.0)
             const monthlyTimelineBtn = document.createElement('button');
             monthlyTimelineBtn.className = 'btn-monthly-timeline-toggle';
-            monthlyTimelineBtn.title = '24 Saatlik Seans Dağılım Tüpleri';
+            monthlyTimelineBtn.title = '24 Saatlik Seans Dağılım Tüpleri / Normal Görünüm Geçişi';
             monthlyTimelineBtn.innerHTML = '<span class="material-symbols-outlined">view_timeline</span>';
+            if (activeTimelineMonths.has(yearMonth)) {
+                monthlyTimelineBtn.classList.add('active');
+                accordionItem.classList.add('view-mode-tube');
+            }
             monthlyTimelineBtn.onclick = (e) => {
                 e.stopPropagation(); // Akordeonun açılıp kapanmasını engeller
-                openMonthlyTimelineOverlay(yearMonth);
+                if (activeTimelineMonths.has(yearMonth)) {
+                    activeTimelineMonths.delete(yearMonth);
+                    monthlyTimelineBtn.classList.remove('active');
+                    accordionItem.classList.remove('view-mode-tube');
+                } else {
+                    activeTimelineMonths.add(yearMonth);
+                    monthlyTimelineBtn.classList.add('active');
+                    accordionItem.classList.add('view-mode-tube');
+                    if (!headerCard.classList.contains('open')) {
+                        headerCard.classList.add('open');
+                        bodyDiv.classList.add('open');
+                    }
+                }
             };
             headerCard.appendChild(monthlyTimelineBtn);
 
@@ -1561,6 +1579,56 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     dayRow.appendChild(totalCol);
                     
+                    // 24 Saatlik Tüp Sütunu (Tüp Modunda Görünür v3.5.0)
+                    const dayTubeCol = document.createElement('div');
+                    dayTubeCol.className = 'day-tube-col';
+
+                    const tubeWrapper = document.createElement('div');
+                    tubeWrapper.className = 'timeline-tube-wrapper';
+
+                    const tube = document.createElement('div');
+                    tube.className = 'timeline-tube';
+
+                    const hours = getDayHourlyDistribution(dateStr);
+
+                    for (let h = 0; h < 24; h++) {
+                        const segMins = hours[h];
+                        const seg = document.createElement('div');
+                        seg.className = 'tube-segment';
+                        
+                        // 3 saatlik aralıklarla saat numarası (0, 3, 6, 9, 12, 15, 18, 21)
+                        if (h % 3 === 0) {
+                            const lbl = document.createElement('span');
+                            lbl.className = 'tube-hour-label';
+                            lbl.textContent = h;
+                            seg.appendChild(lbl);
+                        }
+                        
+                        if (segMins > 0) {
+                            if (segMins >= 45) seg.classList.add('fill-heavy');
+                            else if (segMins >= 20) seg.classList.add('fill-medium');
+                            else seg.classList.add('fill-light');
+                            
+                            const hFormatted = `${String(h).padStart(2, '0')}:00`;
+                            seg.title = `${dateStr} ${hFormatted} -> ${segMins} dk seans (Düzenlemek için tıkla)`;
+                        } else {
+                            const hFormatted = `${String(h).padStart(2, '0')}:00`;
+                            seg.title = `${dateStr} ${hFormatted} (Çalışma yok - Ekle/Düzenle)`;
+                        }
+
+                        // Tüpe tıklandığında seans ekleme / düzenleme modalını aç
+                        seg.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            openEditModal(dateStr);
+                        });
+                        
+                        tube.appendChild(seg);
+                    }
+
+                    tubeWrapper.appendChild(tube);
+                    dayTubeCol.appendChild(tubeWrapper);
+                    dayRow.appendChild(dayTubeCol);
+                    
                     daysHTMLArray.push(dayRow);
                     monthTotalMins += dailyTotalMins;
                 }
@@ -1597,6 +1665,64 @@ document.addEventListener('DOMContentLoaded', () => {
             if (yearMonth === currentYYYYMM) bodyDiv.classList.add('open');
             
             daysHTMLArray.forEach(el => bodyDiv.appendChild(el));
+
+            // Ayın Zaman Dağılımı ve Model Analiz Kartı (Tüp Modunda Altta Görünür v3.5.0)
+            const timeZoneTotals = { morning: 0, noon: 0, evening: 0, night: 0 };
+            let daysWithWork = 0;
+            let totalSessionsCount = 0;
+
+            for (let i = 1; i <= daysInMonth; i++) {
+                const dateStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+                const hours = getDayHourlyDistribution(dateStr);
+                const dailyTotal = hours.reduce((acc, v) => acc + v, 0);
+                if (dailyTotal > 0) {
+                    daysWithWork++;
+                    const sList = dataManager.data.sessions[dateStr] || [];
+                    totalSessionsCount += Math.max(1, sList.length);
+                }
+                for (let h = 0; h < 24; h++) {
+                    const val = hours[h];
+                    if (h >= 6 && h < 12) timeZoneTotals.morning += val;
+                    else if (h >= 12 && h < 18) timeZoneTotals.noon += val;
+                    else if (h >= 18 && h < 24) timeZoneTotals.evening += val;
+                    else timeZoneTotals.night += val;
+                }
+            }
+
+            const totalPeriodsMins = (timeZoneTotals.morning + timeZoneTotals.noon + timeZoneTotals.evening + timeZoneTotals.night) || 1;
+            const mornPct = Math.round((timeZoneTotals.morning / totalPeriodsMins) * 100);
+            const noonPct = Math.round((timeZoneTotals.noon / totalPeriodsMins) * 100);
+            const evePct = Math.round((timeZoneTotals.evening / totalPeriodsMins) * 100);
+            const nightPct = Math.round((timeZoneTotals.night / totalPeriodsMins) * 100);
+
+            const avgDailyMins = daysWithWork > 0 ? Math.round(monthTotalMins / daysWithWork) : 0;
+            const avgSessionsPerDay = daysWithWork > 0 ? (totalSessionsCount / daysWithWork).toFixed(1) : 0;
+
+            let patternType = "Dağıtık Seans Modeli";
+            let patternDesc = "Çalışmalarınız gün içine (sabah/öğlen/akşam) yayılmış durumda. Doku toparlanması ve düzenli gerilim için dengeli bir dağılım.";
+            if (avgSessionsPerDay <= 1.4 && avgDailyMins >= 180) {
+                patternType = "Yoğun Blok Seans Modeli";
+                patternDesc = "Günde 1-2 uzun süreli tek parça seanslar tercih ediliyor. Sürekli yüksek gerilimle doku adaptasyonu hedefleniyor.";
+            }
+
+            const patternDiv = document.createElement('div');
+            patternDiv.className = 'monthly-pattern-card';
+            patternDiv.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                    <strong style="color: #a5d6ff; font-size: 13px; display: flex; align-items: center; gap: 5px;">
+                        <span class="material-symbols-outlined" style="font-size: 16px; color: #58a6ff;">insights</span> ${patternType}
+                    </strong>
+                    <span style="font-size: 10px; opacity: 0.7;">Zaman Dağılımı</span>
+                </div>
+                <p style="margin: 0 0 8px 0; font-size: 11px; opacity: 0.9;">${patternDesc}</p>
+                <div style="display: flex; gap: 6px; font-size: 10px; opacity: 0.85; flex-wrap: wrap;">
+                    <span style="background: rgba(255,255,255,0.06); padding: 3px 8px; border-radius: 6px;">🌅 Sabah: %${mornPct}</span>
+                    <span style="background: rgba(255,255,255,0.06); padding: 3px 8px; border-radius: 6px;">☀️ Öğlen: %${noonPct}</span>
+                    <span style="background: rgba(255,255,255,0.06); padding: 3px 8px; border-radius: 6px;">🌆 Akşam: %${evePct}</span>
+                    <span style="background: rgba(255,255,255,0.06); padding: 3px 8px; border-radius: 6px;">🌙 Gece: %${nightPct}</span>
+                </div>
+            `;
+            bodyDiv.appendChild(patternDiv);
 
             /* 
                Kullanıcı isteği üzerine 'Ayın Notları' arayüzden kaldırıldı. 
@@ -4507,7 +4633,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                 const originalText = verText.textContent;
                 verText.style.color = '#2ecc71'; // Yeşil renk
                 verText.style.fontWeight = '700';
-                verText.textContent = '✅ Uygulamanız v3.4.0 sürümüne güncellendi!';
+                verText.textContent = '✅ Uygulamanız v3.5.0 sürümüne güncellendi!';
                 
                 setTimeout(() => {
                     verText.style.color = '';

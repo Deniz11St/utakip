@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v340'; // v3.4.0: 24-Hour Daily Capsule/Tube Hourly Session Distribution Matrix
+const CACHE_NAME = 'utakip-v350'; // v3.5.0: In-Place Calendar 24-Hour Capsule/Tube Hourly Timeline Matrix
 const ASSETS = [
     './',
     './index.html',
