@@ -2150,7 +2150,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 .accordion-header::after {
     content: '▼';
     position: absolute;
-    right: 55px;
+    right: 90px;
     top: 24px;
     color: var(--text-secondary);
     font-size: 14px;
@@ -2189,6 +2189,37 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     color: #f1c40f;
     border-color: rgba(241, 196, 15, 0.5);
     box-shadow: 0 0 8px rgba(241, 196, 15, 0.2);
+}
+
+.btn-monthly-timeline-toggle {
+    position: absolute;
+    right: 52px;
+    top: 15px;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    z-index: 10;
+}
+
+.btn-monthly-timeline-toggle:hover {
+    background: rgba(46, 204, 113, 0.25);
+    color: #2ecc71;
+    border-color: rgba(46, 204, 113, 0.4);
+}
+
+.btn-monthly-timeline-toggle.active {
+    background: rgba(46, 204, 113, 0.2);
+    color: #2ecc71;
+    border-color: rgba(46, 204, 113, 0.5);
+    box-shadow: 0 0 8px rgba(46, 204, 113, 0.3);
 }
 
 /* Başarı Bildirimi (Achievement Pop-up) */
@@ -2800,3 +2831,170 @@ input:focus, select:focus, textarea:focus {
     filter: blur(2px) grayscale(50%);
     pointer-events: none; /* Yanlış tıklamaları engelle */
 }
+
+/* --- 24-HOUR DAILY CAPSULE / TUBE TIMELINE (v3.4.0) --- */
+.timeline-modal-container {
+    max-width: 600px;
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 20px;
+    background: #121824;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+}
+
+.timeline-guide-header {
+    display: flex;
+    align-items: center;
+    padding: 6px 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    margin-bottom: 8px;
+    gap: 8px;
+}
+
+.timeline-guide-hours {
+    flex: 1;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 4px;
+    font-size: 10px;
+    font-family: monospace;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.timeline-list-container {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-right: 4px;
+    margin-bottom: 8px;
+    max-height: 52vh;
+}
+
+.timeline-day-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    transition: all 0.2s ease;
+}
+
+.timeline-day-row:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.timeline-day-row.is-today {
+    border-color: rgba(46, 204, 113, 0.4);
+    background: rgba(46, 204, 113, 0.05);
+}
+
+.timeline-day-row.is-rest {
+    opacity: 0.6;
+    border-style: dashed;
+}
+
+.timeline-day-info {
+    width: 44px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+}
+
+.timeline-day-num {
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.1;
+    color: #fff;
+}
+
+.timeline-day-weekday {
+    font-size: 9px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+
+/* The 24-piece horizontal capsule/tube */
+.timeline-tube-wrapper {
+    flex: 1;
+    position: relative;
+}
+
+.timeline-tube {
+    display: grid;
+    grid-template-columns: repeat(24, 1fr);
+    height: 24px;
+    background: rgba(0, 0, 0, 0.45);
+    border: 1.5px solid rgba(255, 255, 255, 0.22);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: inset 0 2px 5px rgba(0,0,0,0.7);
+}
+
+.tube-segment {
+    position: relative;
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    height: 100%;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.tube-segment:last-child {
+    border-right: none;
+}
+
+.tube-segment.fill-light {
+    background: rgba(46, 204, 113, 0.35);
+}
+
+.tube-segment.fill-medium {
+    background: rgba(46, 204, 113, 0.7);
+    box-shadow: inset 0 0 4px rgba(46, 204, 113, 0.3);
+}
+
+.tube-segment.fill-heavy {
+    background: linear-gradient(180deg, #2ecc71, #27ae60);
+    box-shadow: 0 0 6px rgba(46, 204, 113, 0.6);
+}
+
+.tube-segment:hover {
+    filter: brightness(1.35);
+    z-index: 2;
+}
+
+.timeline-day-total {
+    width: 60px;
+    font-size: 11px;
+    font-weight: 600;
+    text-align: right;
+    color: var(--text-secondary);
+    flex: none;
+}
+
+.timeline-day-total.has-work {
+    color: #2ecc71;
+    font-weight: 700;
+}
+
+.timeline-stat-badge {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 10px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+

@@ -265,7 +265,7 @@ class TrackerData {
         if(saveNeeded) this.save();
     }
 
-    addSession(dateStr, minutes, diff = 'normal', note = '') {
+    addSession(dateStr, minutes, diff = 'normal', note = '', extraData = {}) {
         if (!this.data.sessions[dateStr]) {
             this.data.sessions[dateStr] = [];
         }
@@ -273,7 +273,8 @@ class TrackerData {
             alert('Günlük maksimum 5 seans girebilirsiniz.');
             return false;
         }
-        this.data.sessions[dateStr].push({ mins: parseInt(minutes), diff: diff });
+        const sessionObj = { mins: parseInt(minutes), diff: diff, ...extraData };
+        this.data.sessions[dateStr].push(sessionObj);
         if (note) {
             this.addJournalNote(dateStr, { note: note });
         }
@@ -1307,6 +1308,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const h3 = document.createElement('h3');
             h3.textContent = `${monthName} Takvimi`;
             headerCard.appendChild(h3);
+
+            // 24 Saatlik Seans Tüpleri Butonu (v3.4.0)
+            const monthlyTimelineBtn = document.createElement('button');
+            monthlyTimelineBtn.className = 'btn-monthly-timeline-toggle';
+            monthlyTimelineBtn.title = '24 Saatlik Seans Dağılım Tüpleri';
+            monthlyTimelineBtn.innerHTML = '<span class="material-symbols-outlined">view_timeline</span>';
+            monthlyTimelineBtn.onclick = (e) => {
+                e.stopPropagation(); // Akordeonun açılıp kapanmasını engeller
+                openMonthlyTimelineOverlay(yearMonth);
+            };
+            headerCard.appendChild(monthlyTimelineBtn);
 
             // Aylık Not Butonu (Yeni)
             const monthlyNoteBtn = document.createElement('button');
@@ -3362,6 +3374,263 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
         }
     });
 
+    /* --- 24-HOUR DAILY CAPSULE / TUBE TIMELINE LOGIC (v3.4.0) --- */
+    function getHourlyBreakdown(startMs, endMs) {
+        const hourly = {};
+        let cur = new Date(startMs);
+        const end = new Date(endMs);
+        
+        while (cur < end) {
+            const h = cur.getHours();
+            const nextHour = new Date(cur);
+            nextHour.setHours(h + 1, 0, 0, 0);
+            
+            const segmentEnd = nextHour < end ? nextHour : end;
+            const mins = Math.max(1, Math.round((segmentEnd - cur) / 60000));
+            if (mins > 0) {
+                hourly[h] = (hourly[h] || 0) + mins;
+            }
+            cur = segmentEnd;
+        }
+        return hourly;
+    }
+
+    function getDayHourlyDistribution(dateStr) {
+        const hours = new Array(24).fill(0);
+        const sessions = dataManager.data.sessions[dateStr] || [];
+        
+        let hasExplicitHourly = false;
+        sessions.forEach(s => {
+            if (s.hourly) {
+                hasExplicitHourly = true;
+                Object.keys(s.hourly).forEach(h => {
+                    const hourIdx = parseInt(h);
+                    if (hourIdx >= 0 && hourIdx < 24) {
+                        hours[hourIdx] += (s.hourly[h] || 0);
+                    }
+                });
+            } else if (s.startTs && s.endTs) {
+                hasExplicitHourly = true;
+                const brk = getHourlyBreakdown(s.startTs, s.endTs);
+                Object.keys(brk).forEach(h => {
+                    const hourIdx = parseInt(h);
+                    if (hourIdx >= 0 && hourIdx < 24) {
+                        hours[hourIdx] += (brk[h] || 0);
+                    }
+                });
+            }
+        });
+
+        // Eğer geçmiş kayıtlarda saat yoksa akıllı varsayılan dağılım (09:00, 14:00, 18:00, 21:00, 23:00)
+        if (!hasExplicitHourly && sessions.length > 0) {
+            const defaultSlots = [9, 14, 18, 21, 23];
+            sessions.forEach((s, idx) => {
+                let mins = s.mins || 0;
+                let slot = defaultSlots[idx % defaultSlots.length];
+                while (mins > 0 && slot < 24) {
+                    const fill = Math.min(60, mins);
+                    hours[slot] += fill;
+                    mins -= fill;
+                    slot++;
+                }
+            });
+        }
+
+        return hours;
+    }
+
+    let currentTimelineYearMonth = null;
+    const timelineModal = document.getElementById('monthlyTimelineModalOverlay');
+
+    window.openMonthlyTimelineOverlay = function(yearMonth) {
+        currentTimelineYearMonth = yearMonth;
+        
+        let displayMonth = yearMonth;
+        let y = 0, mIndex = 0;
+        try {
+            const parts = yearMonth.split('-');
+            if (parts.length === 2) {
+                y = parseInt(parts[0]);
+                mIndex = parseInt(parts[1]) - 1;
+                displayMonth = new Intl.DateTimeFormat('tr-TR', { month: 'long', year: 'numeric' }).format(new Date(y, mIndex));
+            }
+        } catch(e) {}
+        
+        const targetDateElem = document.getElementById('monthlyTimelineModalTargetDate');
+        if (targetDateElem) targetDateElem.textContent = `${displayMonth} - 24 Saatlik Seans Matrisi`;
+
+        renderMonthlyTimeline(yearMonth, y, mIndex);
+
+        if (timelineModal) timelineModal.classList.add('show');
+    };
+
+    function closeMonthlyTimelineModal() {
+        if (timelineModal) timelineModal.classList.remove('show');
+        currentTimelineYearMonth = null;
+    }
+
+    document.getElementById('btnCloseTimelineModal')?.addEventListener('click', closeMonthlyTimelineModal);
+    timelineModal?.addEventListener('click', (e) => {
+        if (e.target === timelineModal) closeMonthlyTimelineModal();
+    });
+
+    function renderMonthlyTimeline(yearMonth, y, mIndex) {
+        const listContainer = document.getElementById('monthlyTimelineList');
+        const summaryCards = document.getElementById('timelineSummaryCards');
+        const patternCard = document.getElementById('timelinePatternCard');
+        if (!listContainer || !summaryCards || !patternCard) return;
+
+        listContainer.innerHTML = '';
+        summaryCards.innerHTML = '';
+        patternCard.innerHTML = '';
+
+        const daysInMonth = new Date(y, mIndex + 1, 0).getDate();
+        const todayStr = (new Date()).toISOString().split('T')[0];
+
+        let totalMonthMins = 0;
+        let daysWithWork = 0;
+        const timeZoneTotals = { morning: 0, noon: 0, evening: 0, night: 0 }; // 06-12, 12-18, 18-24, 00-06
+        let totalSessionsCount = 0;
+
+        const weekdayNames = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
+
+        for (let i = 1; i <= daysInMonth; i++) {
+            const dateStr = `${y}-${String(mIndex + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+            const dObj = new Date(y, mIndex, i);
+            const weekdayName = weekdayNames[dObj.getDay()];
+            const isToday = (dateStr === todayStr);
+            const isRest = dataManager.data.restDays && dataManager.data.restDays[dateStr];
+            
+            const hours = getDayHourlyDistribution(dateStr);
+            const dailyTotal = hours.reduce((acc, v) => acc + v, 0);
+
+            if (dailyTotal > 0) {
+                totalMonthMins += dailyTotal;
+                daysWithWork++;
+                const sList = dataManager.data.sessions[dateStr] || [];
+                totalSessionsCount += Math.max(1, sList.length);
+            }
+
+            // Time windows distribution
+            for (let h = 0; h < 24; h++) {
+                const m = hours[h];
+                if (h >= 6 && h < 12) timeZoneTotals.morning += m;
+                else if (h >= 12 && h < 18) timeZoneTotals.noon += m;
+                else if (h >= 18 && h < 24) timeZoneTotals.evening += m;
+                else timeZoneTotals.night += m;
+            }
+
+            const row = document.createElement('div');
+            row.className = `timeline-day-row ${isToday ? 'is-today' : ''} ${isRest ? 'is-rest' : ''}`;
+
+            // Day info column
+            const infoCol = document.createElement('div');
+            infoCol.className = 'timeline-day-info';
+            infoCol.innerHTML = `
+                <div class="timeline-day-num">${String(i).padStart(2, '0')}</div>
+                <div class="timeline-day-weekday">${weekdayName}</div>
+            `;
+            row.appendChild(infoCol);
+
+            // 24-Segment Capsule Tube
+            const tubeWrapper = document.createElement('div');
+            tubeWrapper.className = 'timeline-tube-wrapper';
+
+            const tube = document.createElement('div');
+            tube.className = 'timeline-tube';
+
+            for (let h = 0; h < 24; h++) {
+                const segMins = hours[h];
+                const seg = document.createElement('div');
+                seg.className = 'tube-segment';
+                
+                if (segMins > 0) {
+                    if (segMins >= 45) seg.classList.add('fill-heavy');
+                    else if (segMins >= 20) seg.classList.add('fill-medium');
+                    else seg.classList.add('fill-light');
+                    
+                    const hFormatted = `${String(h).padStart(2, '0')}:00`;
+                    seg.title = `${dateStr} ${hFormatted} -> ${segMins} dk seans`;
+                } else {
+                    const hFormatted = `${String(h).padStart(2, '0')}:00`;
+                    seg.title = `${dateStr} ${hFormatted} (Çalışma yok)`;
+                }
+                
+                tube.appendChild(seg);
+            }
+            tubeWrapper.appendChild(tube);
+            row.appendChild(tubeWrapper);
+
+            // Day total badge
+            const totalCol = document.createElement('div');
+            totalCol.className = `timeline-day-total ${dailyTotal > 0 ? 'has-work' : ''}`;
+            if (dailyTotal > 0) {
+                const th = Math.floor(dailyTotal / 60);
+                const tm = dailyTotal % 60;
+                totalCol.textContent = th > 0 ? `${th} sa ${tm > 0 ? tm + 'dk' : ''}` : `${tm} dk`;
+            } else if (isRest) {
+                totalCol.textContent = 'Mola';
+                totalCol.style.color = '#bb86fc';
+            } else {
+                totalCol.textContent = '0 dk';
+            }
+            row.appendChild(totalCol);
+
+            listContainer.appendChild(row);
+        }
+
+        // Summary cards
+        const totalHours = Math.floor(totalMonthMins / 60);
+        const totalRemainingMins = totalMonthMins % 60;
+        const avgDailyMins = daysWithWork > 0 ? Math.round(totalMonthMins / daysWithWork) : 0;
+        const avgSessionsPerDay = daysWithWork > 0 ? (totalSessionsCount / daysWithWork).toFixed(1) : 0;
+
+        summaryCards.innerHTML = `
+            <div class="timeline-stat-badge">
+                <div style="font-size: 10px; color: var(--text-secondary); text-transform: uppercase;">Aylık Toplam</div>
+                <div style="font-size: 14px; font-weight: 700; color: #2ecc71;">${totalHours} sa ${totalRemainingMins} dk</div>
+            </div>
+            <div class="timeline-stat-badge">
+                <div style="font-size: 10px; color: var(--text-secondary); text-transform: uppercase;">Aktif Gün Ort.</div>
+                <div style="font-size: 14px; font-weight: 700; color: #58a6ff;">${Math.floor(avgDailyMins/60)} sa ${avgDailyMins%60} dk</div>
+            </div>
+            <div class="timeline-stat-badge">
+                <div style="font-size: 10px; color: var(--text-secondary); text-transform: uppercase;">Seans Tipi</div>
+                <div style="font-size: 14px; font-weight: 700; color: #f1c40f;">~${avgSessionsPerDay} seans/gün</div>
+            </div>
+        `;
+
+        // Determine dominant work period
+        const totalPeriodsMins = (timeZoneTotals.morning + timeZoneTotals.noon + timeZoneTotals.evening + timeZoneTotals.night) || 1;
+        const mornPct = Math.round((timeZoneTotals.morning / totalPeriodsMins) * 100);
+        const noonPct = Math.round((timeZoneTotals.noon / totalPeriodsMins) * 100);
+        const evePct = Math.round((timeZoneTotals.evening / totalPeriodsMins) * 100);
+        const nightPct = Math.round((timeZoneTotals.night / totalPeriodsMins) * 100);
+
+        let patternType = "Dağıtık Seans Modeli";
+        let patternDesc = "Çalışmalarınız gün içine (sabah/öğlen/akşam) yayılmış durumda. Doku toparlanması ve düzenli gerilim için dengeli bir dağılım.";
+        if (avgSessionsPerDay <= 1.4 && avgDailyMins >= 180) {
+            patternType = "Yoğun Blok Seans Modeli";
+            patternDesc = "Günde 1-2 uzun süreli tek parça seanslar tercih ediliyor. Sürekli yüksek gerilimle doku adaptasyonu hedefleniyor.";
+        }
+
+        patternCard.innerHTML = `
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                <strong style="color: #a5d6ff; font-size: 13px; display: flex; align-items: center; gap: 5px;">
+                    <span class="material-symbols-outlined" style="font-size: 16px; color: #58a6ff;">insights</span> ${patternType}
+                </strong>
+                <span style="font-size: 10px; opacity: 0.7;">Zaman Dağılımı</span>
+            </div>
+            <p style="margin: 0 0 8px 0; font-size: 11px; opacity: 0.9;">${patternDesc}</p>
+            <div style="display: flex; gap: 6px; font-size: 10px; opacity: 0.85; flex-wrap: wrap;">
+                <span style="background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px;">🌅 Sabah: %${mornPct}</span>
+                <span style="background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px;">☀️ Öğlen: %${noonPct}</span>
+                <span style="background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px;">🌆 Akşam: %${evePct}</span>
+                <span style="background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px;">🌙 Gece: %${nightPct}</span>
+            </div>
+        `;
+    }
+
     /* --- MONTHLY NOTE MODAL LOGIC --- */
     let currentMonthlyNoteYearMonth = null;
     const monthlyNoteModal = document.getElementById('monthlyNoteModalOverlay');
@@ -3483,10 +3752,12 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             
             let success = false;
             if (minsBefore > 0) {
-                success = dataManager.addSession(startDateStr, minsBefore, diffStr, noteStr ? `${noteStr} (Gece yarısından önce)` : 'Gece yarısından önce');
+                const hourly1 = getHourlyBreakdown(startTime, midnightMs);
+                success = dataManager.addSession(startDateStr, minsBefore, diffStr, noteStr ? `${noteStr} (Gece yarısından önce)` : 'Gece yarısından önce', { startTs: startTime, endTs: midnightMs, hourly: hourly1 });
             }
             if (minsAfter > 0) {
-                const secondSuccess = dataManager.addSession(endDateStr, minsAfter, diffStr, noteStr ? `${noteStr} (Gece yarısından sonra)` : 'Gece yarısından sonra');
+                const hourly2 = getHourlyBreakdown(midnightMs, endTime);
+                const secondSuccess = dataManager.addSession(endDateStr, minsAfter, diffStr, noteStr ? `${noteStr} (Gece yarısından sonra)` : 'Gece yarısından sonra', { startTs: midnightMs, endTs: endTime, hourly: hourly2 });
                 success = success || secondSuccess;
             }
             
@@ -3496,7 +3767,8 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
             }
             return false;
         } else {
-            if (dataManager.addSession(startDateStr, totalMins, diffStr, noteStr)) {
+            const hourly = getHourlyBreakdown(startTime, endTime);
+            if (dataManager.addSession(startDateStr, totalMins, diffStr, noteStr, { startTs: startTime, endTs: endTime, hourly: hourly })) {
                 showSuccessAchievement("Seans Kaydedildi", `${totalMins} dakika günlüğe eklendi.`, "✅");
                 return true;
             }
@@ -4235,7 +4507,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                 const originalText = verText.textContent;
                 verText.style.color = '#2ecc71'; // Yeşil renk
                 verText.style.fontWeight = '700';
-                verText.textContent = '✅ Uygulamanız v3.3.0 sürümüne güncellendi!';
+                verText.textContent = '✅ Uygulamanız v3.4.0 sürümüne güncellendi!';
                 
                 setTimeout(() => {
                     verText.style.color = '';

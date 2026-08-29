@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v330'; // v3.3.0: Midnight session splitting and monthly AI notes
+const CACHE_NAME = 'utakip-v340'; // v3.4.0: 24-Hour Daily Capsule/Tube Hourly Session Distribution Matrix
 const ASSETS = [
     './',
     './index.html',
