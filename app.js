@@ -971,7 +971,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (estEl) {
                     if (targetSize <= startSize || targetSize <= currentSize) {
                         estEl.textContent = 'Hedefe Ulaşıldı!';
-                    } else {
+                    } else if (dataManager.data.startDate && !isNaN(new Date(dataManager.data.startDate).getTime())) {
                         let activeMonthsNeeded = ((targetSize - startSize) * 10) / rate;
                         let breaks = Math.floor(activeMonthsNeeded / 6);
                         let totalMonthsWithBreaks = activeMonthsNeeded + (breaks * 0.5);
@@ -980,7 +980,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         estDate.setDate(estDate.getDate() + Math.ceil(totalMonthsWithBreaks * 30.4375));
                         estDate.setMonth(estDate.getMonth() + 6); // + 6 ay kalıcılık evresi
                         
-                        estEl.textContent = new Intl.DateTimeFormat('tr-TR', { month: 'long', year: 'numeric' }).format(estDate) + ' (Kalıcılık Dahil)';
+                        try {
+                            estEl.textContent = new Intl.DateTimeFormat('tr-TR', { month: 'long', year: 'numeric' }).format(estDate) + ' (Kalıcılık Dahil)';
+                        } catch(e) {
+                            estEl.textContent = 'Hesaplanamadı';
+                        }
+                    } else {
+                        estEl.textContent = 'Başlangıç Tarihi Girin';
                     }
                 }
             } else {
