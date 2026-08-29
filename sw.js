@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v355'; // v3.5.5: Tube dividing lines labeled (6, 12, 18)
+const CACHE_NAME = 'utakip-v360'; // v3.6.0: 24-Hour Tube Timeline on dividing lines (6, 12, 18)
 const ASSETS = [
     './',
     './index.html',

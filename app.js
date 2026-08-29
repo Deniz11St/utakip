@@ -4639,7 +4639,7 @@ document.getElementById('btnAskCoach').addEventListener('click', async () => {
                 const originalText = verText.textContent;
                 verText.style.color = '#2ecc71'; // Yeşil renk
                 verText.style.fontWeight = '700';
-                verText.textContent = '✅ Uygulamanız v3.5.0 sürümüne güncellendi!';
+                verText.textContent = '✅ Uygulamanız v3.6.0 sürümüne güncellendi!';
                 
                 setTimeout(() => {
                     verText.style.color = '';
