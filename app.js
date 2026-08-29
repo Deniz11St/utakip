@@ -1602,11 +1602,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         const seg = document.createElement('div');
                         seg.className = 'tube-segment';
                         
-                        // 4 saatlik aralıklarla saat numarası (0, 4, 8, 12, 16, 20)
-                        if (h % 4 === 0) {
+                        // Çizgilerin üzerine saat numarası (6, 12, 18)
+                        if (h === 5 || h === 11 || h === 17) {
                             const lbl = document.createElement('span');
-                            lbl.className = 'tube-hour-label';
-                            lbl.textContent = h;
+                            lbl.className = 'tube-line-marker';
+                            lbl.textContent = h + 1; // 6, 12, 18
                             seg.appendChild(lbl);
                         }
                         

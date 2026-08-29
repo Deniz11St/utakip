@@ -1,4 +1,4 @@
-const CACHE_NAME = 'utakip-v350'; // v3.5.0: In-Place Calendar 24-Hour Capsule/Tube Hourly Timeline Matrix
+const CACHE_NAME = 'utakip-v355'; // v3.5.5: Tube dividing lines labeled (6, 12, 18)
 const ASSETS = [
     './',
     './index.html',
