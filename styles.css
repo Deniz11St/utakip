@@ -2935,6 +2935,12 @@ input:focus, select:focus, textarea:focus {
     display: none !important;
 }
 
+.accordion-item.view-mode-tube .day-label-group {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+}
+
 .accordion-item.view-mode-tube .day-label-group button {
     display: none !important;
 }
@@ -2946,13 +2952,17 @@ input:focus, select:focus, textarea:focus {
 
 .accordion-item.view-mode-tube .day-tube-col {
     display: flex !important;
-    flex: 1;
+    flex: 1 1 auto !important;
+    width: 100% !important;
     align-items: center;
 }
 
 .accordion-item.view-mode-tube .day-row {
+    display: flex !important;
+    align-items: center !important;
     gap: 8px;
     padding: 3px 0;
+    width: 100% !important;
 }
 
 .day-tube-col {
